@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teneo SDK - Production Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .event-item {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Teneo SDK Production Dashboard
+            </h1>
+            <p class="text-gray-400">Comprehensive example showcasing all SDK features</p>
+        </div>
+
+        <!-- Status Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <!-- Connection Status -->
+            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-400 text-sm">Connection</span>
+                    <div id="connection-dot" class="status-dot w-3 h-3 rounded-full bg-gray-500"></div>
+                </div>
+                <div id="connection-status" class="text-2xl font-bold text-gray-500">Connecting...</div>
+            </div>
+
+            <!-- Auth Status -->
+            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-400 text-sm">Authentication</span>
+                    <div id="auth-dot" class="status-dot w-3 h-3 rounded-full bg-gray-500"></div>
+                </div>
+                <div id="auth-status" class="text-2xl font-bold text-gray-500">Pending</div>
+            </div>
+
+            <!-- Agents Count -->
+            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-400 text-sm">Agents</span>
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div id="agents-count" class="text-2xl font-bold">0</div>
+            </div>
+
+            <!-- Messages Count -->
+            <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-400 text-sm">Messages</span>
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </div>
+                <div id="messages-count" class="text-2xl font-bold">0</div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Send Message Panel -->
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                    </svg>
+                    Send Message
+                </h2>
+                <textarea id="message-input"
+                          class="w-full bg-gray-700 rounded-lg p-3 mb-3 text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
+                          rows="3"
+                          placeholder="Enter your message to agents..."></textarea>
+                <div class="flex gap-3">
+                    <button id="send-message-btn"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Send Message
+                    </button>
+                    <button id="send-wait-btn"
+                            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Send & Wait
+                    </button>
+                </div>
+            </div>
+
+            <!-- Health Status -->
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    System Health
+                </h2>
+                <div id="health-status" class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Overall Status</span>
+                        <span id="health-overall" class="text-gray-500">Loading...</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Webhook Circuit</span>
+                        <span id="health-circuit" class="text-gray-500">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Rate Limiter</span>
+                        <span id="health-ratelimit" class="text-gray-500">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Uptime</span>
+                        <span id="health-uptime" class="text-gray-500">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+            <div class="flex border-b border-gray-700">
+                <button class="tab-btn active px-6 py-3 font-semibold" data-tab="agents">Agents</button>
+                <button class="tab-btn px-6 py-3 font-semibold" data-tab="rooms">Rooms</button>
+                <button class="tab-btn px-6 py-3 font-semibold" data-tab="messages">Messages</button>
+                <button class="tab-btn px-6 py-3 font-semibold" data-tab="webhooks">Webhooks</button>
+                <button class="tab-btn px-6 py-3 font-semibold" data-tab="events">Events</button>
+            </div>
+
+            <div class="p-6">
+                <!-- Agents Tab -->
+                <div id="agents-tab" class="tab-content">
+                    <div id="agents-list" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
+                        <p class="text-gray-500">Loading agents...</p>
+                    </div>
+                </div>
+
+                <!-- Rooms Tab -->
+                <div id="rooms-tab" class="tab-content hidden">
+                    <div class="mb-4">
+                        <input id="room-id-input"
+                               type="text"
+                               class="bg-gray-700 rounded-lg p-2 text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                               placeholder="Room ID">
+                        <button id="subscribe-room-btn" class="ml-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                            Subscribe
+                        </button>
+                    </div>
+                    <div id="rooms-list" class="space-y-3 max-h-80 overflow-y-auto scrollbar-thin">
+                        <p class="text-gray-500">Loading rooms...</p>
+                    </div>
+                </div>
+
+                <!-- Messages Tab -->
+                <div id="messages-tab" class="tab-content hidden">
+                    <div id="messages-list" class="space-y-4 max-h-96 overflow-y-auto scrollbar-thin">
+                        <p class="text-gray-500">No messages yet. Send a message to see it here!</p>
+                    </div>
+                </div>
+
+                <!-- Webhooks Tab -->
+                <div id="webhooks-tab" class="tab-content hidden">
+                    <div id="webhooks-list" class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
+                        <p class="text-gray-500">No webhooks received yet.</p>
+                    </div>
+                </div>
+
+                <!-- Events Tab -->
+                <div id="events-tab" class="tab-content hidden">
+                    <div id="events-list" class="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+                        <p class="text-gray-500">Waiting for events...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let eventSource = null;
+        let connectionStatus = 'disconnected';
+        let authStatus = 'pending';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupTabs();
+            setupEventSource();
+            loadInitialData();
+            setupMessageSending();
+            setupRoomManagement();
+            startHealthCheck();
+        });
+
+        // Tab management
+        function setupTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'bg-gray-700', 'text-blue-400'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                    btn.classList.add('active', 'bg-gray-700', 'text-blue-400');
+                    document.getElementById(`${tab}-tab`).classList.remove('hidden');
+                });
+            });
+        }
+
+        // Server-Sent Events
+        function setupEventSource() {
+            eventSource = new EventSource('/api/sse');
+
+            eventSource.addEventListener('message', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    handleSSEEvent(data);
+                } catch (error) {
+                    console.error('SSE parse error:', error);
+                }
+            });
+
+            eventSource.addEventListener('error', () => {
+                console.error('SSE connection error');
+                setTimeout(setupEventSource, 5000);
+            });
+        }
+
+        function handleSSEEvent(data) {
+            switch (data.type) {
+                case 'connection':
+                    updateConnectionStatus(data.status);
+                    break;
+                case 'auth':
+                    updateAuthStatus(data.status);
+                    break;
+                case 'agent:selected':
+                    addEventItem(`Agent Selected: ${data.data.agentName}`, 'blue');
+                    break;
+                case 'agent:response':
+                    addEventItem(`Agent Response from ${data.response.agentName}`, 'green');
+                    loadMessages();
+                    break;
+                case 'message:updated':
+                    addEventItem(`Message Updated: Full response received`, 'green');
+                    loadMessages();
+                    break;
+                case 'agent:list':
+                    loadAgents();
+                    break;
+                case 'room:subscribed':
+                    addEventItem(`Subscribed to room: ${data.data.roomId}`, 'green');
+                    loadRooms();
+                    break;
+                case 'room:unsubscribed':
+                    addEventItem(`Unsubscribed from room: ${data.data.roomId}`, 'yellow');
+                    loadRooms();
+                    break;
+                case 'room:list':
+                    addEventItem(`Room list updated (${data.rooms.length} rooms)`, 'blue');
+                    break;
+                case 'webhook:received':
+                    addEventItem(`Webhook: ${data.payload.event}`, 'purple');
+                    loadWebhooks();
+                    break;
+                case 'error':
+                    addEventItem(`Error: ${data.error.message}`, 'red');
+                    break;
+            }
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            await Promise.all([
+                loadAgents(),
+                loadRooms(),
+                loadMessages(),
+                loadWebhooks(),
+                loadEvents(),
+                loadMetrics()
+            ]);
+        }
+
+        // Load agents
+        async function loadAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                const agents = await response.json();
+                document.getElementById('agents-count').textContent = agents.length;
+
+                const list = document.getElementById('agents-list');
+                if (agents.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500">No agents available</p>';
+                    return;
+                }
+
+                list.innerHTML = agents.map(agent => `
+                    <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold">${agent.name}</span>
+                            <span class="text-xs px-2 py-1 rounded ${agent.status === 'online' ? 'bg-green-600' : 'bg-gray-600'}">${agent.status || 'unknown'}</span>
+                        </div>
+                        <p class="text-sm text-gray-400">${agent.description || 'No description'}</p>
+                        ${agent.capabilities ? `
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${agent.capabilities.map(cap => `<span class="text-xs px-2 py-1 bg-blue-900 rounded">${cap.name}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load agents:', error);
+            }
+        }
+
+        // Load rooms
+        async function loadRooms() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+
+                const list = document.getElementById('rooms-list');
+                if (rooms.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500">No rooms available</p>';
+                    return;
+                }
+
+                list.innerHTML = rooms.map(room => `
+                    <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-semibold">${room.name || room.id}</span>
+                                <p class="text-sm text-gray-400">${room.id}</p>
+                            </div>
+                            <button onclick="unsubscribeRoom('${room.id}')" class="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded transition">
+                                Unsubscribe
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load rooms:', error);
+            }
+        }
+
+        // Load messages
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/messages');
+                const messages = await response.json();
+                document.getElementById('messages-count').textContent = messages.length;
+
+                const list = document.getElementById('messages-list');
+                if (messages.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500">No messages yet</p>';
+                    return;
+                }
+
+                list.innerHTML = messages.map(msg => `
+                    <div class="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-400">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+                            <span class="text-xs px-2 py-1 rounded ${msg.response ? 'bg-green-600' : 'bg-yellow-600'}">
+                                ${msg.response ? 'Responded' : 'Pending'}
+                            </span>
+                        </div>
+                        <p class="text-sm mb-2">${msg.content}</p>
+                        ${msg.response ? `
+                            <div class="mt-3 p-3 bg-gray-800 rounded border-l-4 border-green-500">
+                                <p class="text-xs text-gray-400 mb-1">Response from ${msg.response.agentName}:</p>
+                                <p class="text-sm">${msg.response.humanized || msg.response.content}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        // Load webhooks
+        async function loadWebhooks() {
+            try {
+                const response = await fetch('/api/webhooks');
+                const webhooks = await response.json();
+
+                const list = document.getElementById('webhooks-list');
+                if (webhooks.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500">No webhooks received yet</p>';
+                    return;
+                }
+
+                list.innerHTML = webhooks.map(wh => `
+                    <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-mono text-sm text-purple-400">${wh.event}</span>
+                            <span class="text-xs text-gray-400">${new Date(wh.receivedAt).toLocaleTimeString()}</span>
+                        </div>
+                        <pre class="text-xs text-gray-400 overflow-x-auto">${JSON.stringify(wh.data, null, 2)}</pre>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load webhooks:', error);
+            }
+        }
+
+        // Load events
+        async function loadEvents() {
+            try {
+                const response = await fetch('/api/events');
+                const events = await response.json();
+
+                const list = document.getElementById('events-list');
+                if (events.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500">No events yet</p>';
+                    return;
+                }
+
+                list.innerHTML = events.map(evt => `
+                    <div class="event-item bg-gray-700 rounded p-2 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono text-xs text-blue-400">${evt.type}</span>
+                            <span class="text-xs text-gray-400">${new Date(evt.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">${JSON.stringify(evt.data)}</p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load events:', error);
+            }
+        }
+
+        // Load metrics
+        async function loadMetrics() {
+            try {
+                const response = await fetch('/metrics');
+                const metrics = await response.json();
+
+                document.getElementById('health-ratelimit').textContent = metrics.messages?.sent || 0;
+            } catch (error) {
+                console.error('Failed to load metrics:', error);
+            }
+        }
+
+        // Message sending
+        function setupMessageSending() {
+            document.getElementById('send-message-btn').addEventListener('click', () => sendMessage(false));
+            document.getElementById('send-wait-btn').addEventListener('click', () => sendMessage(true));
+        }
+
+        async function sendMessage(waitForResponse) {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+
+            if (!content) return;
+
+            try {
+                const response = await fetch('/api/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, waitForResponse })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    addEventItem(`Sent: ${content}`, 'green');
+                    setTimeout(loadMessages, 500);
+                } else {
+                    addEventItem('Failed to send message', 'red');
+                }
+            } catch (error) {
+                console.error('Send error:', error);
+                addEventItem('Error sending message', 'red');
+            }
+        }
+
+        // Room management
+        function setupRoomManagement() {
+            document.getElementById('subscribe-room-btn').addEventListener('click', async () => {
+                const input = document.getElementById('room-id-input');
+                const roomId = input.value.trim();
+
+                if (!roomId) return;
+
+                try {
+                    const response = await fetch('/api/room/join', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ roomId })
+                    });
+
+                    if (response.ok) {
+                        input.value = '';
+                        addEventItem(`Subscribing to room: ${roomId}`, 'green');
+                        setTimeout(loadRooms, 500);
+                    }
+                } catch (error) {
+                    console.error('Subscribe room error:', error);
+                }
+            });
+        }
+
+        async function unsubscribeRoom(roomId) {
+            try {
+                const response = await fetch('/api/room/leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomId })
+                });
+
+                if (response.ok) {
+                    addEventItem(`Unsubscribing from room: ${roomId}`, 'yellow');
+                    setTimeout(loadRooms, 500);
+                }
+            } catch (error) {
+                console.error('Unsubscribe room error:', error);
+            }
+        }
+
+        // Update status displays
+        function updateConnectionStatus(status) {
+            connectionStatus = status;
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('connection-status');
+
+            if (status === 'connected') {
+                dot.className = 'status-dot w-3 h-3 rounded-full bg-green-500';
+                text.textContent = 'Connected';
+                text.className = 'text-2xl font-bold text-green-500';
+                document.getElementById('send-message-btn').disabled = false;
+                document.getElementById('send-wait-btn').disabled = false;
+            } else if (status === 'reconnecting') {
+                dot.className = 'status-dot w-3 h-3 rounded-full bg-yellow-500';
+                text.textContent = 'Reconnecting';
+                text.className = 'text-2xl font-bold text-yellow-500';
+            } else {
+                dot.className = 'status-dot w-3 h-3 rounded-full bg-red-500';
+                text.textContent = 'Disconnected';
+                text.className = 'text-2xl font-bold text-red-500';
+                document.getElementById('send-message-btn').disabled = true;
+                document.getElementById('send-wait-btn').disabled = true;
+            }
+        }
+
+        function updateAuthStatus(status) {
+            authStatus = status;
+            const dot = document.getElementById('auth-dot');
+            const text = document.getElementById('auth-status');
+
+            if (status === 'success') {
+                dot.className = 'status-dot w-3 h-3 rounded-full bg-green-500';
+                text.textContent = 'Authenticated';
+                text.className = 'text-2xl font-bold text-green-500';
+            } else {
+                dot.className = 'status-dot w-3 h-3 rounded-full bg-yellow-500';
+                text.textContent = 'Pending';
+                text.className = 'text-2xl font-bold text-yellow-500';
+            }
+        }
+
+        // Health check
+        function startHealthCheck() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/health');
+                    const health = await response.json();
+
+                    document.getElementById('health-overall').textContent = health.status;
+                    document.getElementById('health-overall').className = health.status === 'healthy' ? 'text-green-500' : 'text-yellow-500';
+                    document.getElementById('health-circuit').textContent = health.webhook?.circuitState || 'N/A';
+                    document.getElementById('health-uptime').textContent = formatUptime(health.timestamp);
+                } catch (error) {
+                    console.error('Health check failed:', error);
+                }
+            }, 5000);
+        }
+
+        function formatUptime(timestamp) {
+            const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function addEventItem(message, color) {
+            const list = document.getElementById('events-list');
+            const colorClass = {
+                'blue': 'border-blue-500',
+                'green': 'border-green-500',
+                'red': 'border-red-500',
+                'yellow': 'border-yellow-500',
+                'purple': 'border-purple-500'
+            }[color] || 'border-gray-500';
+
+            const item = document.createElement('div');
+            item.className = `event-item bg-gray-700 rounded p-2 border-l-4 ${colorClass}`;
+            item.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-sm">${message}</span>
+                    <span class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</span>
+                </div>
+            `;
+
+            if (list.firstChild && list.firstChild.textContent.includes('Waiting for events')) {
+                list.innerHTML = '';
+            }
+
+            list.insertBefore(item, list.firstChild);
+
+            if (list.children.length > 50) {
+                list.removeChild(list.lastChild);
+            }
+        }
+    </script>
+</body>
+</html>

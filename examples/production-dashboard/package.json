@@ -1,0 +1,39 @@
+{
+  "name": "@teneo/production-dashboard-example",
+  "version": "1.0.0",
+  "description": "Production-ready dashboard example for Teneo Protocol SDK using Hono and Bun",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch server.ts",
+    "start": "bun run server.ts",
+    "build": "bun build server.ts --outdir dist --target bun",
+    "serve": "bun run dist/server.js"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.8.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "teneo",
+    "sdk",
+    "dashboard",
+    "hono",
+    "bun",
+    "websocket",
+    "ai",
+    "agents",
+    "example",
+    "production"
+  ],
+  "author": "Teneo",
+  "license": "MIT"
+}
