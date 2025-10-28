@@ -236,9 +236,9 @@ describe("SSRF Validator", () => {
         });
 
         // Other k8s services should be blocked by isKubernetesService check
-        expect(() => validateWebhookUrl("http://redis.default.svc.cluster.local:6379", true)).toThrow(
-          /Kubernetes service/i
-        );
+        expect(() =>
+          validateWebhookUrl("http://redis.default.svc.cluster.local:6379", true)
+        ).toThrow(/Kubernetes service/i);
       });
     });
 

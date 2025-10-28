@@ -11,9 +11,6 @@ importers:
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
-      hono:
-        specifier: ^4.9.12
-        version: 4.9.12
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -1082,10 +1079,6 @@ packages:
 
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
-
-  hono@4.9.12:
-    resolution: {integrity: sha512-SrTC0YxqPwnN7yKa8gg/giLyQ2pILCKoideIHbYbFQlWZjYt68D2A4Ae1hehO/aDQ6RmTcpqOV/O2yBtMzx/VQ==}
-    engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -2727,8 +2720,6 @@ snapshots:
   headers-polyfill@4.0.3: {}
 
   help-me@5.0.0: {}
-
-  hono@4.9.12: {}
 
   html-escaper@2.0.2: {}
 

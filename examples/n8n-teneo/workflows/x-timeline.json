@@ -1,0 +1,66 @@
+{
+  "name": "X Timeline Query via Teneo",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "id": "manual-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://teneo-service:3000/query",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"message\": \"timeline @elonmusk 10\"\n}"
+      },
+      "name": "Query Teneo X-Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300],
+      "id": "http-request"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "response",
+              "value": "={{ $json.data.humanized }}"
+            },
+            {
+              "name": "agent",
+              "value": "={{ $json.data.metadata.agentName }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Extract Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [650, 300],
+      "id": "set-node"
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [[{"node": "Query Teneo X-Agent", "type": "main", "index": 0}]]
+    },
+    "Query Teneo X-Agent": {
+      "main": [[{"node": "Extract Response", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-15T00:00:00.000Z",
+  "versionId": "1"
+}

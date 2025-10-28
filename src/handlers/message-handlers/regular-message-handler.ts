@@ -54,6 +54,7 @@ export class RegularMessageHandler extends BaseMessageHandler<UserMessage> {
         contentType: message.content_type || "text/plain",
         success: true,
         timestamp: new Date(),
+        raw: message as any, // Include raw message for request correlation
         humanized:
           typeof message.content === "string" ? message.content : JSON.stringify(message.content)
       };

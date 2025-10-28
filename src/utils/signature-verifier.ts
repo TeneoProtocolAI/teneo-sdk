@@ -3,8 +3,8 @@
  * Provides cryptographic verification of message signatures using Ethereum ECDSA
  */
 
-import { verifyMessage, hashMessage, type Address } from 'viem';
-import { BaseMessage, MessageType } from '../types';
+import { verifyMessage, hashMessage, type Address } from "viem";
+import { BaseMessage, MessageType } from "../types";
 
 /**
  * Options for signature verification
@@ -109,7 +109,7 @@ export class SignatureVerifier {
         signatureMissing: true,
         reason: isRequired
           ? `Signature required for message type '${message.type}'`
-          : 'Signature missing but not required'
+          : "Signature missing but not required"
       };
     }
 
@@ -127,7 +127,7 @@ export class SignatureVerifier {
         return {
           valid: false,
           signatureMissing: false,
-          reason: 'No address available for verification (missing publicKey and from fields)'
+          reason: "No address available for verification (missing publicKey and from fields)"
         };
       }
 
@@ -143,7 +143,7 @@ export class SignatureVerifier {
           valid: false,
           recoveredAddress: addressToVerify,
           signatureMissing: false,
-          reason: 'Signature verification failed - signature does not match message content'
+          reason: "Signature verification failed - signature does not match message content"
         };
       }
 
@@ -167,7 +167,6 @@ export class SignatureVerifier {
         signatureMissing: false,
         isTrusted
       };
-
     } catch (error) {
       return {
         valid: false,
@@ -234,7 +233,7 @@ export class SignatureVerifier {
     }
 
     return this.options.trustedAddresses.some(
-      trusted => trusted.toLowerCase() === address.toLowerCase()
+      (trusted) => trusted.toLowerCase() === address.toLowerCase()
     );
   }
 
@@ -255,7 +254,7 @@ export class SignatureVerifier {
     }
 
     // Fall back to 'from' field if it looks like an address
-    if (message.from && message.from.startsWith('0x') && message.from.length === 42) {
+    if (message.from && message.from.startsWith("0x") && message.from.length === 42) {
       return message.from as Address;
     }
 

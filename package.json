@@ -16,9 +16,12 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
+    "prepublishOnly": "npm run clean && npm run build && npm test",
     "example:battle": "ts-node examples/x-influencer-battle-server.ts",
-    "example:dashboard": "cd examples/production-dashboard && bun run server.ts"
+    "example:dashboard": "cd examples/production-dashboard && bun run server.ts",
+    "example:claude": "tsx examples/claude-agent-x-follower/index.ts",
+    "example:openai": "cd examples/openai-teneo && tsx index.ts",
+    "example:n8n": "cd examples/n8n-teneo && tsx index.ts"
   },
   "keywords": [
     "teneo",
@@ -33,7 +36,6 @@
   "license": "AGPL-3.0",
   "dependencies": {
     "eventemitter3": "^5.0.1",
-    "hono": "^4.9.12",
     "node-fetch": "^3.3.2",
     "pino": "^8.17.2",
     "uuid": "^9.0.1",

@@ -17,21 +17,15 @@ describe("TokenBucketRateLimiter", () => {
     });
 
     it("should throw error if tokensPerSecond is less than 1", () => {
-      expect(() => new TokenBucketRateLimiter(0, 10)).toThrow(
-        "tokensPerSecond must be at least 1"
-      );
+      expect(() => new TokenBucketRateLimiter(0, 10)).toThrow("tokensPerSecond must be at least 1");
       expect(() => new TokenBucketRateLimiter(-1, 10)).toThrow(
         "tokensPerSecond must be at least 1"
       );
     });
 
     it("should throw error if maxBurst is less than 1", () => {
-      expect(() => new TokenBucketRateLimiter(10, 0)).toThrow(
-        "maxBurst must be at least 1"
-      );
-      expect(() => new TokenBucketRateLimiter(10, -1)).toThrow(
-        "maxBurst must be at least 1"
-      );
+      expect(() => new TokenBucketRateLimiter(10, 0)).toThrow("maxBurst must be at least 1");
+      expect(() => new TokenBucketRateLimiter(10, -1)).toThrow("maxBurst must be at least 1");
     });
   });
 
@@ -159,9 +153,7 @@ describe("TokenBucketRateLimiter", () => {
       // Reset and try again to verify error message
       limiter.reset();
       limiter.tryConsume();
-      await expect(limiter.consume(10)).rejects.toThrow(
-        /Rate limit timeout/
-      );
+      await expect(limiter.consume(10)).rejects.toThrow(/Rate limit timeout/);
     });
 
     it("should succeed within timeout if token becomes available", async () => {
@@ -309,11 +301,7 @@ describe("TokenBucketRateLimiter", () => {
       limiter.tryConsume();
 
       // Start multiple blocking consume calls
-      const promises = [
-        limiter.consume(1000),
-        limiter.consume(1000),
-        limiter.consume(1000)
-      ];
+      const promises = [limiter.consume(1000), limiter.consume(1000), limiter.consume(1000)];
 
       // All should eventually succeed as tokens refill
       await expect(Promise.all(promises)).resolves.toBeDefined();

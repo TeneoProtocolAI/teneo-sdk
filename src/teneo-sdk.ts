@@ -290,8 +290,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public async sendDirectCommand(command: AgentCommand): Promise<FormattedResponse | void> {
-    return this.messages.sendDirectCommand(command);
+  public async sendDirectCommand(
+    command: AgentCommand,
+    waitForResponse: boolean = false
+  ): Promise<FormattedResponse | void> {
+    return this.messages.sendDirectCommand(command, waitForResponse);
   }
 
   /**
@@ -720,6 +723,39 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Gets the current message deduplication cache status (CB-4).
+   * Returns statistics about the deduplication cache including size, TTL, and capacity.
+   * Useful for monitoring deduplication behavior and cache health.
+   * Returns undefined if deduplication is not configured or disabled.
+   *
+   * @returns Deduplication cache status object, or undefined if not configured
+   * @returns {number} returns.cacheSize - Number of message IDs currently cached
+   * @returns {number} returns.ttl - Time-to-live for cache entries in milliseconds
+   * @returns {number} returns.maxSize - Maximum cache size capacity
+   *
+   * @example
+   * ```typescript
+   * const status = sdk.getDeduplicationStatus();
+   * if (status) {
+   *   console.log(`Cache: ${status.cacheSize}/${status.maxSize}`);
+   *   console.log(`Utilization: ${(status.cacheSize / status.maxSize * 100).toFixed(1)}%`);
+   *   console.log(`TTL: ${status.ttl}ms`);
+   * } else {
+   *   console.log('Deduplication not enabled');
+   * }
+   * ```
+   */
+  public getDeduplicationStatus():
+    | {
+        cacheSize: number;
+        ttl: number;
+        maxSize: number;
+      }
+    | undefined {
+    return this.wsClient.getDeduplicationStatus();
+  }
+
+  /**
    * Retries all failed webhook deliveries in the queue.
    * Resets attempt counters and immediately attempts to deliver all failed webhooks.
    * Useful for recovering from temporary network issues or webhook endpoint downtime.
@@ -953,11 +989,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.agents.updateAgents(agents);
     });
 
-    // Forward room events from WebSocketClient (emitted by handlers)
-    this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
-    this.wsClient.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
-
-    // Forward room events from RoomManager (if any direct emissions are added later)
+    // Forward room events from RoomManager
     this.rooms.on("room:subscribed", (data) => this.emit("room:subscribed", data));
     this.rooms.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
 

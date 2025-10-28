@@ -11,9 +11,9 @@
  * Strategy for handling queue overflow when at max capacity
  */
 export type OverflowStrategy =
-  | 'drop-oldest'  // Remove oldest item to make room (FIFO eviction)
-  | 'drop-newest'  // Reject new item, keep existing (preserve old data)
-  | 'reject';      // Throw error, let caller handle (fail-fast)
+  | "drop-oldest" // Remove oldest item to make room (FIFO eviction)
+  | "drop-newest" // Reject new item, keep existing (preserve old data)
+  | "reject"; // Throw error, let caller handle (fail-fast)
 
 /**
  * A queue with a maximum size limit and configurable overflow behavior
@@ -48,10 +48,10 @@ export class BoundedQueue<T> {
    */
   constructor(
     private readonly maxSize: number,
-    private readonly strategy: OverflowStrategy = 'drop-oldest'
+    private readonly strategy: OverflowStrategy = "drop-oldest"
   ) {
     if (maxSize < 1) {
-      throw new Error('BoundedQueue maxSize must be at least 1');
+      throw new Error("BoundedQueue maxSize must be at least 1");
     }
   }
 
@@ -165,17 +165,17 @@ export class BoundedQueue<T> {
    */
   private handleOverflow(item: T): boolean {
     switch (this.strategy) {
-      case 'drop-oldest':
+      case "drop-oldest":
         // Remove oldest item and add new one
         this.queue.shift();
         this.queue.push(item);
         return true;
 
-      case 'drop-newest':
+      case "drop-newest":
         // Reject the new item
         return false;
 
-      case 'reject':
+      case "reject":
         // Throw error - let caller handle
         throw new QueueOverflowError(
           `Queue is full (max size: ${this.maxSize}). Cannot add more items.`
@@ -195,7 +195,7 @@ export class BoundedQueue<T> {
 export class QueueOverflowError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'QueueOverflowError';
+    this.name = "QueueOverflowError";
 
     // Maintains proper stack trace for where error was thrown (V8 only)
     if (Error.captureStackTrace) {

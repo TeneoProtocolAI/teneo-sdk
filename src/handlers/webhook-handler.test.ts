@@ -118,7 +118,10 @@ describe("WebhookHandler", () => {
       expect(queue[0].payload.timestamp).toBeDefined();
       expect(queue[1].payload.timestamp).toBeDefined();
       // Each webhook gets unique timestamp
-      expect(queue[0].payload.timestamp !== queue[1].payload.timestamp || queue[0].payload.data.content !== queue[1].payload.data.content).toBe(true);
+      expect(
+        queue[0].payload.timestamp !== queue[1].payload.timestamp ||
+          queue[0].payload.data.content !== queue[1].payload.data.content
+      ).toBe(true);
     });
 
     it("should include timestamp in webhook payload", async () => {
@@ -584,20 +587,17 @@ describe("WebhookHandler", () => {
 
     describe("Protocol Validation", () => {
       it("should reject HTTP for non-localhost without allowInsecureWebhooks", () => {
-        const urls = [
-          "http://example.com/webhook"
-        ];
+        const urls = ["http://example.com/webhook"];
 
         urls.forEach((url) => {
           expect(() => (handler as any).validateWebhookUrl(url)).toThrow(WebhookError);
-          expect(() => (handler as any).validateWebhookUrl(url)).toThrow(/must use HTTPS|Only HTTPS/i);
+          expect(() => (handler as any).validateWebhookUrl(url)).toThrow(
+            /must use HTTPS|Only HTTPS/i
+          );
         });
 
         // Private IPs are blocked for different reason (private IP, not HTTPS requirement)
-        const privateUrls = [
-          "http://192.168.1.1/webhook",
-          "http://10.0.0.1/webhook"
-        ];
+        const privateUrls = ["http://192.168.1.1/webhook", "http://10.0.0.1/webhook"];
         privateUrls.forEach((url) => {
           expect(() => (handler as any).validateWebhookUrl(url)).toThrow(WebhookError);
           expect(() => (handler as any).validateWebhookUrl(url)).toThrow(/private IP/i);
@@ -720,7 +720,10 @@ describe("WebhookHandler", () => {
         vi.advanceTimersByTime(10000);
       }
 
-      expect(errorHandler).toHaveBeenCalledWith(expect.any(Error), "https://webhook.example.com/events");
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.any(Error),
+        "https://webhook.example.com/events"
+      );
     });
   });
 

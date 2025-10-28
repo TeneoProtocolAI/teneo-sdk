@@ -1,0 +1,16 @@
+# Environment
+.env
+
+# Build output
+*.js
+*.js.map
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Docker
+.dockerignore

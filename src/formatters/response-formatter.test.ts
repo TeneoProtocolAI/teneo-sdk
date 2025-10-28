@@ -428,12 +428,18 @@ describe("ResponseFormatter", () => {
         data: { message: "Test", code: 1 }
       };
 
-      const rawResult = ResponseFormatter.validateAndFormat(message, { format: "raw", includeMetadata: false });
+      const rawResult = ResponseFormatter.validateAndFormat(message, {
+        format: "raw",
+        includeMetadata: false
+      });
       expect(rawResult.raw).toBeDefined();
       expect(rawResult.humanized).toBeUndefined();
       expect(rawResult.metadata).toBeUndefined();
 
-      const bothWithMeta = ResponseFormatter.validateAndFormat(message, { format: "both", includeMetadata: true });
+      const bothWithMeta = ResponseFormatter.validateAndFormat(message, {
+        format: "both",
+        includeMetadata: true
+      });
       expect(bothWithMeta.raw).toBeDefined();
       expect(bothWithMeta.humanized).toBeDefined();
       expect(bothWithMeta.metadata).toBeDefined();

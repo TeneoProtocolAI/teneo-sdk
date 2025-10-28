@@ -156,7 +156,10 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public async sendDirectCommand(command: AgentCommand): Promise<FormattedResponse | void> {
+  public async sendDirectCommand(
+    command: AgentCommand,
+    waitForResponse: boolean = false
+  ): Promise<FormattedResponse | void> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
@@ -185,11 +188,21 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       from: walletAddress
     });
 
-    await this.wsClient.sendMessage(message);
-    await this.webhookHandler.sendMessageWebhook(message);
+    const options: SendMessageOptions = {
+      room,
+      from: walletAddress,
+      waitForResponse,
+      timeout: this.messageTimeout,
+      format: this.responseFormat
+    };
+
+    if (waitForResponse) {
+      return await this.sendMessageAndWaitForResponse(message, options);
+    } else {
+      await this.wsClient.sendMessage(message);
+      await this.webhookHandler.sendMessageWebhook(message);
+    }
   }
-
-
 
   /**
    * Send message and wait for agent response
@@ -220,16 +233,45 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Wait for agent response with automatic timeout and cleanup
     // The filter ensures we only match responses for THIS specific request
+    const requestTimestamp = Date.now();
+    let responseMatched = false;
+
     const response = await waitForEvent<AgentResponse>(this.wsClient, "agent:response", {
       timeout,
       filter: (r) => {
+        // Prevent double-matching
+        if (responseMatched) return false;
+
         // Try to match by client_request_id if server echoes it back
         const responseRequestId =
           r.raw?.data && "client_request_id" in r.raw.data
             ? (r.raw.data as any).client_request_id
             : undefined;
 
-        return responseRequestId === requestId;
+        if (responseRequestId === requestId) {
+          responseMatched = true;
+          return true;
+        }
+
+        // Fallback: If server doesn't support client_request_id,
+        // match the first response from the expected room within 60 seconds
+        // This handles servers that don't echo back client_request_id
+        const timeSinceRequest = Date.now() - requestTimestamp;
+        const responseRoom = r.raw?.room;
+        const isFromExpectedRoom = responseRoom === message.room;
+        const isWithinTimeWindow = timeSinceRequest < 60000; // 60 second window
+
+        if (isFromExpectedRoom && isWithinTimeWindow && !responseRequestId) {
+          this.logger.debug("Matching response without client_request_id (server fallback)", {
+            responseRoom,
+            expectedRoom: message.room,
+            timeSinceRequest
+          });
+          responseMatched = true;
+          return true;
+        }
+
+        return false;
       },
       timeoutMessage: `Message timeout - no response received after ${timeout}ms (requestId: ${requestId})`
     });

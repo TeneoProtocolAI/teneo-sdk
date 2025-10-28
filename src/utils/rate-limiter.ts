@@ -13,7 +13,7 @@
 export class RateLimitError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'RateLimitError';
+    this.name = "RateLimitError";
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, RateLimitError);
@@ -64,10 +64,10 @@ export class TokenBucketRateLimiter {
     private readonly maxBurst: number
   ) {
     if (tokensPerSecond < 1) {
-      throw new Error('TokenBucketRateLimiter tokensPerSecond must be at least 1');
+      throw new Error("TokenBucketRateLimiter tokensPerSecond must be at least 1");
     }
     if (maxBurst < 1) {
-      throw new Error('TokenBucketRateLimiter maxBurst must be at least 1');
+      throw new Error("TokenBucketRateLimiter maxBurst must be at least 1");
     }
 
     this.tokens = maxBurst; // Start with full bucket
@@ -131,17 +131,14 @@ export class TokenBucketRateLimiter {
       // Check timeout
       const elapsed = Date.now() - startTime;
       if (timeout !== undefined && elapsed >= timeout) {
-        throw new RateLimitError(
-          `Rate limit timeout: no token available after ${timeout}ms`
-        );
+        throw new RateLimitError(`Rate limit timeout: no token available after ${timeout}ms`);
       }
 
       // Calculate wait time until next token
       // If timeout is specified, don't wait longer than remaining timeout
       const baseWaitTime = Math.min(this.refillInterval, 100);
-      const waitTime = timeout !== undefined
-        ? Math.min(baseWaitTime, timeout - elapsed)
-        : baseWaitTime;
+      const waitTime =
+        timeout !== undefined ? Math.min(baseWaitTime, timeout - elapsed) : baseWaitTime;
 
       // If waitTime is very small or negative, check timeout immediately
       if (waitTime <= 0) {

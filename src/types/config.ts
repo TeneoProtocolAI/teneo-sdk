@@ -47,7 +47,9 @@ const PrivateKeySchema = z.union([
   z.custom<SecurePrivateKey>(
     (val) => {
       // Check if it's a SecurePrivateKey instance
-      return val && typeof val === 'object' && 'use' in val && 'destroy' in val && 'isDestroyed' in val;
+      return (
+        val && typeof val === "object" && "use" in val && "destroy" in val && "isDestroyed" in val
+      );
     },
     { message: "Must be a string or SecurePrivateKey instance" }
   )
