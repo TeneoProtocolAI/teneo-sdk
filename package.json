@@ -30,7 +30,7 @@
     "coordinator"
   ],
   "author": "Teneo Protocol",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "dependencies": {
     "eventemitter3": "^5.0.1",
     "hono": "^4.9.12",
