@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Prevent compiled JS in source directory
+src/**/*.js
+src/**/*.js.map
+!src/**/*.test.js
+
 # Environment variables
 .env
 .env.local
