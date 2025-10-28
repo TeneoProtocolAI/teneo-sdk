@@ -989,9 +989,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.agents.updateAgents(agents);
     });
 
-    // Forward room events from RoomManager
-    this.rooms.on("room:subscribed", (data) => this.emit("room:subscribed", data));
-    this.rooms.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
+    // Forward room events from WebSocketClient (emitted by room subscription handlers)
+    this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
+    this.wsClient.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
 
     // Forward webhook events from WebhookHandler
     this.webhookHandler.on("webhook:sent", (payload, url) =>
