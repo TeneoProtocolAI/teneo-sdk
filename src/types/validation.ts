@@ -9,13 +9,14 @@ import { z } from "zod";
  * Validates room IDs with strict constraints.
  * - Must not be empty
  * - Maximum 100 characters
- * - Only alphanumeric characters, dashes, and underscores allowed
+ * - Only alphanumeric characters, spaces, dashes, and underscores allowed
  * - Automatically trims whitespace
  *
  * @example
  * ```typescript
  * const roomId = RoomIdSchema.parse('general-chat'); // OK
  * const roomId = RoomIdSchema.parse('room_123'); // OK
+ * const roomId = RoomIdSchema.parse('Crawler Room'); // OK
  * const roomId = RoomIdSchema.parse('invalid room!'); // Error: invalid characters
  * ```
  */
@@ -23,7 +24,7 @@ export const RoomIdSchema = z
   .string()
   .min(1, "Room ID cannot be empty")
   .max(100, "Room ID must be 100 characters or less")
-  .regex(/^[a-zA-Z0-9_-]+$/, "Room ID can only contain letters, numbers, dashes, and underscores")
+  .regex(/^[a-zA-Z0-9_\- ]+$/, "Room ID can only contain letters, numbers, spaces, dashes, and underscores")
   .trim();
 
 /**
