@@ -101,17 +101,26 @@
                     </svg>
                     Send Message
                 </h2>
+                <div class="mb-3">
+                    <label for="room-select" class="block text-sm text-gray-400 mb-2">Select Room:</label>
+                    <select id="room-select"
+                            class="w-full bg-gray-700 rounded-lg p-2 text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none">
+                        <option value="">Loading rooms...</option>
+                    </select>
+                </div>
                 <textarea id="message-input"
                           class="w-full bg-gray-700 rounded-lg p-3 mb-3 text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
                           rows="3"
                           placeholder="Enter your message to agents..."></textarea>
                 <div class="flex gap-3">
                     <button id="send-message-btn"
-                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
                         Send Message
                     </button>
                     <button id="send-wait-btn"
-                            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
                         Send & Wait
                     </button>
                 </div>
@@ -259,6 +268,10 @@
                     break;
                 case 'auth':
                     updateAuthStatus(data.status);
+                    if (data.status === 'success') {
+                        // Reload available rooms after authentication
+                        setTimeout(loadAvailableRooms, 500);
+                    }
                     break;
                 case 'agent:selected':
                     addEventItem(`Agent Selected: ${data.data.agentName}`, 'blue');
@@ -277,10 +290,12 @@
                 case 'room:subscribed':
                     addEventItem(`Subscribed to room: ${data.data.roomId}`, 'green');
                     loadRooms();
+                    loadAvailableRooms();
                     break;
                 case 'room:unsubscribed':
                     addEventItem(`Unsubscribed from room: ${data.data.roomId}`, 'yellow');
                     loadRooms();
+                    loadAvailableRooms();
                     break;
                 case 'room:list':
                     addEventItem(`Room list updated (${data.rooms.length} rooms)`, 'blue');
@@ -300,6 +315,7 @@
             await Promise.all([
                 loadAgents(),
                 loadRooms(),
+                loadAvailableRooms(),
                 loadMessages(),
                 loadWebhooks(),
                 loadEvents(),
@@ -366,6 +382,44 @@
                 `).join('');
             } catch (error) {
                 console.error('Failed to load rooms:', error);
+            }
+        }
+
+        // Load available rooms for sending messages
+        async function loadAvailableRooms() {
+            try {
+                const response = await fetch('/api/rooms/available');
+                const rooms = await response.json();
+
+                const select = document.getElementById('room-select');
+                const sendBtn = document.getElementById('send-message-btn');
+                const sendWaitBtn = document.getElementById('send-wait-btn');
+
+                if (rooms.length === 0) {
+                    select.innerHTML = '<option value="">No rooms available - Subscribe to a room first</option>';
+                    sendBtn.disabled = true;
+                    sendWaitBtn.disabled = true;
+                    return;
+                }
+
+                // Build options with room type indicators
+                const options = rooms.map(room => {
+                    const typeLabel = room.type === 'private' ? '🔒' : room.type === 'subscribed' ? '📌' : '🌐';
+                    const displayName = room.name || room.id;
+                    return `<option value="${room.id}">${typeLabel} ${displayName}</option>`;
+                }).join('');
+
+                select.innerHTML = options;
+                
+                // Enable buttons only if connected
+                if (connectionStatus === 'connected') {
+                    sendBtn.disabled = false;
+                    sendWaitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Failed to load available rooms:', error);
+                const select = document.getElementById('room-select');
+                select.innerHTML = '<option value="">Error loading rooms</option>';
             }
         }
 
@@ -476,23 +530,35 @@
 
         async function sendMessage(waitForResponse) {
             const input = document.getElementById('message-input');
+            const roomSelect = document.getElementById('room-select');
             const content = input.value.trim();
+            const room = roomSelect.value;
 
-            if (!content) return;
+            if (!content) {
+                addEventItem('Please enter a message', 'yellow');
+                return;
+            }
+
+            if (!room) {
+                addEventItem('Please select a room', 'yellow');
+                return;
+            }
 
             try {
                 const response = await fetch('/api/message', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content, waitForResponse })
+                    body: JSON.stringify({ content, room, waitForResponse })
                 });
+
+                const result = await response.json();
 
                 if (response.ok) {
                     input.value = '';
-                    addEventItem(`Sent: ${content}`, 'green');
+                    addEventItem(`Sent to ${room}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`, 'green');
                     setTimeout(loadMessages, 500);
                 } else {
-                    addEventItem('Failed to send message', 'red');
+                    addEventItem(`Failed to send: ${result.error}`, 'red');
                 }
             } catch (error) {
                 console.error('Send error:', error);
@@ -548,23 +614,31 @@
             connectionStatus = status;
             const dot = document.getElementById('connection-dot');
             const text = document.getElementById('connection-status');
+            const sendBtn = document.getElementById('send-message-btn');
+            const sendWaitBtn = document.getElementById('send-wait-btn');
+            const roomSelect = document.getElementById('room-select');
 
             if (status === 'connected') {
                 dot.className = 'status-dot w-3 h-3 rounded-full bg-green-500';
                 text.textContent = 'Connected';
                 text.className = 'text-2xl font-bold text-green-500';
-                document.getElementById('send-message-btn').disabled = false;
-                document.getElementById('send-wait-btn').disabled = false;
+                // Only enable if there are rooms available
+                if (roomSelect.value) {
+                    sendBtn.disabled = false;
+                    sendWaitBtn.disabled = false;
+                }
             } else if (status === 'reconnecting') {
                 dot.className = 'status-dot w-3 h-3 rounded-full bg-yellow-500';
                 text.textContent = 'Reconnecting';
                 text.className = 'text-2xl font-bold text-yellow-500';
+                sendBtn.disabled = true;
+                sendWaitBtn.disabled = true;
             } else {
                 dot.className = 'status-dot w-3 h-3 rounded-full bg-red-500';
                 text.textContent = 'Disconnected';
                 text.className = 'text-2xl font-bold text-red-500';
-                document.getElementById('send-message-btn').disabled = true;
-                document.getElementById('send-wait-btn').disabled = true;
+                sendBtn.disabled = true;
+                sendWaitBtn.disabled = true;
             }
         }
 

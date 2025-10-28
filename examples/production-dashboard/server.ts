@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Production Dashboard Example - Hono + Bun
  *
@@ -26,9 +27,9 @@ import type { AgentResponse } from "../../dist/index.js";
 import { SDKConfigBuilder, TeneoSDK, SecurePrivateKey } from "../../dist/index.js";
 
 // Load environment variables
-const PORT = parseInt(process.env.PORT || "3000");
+const PORT = parseInt(process.env.PORT || "3001");
 const WS_URL =
-  process.env.WS_URL;
+  process.env.WS_URL || "wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "as1LfBarJNzOIpOQJQ7PH";
@@ -161,7 +162,9 @@ function setupSDKEventListeners(sdk: TeneoSDK) {
 
   // Authentication events
   sdk.on("auth:challenge", (challenge) => {
-    addEvent("auth:challenge", { challenge: challenge.substring(0, 20) + "..." });
+    addEvent("auth:challenge", {
+      challenge: challenge.substring(0, 20) + "..."
+    });
   });
 
   sdk.on("auth:success", (state) => {
@@ -195,7 +198,10 @@ function setupSDKEventListeners(sdk: TeneoSDK) {
       messageId: message.id,
       from: message.from
     });
-    broadcastSSE({ type: "message:duplicate", message: { type: message.type, id: message.id } });
+    broadcastSSE({
+      type: "message:duplicate",
+      message: { type: message.type, id: message.id }
+    });
   });
 
   // Agent events
@@ -231,12 +237,18 @@ function setupSDKEventListeners(sdk: TeneoSDK) {
 
   // Room events
   sdk.on("room:subscribed", (data) => {
-    addEvent("room:subscribed", { roomId: data.roomId, subscriptions: data.subscriptions });
+    addEvent("room:subscribed", {
+      roomId: data.roomId,
+      subscriptions: data.subscriptions
+    });
     broadcastSSE({ type: "room:subscribed", data });
   });
 
   sdk.on("room:unsubscribed", (data) => {
-    addEvent("room:unsubscribed", { roomId: data.roomId, subscriptions: data.subscriptions });
+    addEvent("room:unsubscribed", {
+      roomId: data.roomId,
+      subscriptions: data.subscriptions
+    });
     broadcastSSE({ type: "room:unsubscribed", data });
   });
 
@@ -272,7 +284,10 @@ function setupSDKEventListeners(sdk: TeneoSDK) {
       recoverable: error.recoverable
     });
     errorCounter++;
-    broadcastSSE({ type: "error", error: { message: error.message, code: error.code } });
+    broadcastSSE({
+      type: "error",
+      error: { message: error.message, code: error.code }
+    });
   });
 
   sdk.on("warning", (warning) => {
@@ -440,10 +455,14 @@ app.post("/api/message", async (c) => {
   }
 
   try {
-    const { content, waitForResponse = false } = await c.req.json();
+    const { content, room, waitForResponse = false } = await c.req.json();
 
     if (!content || typeof content !== "string") {
       return c.json({ error: "Content is required" }, 400);
+    }
+
+    if (!room || typeof room !== "string") {
+      return c.json({ error: "Room is required" }, 400);
     }
 
     const messageId = `msg_${Date.now()}`;
@@ -458,7 +477,7 @@ app.post("/api/message", async (c) => {
     messageCounter++;
 
     const response = await sdk.sendMessage(content, {
-      room: DEFAULT_ROOM,
+      room,
       waitForResponse,
       timeout: 60000
     });
@@ -573,6 +592,61 @@ app.get("/api/rooms", (c) => {
 
   const rooms = sdk.getRooms();
   return c.json(rooms);
+});
+
+// Get available rooms for sending messages (subscribed + private room)
+app.get("/api/rooms/available", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const authState = sdk.getAuthState();
+  const subscribedRooms = sdk.getSubscribedRooms();
+
+  // Combine all available rooms
+  const availableRooms: Array<{
+    id: string;
+    name: string;
+    type: string;
+    description?: string;
+  }> = [];
+
+  // Add subscribed public rooms
+  if (subscribedRooms && subscribedRooms.length > 0) {
+    subscribedRooms.forEach((roomId: string) => {
+      availableRooms.push({
+        id: roomId,
+        name: roomId,
+        type: "subscribed"
+      });
+    });
+  }
+
+  // Add rooms from auth state (includes both public and private rooms with full details)
+  if (authState.roomObjects && authState.roomObjects.length > 0) {
+    authState.roomObjects.forEach((room: any) => {
+      // Only add if not already in the list
+      if (!availableRooms.find((r) => r.id === room.id)) {
+        availableRooms.push({
+          id: room.id,
+          name: room.name || room.id,
+          type: room.is_public ? "public" : "private",
+          description: room.description
+        });
+      }
+    });
+  }
+
+  // Add private room ID if not already included
+  if (authState.privateRoomId && !availableRooms.find((r) => r.id === authState.privateRoomId)) {
+    availableRooms.push({
+      id: authState.privateRoomId,
+      name: "My Private Room",
+      type: "private"
+    });
+  }
+
+  return c.json(availableRooms);
 });
 
 // List all rooms
