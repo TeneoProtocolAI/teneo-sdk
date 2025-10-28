@@ -247,14 +247,19 @@ describe("WebSocket Integration Tests", () => {
     }, 15000);
 
     it("should track subscribed rooms", async () => {
-      const subscribePromise = new Promise((resolve) => {
+      const subscribePromise = new Promise((resolve, reject) => {
         sdk.on("room:subscribed", resolve);
+        sdk.on("error", reject);
+        sdk.on("message:error", reject);
+
+        // Set a timeout
+        setTimeout(() => reject(new Error("Event timeout")), 10000);
       });
 
-      await sdk.subscribeToRoom("test-room");
+      await sdk.subscribeToRoom("test-room-2"); // Use different room to avoid auto-join conflicts
       await subscribePromise;
 
-      expect(sdk.getSubscribedRooms()).toContain("test-room");
+      expect(sdk.getSubscribedRooms()).toContain("test-room-2");
     }, 15000);
   });
 
