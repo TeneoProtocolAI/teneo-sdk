@@ -25,15 +25,11 @@ describe("DeduplicationCache", () => {
     });
 
     it("should throw error if TTL is less than 1000ms", () => {
-      expect(() => new DeduplicationCache(999)).toThrow(
-        "TTL must be at least 1000ms"
-      );
+      expect(() => new DeduplicationCache(999)).toThrow("TTL must be at least 1000ms");
     });
 
     it("should throw error if maxSize is less than 1", () => {
-      expect(() => new DeduplicationCache(5000, 0)).toThrow(
-        "maxSize must be at least 1"
-      );
+      expect(() => new DeduplicationCache(5000, 0)).toThrow("maxSize must be at least 1");
     });
   });
 

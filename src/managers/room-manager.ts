@@ -5,7 +5,14 @@
 
 import { EventEmitter } from "eventemitter3";
 import { WebSocketClient } from "../core/websocket-client";
-import { Room, createSubscribe, createUnsubscribe, createListRooms, Logger, RoomInfo } from "../types";
+import {
+  Room,
+  createSubscribe,
+  createUnsubscribe,
+  createListRooms,
+  Logger,
+  RoomInfo
+} from "../types";
 import { SDKEvents, SDKError } from "../types/events";
 import { ErrorCode } from "../types/error-codes";
 import { RoomIdSchema } from "../types/validation";
@@ -98,7 +105,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public updateSubscriptions(subscriptions: string[]): void {
     this.subscribedRooms.clear();
-    subscriptions.forEach(roomId => this.subscribedRooms.add(roomId));
+    subscriptions.forEach((roomId) => this.subscribedRooms.add(roomId));
     this.logger.debug("RoomManager: Subscriptions updated", {
       count: subscriptions.length,
       rooms: subscriptions

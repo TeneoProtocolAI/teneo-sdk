@@ -102,7 +102,9 @@ export async function waitForEvent<T = any>(
     // Timeout handler - rejects after timeout
     timeoutHandle = setTimeout(() => {
       cleanup();
-      const message = options.timeoutMessage || `Timeout waiting for event '${eventName}' after ${options.timeout}ms`;
+      const message =
+        options.timeoutMessage ||
+        `Timeout waiting for event '${eventName}' after ${options.timeout}ms`;
       reject(new Error(message));
     }, options.timeout);
 
@@ -135,9 +137,7 @@ export async function waitForAnyEvent<T = any>(
   }>
 ): Promise<T> {
   return Promise.race(
-    waiters.map(({ emitter, eventName, options }) =>
-      waitForEvent<T>(emitter, eventName, options)
-    )
+    waiters.map(({ emitter, eventName, options }) => waitForEvent<T>(emitter, eventName, options))
   );
 }
 
@@ -165,8 +165,6 @@ export async function waitForAllEvents<T = any>(
   }>
 ): Promise<T[]> {
   return Promise.all(
-    waiters.map(({ emitter, eventName, options }) =>
-      waitForEvent<T>(emitter, eventName, options)
-    )
+    waiters.map(({ emitter, eventName, options }) => waitForEvent<T>(emitter, eventName, options))
   );
 }

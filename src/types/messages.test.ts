@@ -271,7 +271,6 @@ describe("Message Type Schemas", () => {
         "challenge",
         "check_cached_auth",
         "auth",
-        "auth_required",
         "auth_success",
         "auth_error",
         "register",
@@ -285,9 +284,8 @@ describe("Message Type Schemas", () => {
         "ping",
         "pong",
         "capabilities",
-        "subscribe",
-        "unsubscribe",
-        "list_rooms"
+        "room_join",
+        "room_leave"
       ];
 
       validTypes.forEach((type) => {

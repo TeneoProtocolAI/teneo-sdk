@@ -19,7 +19,7 @@
  * ```
  */
 
-import crypto from 'crypto';
+import crypto from "crypto";
 
 /**
  * Securely stores and manages an encrypted private key in memory.
@@ -42,8 +42,8 @@ export class SecurePrivateKey {
    * @throws {Error} If private key is empty or invalid
    */
   constructor(privateKey: string) {
-    if (!privateKey || typeof privateKey !== 'string') {
-      throw new Error('Private key must be a non-empty string');
+    if (!privateKey || typeof privateKey !== "string") {
+      throw new Error("Private key must be a non-empty string");
     }
 
     // Generate a random encryption key for AES-256
@@ -136,13 +136,10 @@ export class SecurePrivateKey {
     const iv = crypto.randomBytes(16);
 
     // Create cipher
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.encryptionKey, iv);
 
     // Encrypt the data
-    const encrypted = Buffer.concat([
-      cipher.update(data, 'utf8'),
-      cipher.final()
-    ]);
+    const encrypted = Buffer.concat([cipher.update(data, "utf8"), cipher.final()]);
 
     // Get authentication tag for integrity verification
     const authTag = cipher.getAuthTag();
@@ -164,16 +161,13 @@ export class SecurePrivateKey {
     const ciphertext = this.encrypted.subarray(32);
 
     // Create decipher
-    const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", this.encryptionKey, iv);
     decipher.setAuthTag(authTag);
 
     // Decrypt the data
-    const decrypted = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final()
-    ]);
+    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
-    return decrypted.toString('utf8');
+    return decrypted.toString("utf8");
   }
 
   /**
@@ -185,7 +179,7 @@ export class SecurePrivateKey {
    */
   private zeroOutString(str: string): void {
     // Convert to buffer and zero it out
-    const buffer = Buffer.from(str, 'utf8');
+    const buffer = Buffer.from(str, "utf8");
     buffer.fill(0);
 
     // Note: The original string object may still exist in memory
@@ -199,7 +193,7 @@ export class SecurePrivateKey {
    */
   private checkNotDestroyed(): void {
     if (this.destroyed) {
-      throw new Error('SecurePrivateKey has been destroyed and can no longer be used');
+      throw new Error("SecurePrivateKey has been destroyed and can no longer be used");
     }
   }
 }

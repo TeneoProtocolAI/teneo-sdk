@@ -31,7 +31,10 @@ export interface CircuitBreakerOptions {
  * Error thrown when circuit is open
  */
 export class CircuitBreakerError extends Error {
-  constructor(message: string, public readonly state: CircuitState) {
+  constructor(
+    message: string,
+    public readonly state: CircuitState
+  ) {
     super(message);
     this.name = "CircuitBreakerError";
 
