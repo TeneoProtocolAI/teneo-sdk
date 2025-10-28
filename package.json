@@ -16,7 +16,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "prepublishOnly": "npm run clean && npm run build && npm test",
+    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm test",
     "example:battle": "ts-node examples/x-influencer-battle-server.ts",
     "example:dashboard": "cd examples/production-dashboard && bun run server.ts"
   },

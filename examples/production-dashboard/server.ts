@@ -28,7 +28,7 @@ import { SDKConfigBuilder, TeneoSDK, SecurePrivateKey } from "../../dist/index.j
 // Load environment variables
 const PORT = parseInt(process.env.PORT || "3000");
 const WS_URL =
-  process.env.WS_URL || "wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws";
+  process.env.WS_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "as1LfBarJNzOIpOQJQ7PH";
