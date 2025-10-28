@@ -23,6 +23,8 @@ describe("WebSocket Integration Tests", () => {
     server = new WebSocketServer({ port: serverPort });
 
     server.on("connection", (ws) => {
+      const subscribedRooms = new Set<string>();
+
       ws.on("message", (data) => {
         const message = JSON.parse(data.toString());
 
@@ -77,7 +79,22 @@ describe("WebSocket Integration Tests", () => {
             ws.send(JSON.stringify({ type: "pong" }));
             break;
 
-          case "room_join":
+          case "subscribe":
+            // Add room to subscribed rooms
+            subscribedRooms.add(message.data.room_id);
+            // Send subscribe response with updated subscriptions list
+            ws.send(
+              JSON.stringify({
+                type: "subscribe",
+                data: {
+                  room_id: message.data.room_id,
+                  success: true,
+                  message: "Subscribed successfully",
+                  subscriptions: Array.from(subscribedRooms)
+                }
+              })
+            );
+            // Also send agents list for the room
             ws.send(
               JSON.stringify({
                 type: "agents",
@@ -86,10 +103,27 @@ describe("WebSocket Integration Tests", () => {
                   {
                     id: "agent-1",
                     name: "Test Agent 1",
-                    room: message.room,
+                    room: message.data.room_id,
                     status: "online"
                   }
                 ]
+              })
+            );
+            break;
+
+          case "unsubscribe":
+            // Remove room from subscribed rooms
+            subscribedRooms.delete(message.data.room_id);
+            // Send unsubscribe response with updated subscriptions list
+            ws.send(
+              JSON.stringify({
+                type: "unsubscribe",
+                data: {
+                  room_id: message.data.room_id,
+                  success: true,
+                  message: "Unsubscribed successfully",
+                  subscriptions: Array.from(subscribedRooms)
+                }
               })
             );
             break;
@@ -213,7 +247,13 @@ describe("WebSocket Integration Tests", () => {
     }, 15000);
 
     it("should track subscribed rooms", async () => {
+      const subscribePromise = new Promise((resolve) => {
+        sdk.on("room:subscribed", resolve);
+      });
+
       await sdk.subscribeToRoom("test-room");
+      await subscribePromise;
+
       expect(sdk.getSubscribedRooms()).toContain("test-room");
     }, 15000);
   });
