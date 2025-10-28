@@ -24,7 +24,10 @@ export const RoomIdSchema = z
   .string()
   .min(1, "Room ID cannot be empty")
   .max(100, "Room ID must be 100 characters or less")
-  .regex(/^[a-zA-Z0-9_\- ]+$/, "Room ID can only contain letters, numbers, spaces, dashes, and underscores")
+  .regex(
+    /^[a-zA-Z0-9_ -]+$/,
+    "Room ID can only contain letters, numbers, spaces, dashes, and underscores"
+  )
   .trim();
 
 /**
