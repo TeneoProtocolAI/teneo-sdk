@@ -70,7 +70,7 @@ cp examples/claude-agent-x-follower/.env.example examples/claude-agent-x-followe
 
 ```env
 # Teneo Network Connection
-WS_URL=wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws
+WS_URL=wss://your-teneo-server.com/ws
 PRIVATE_KEY=0x1234567890123456789012345678901234567890123456789012345678901234
 WALLET_ADDRESS=0x1234567890123456789012345678901234567890  # Optional - auto-derived from private key
 
