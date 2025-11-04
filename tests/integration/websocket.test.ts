@@ -310,7 +310,7 @@ describe("WebSocket Integration Tests", () => {
 });
 
 describe("Integration with Real Server", () => {
-  const REAL_SERVER_URL = "wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws";
+  const REAL_SERVER_URL = "wss://your-teneo-server.com/ws";
   let sdk: TeneoSDK;
   let privateKey: string;
 
