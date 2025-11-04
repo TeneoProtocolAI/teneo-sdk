@@ -66,7 +66,7 @@ cp examples/openai-teneo/.env.example examples/openai-teneo/.env
 OPENAI_API_KEY=sk-proj-your-openai-api-key-here
 
 # Teneo Network Connection
-WS_URL=wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws
+WS_URL=wss://your-teneo-server.com/ws
 PRIVATE_KEY=0x1234567890123456789012345678901234567890123456789012345678901234
 WALLET_ADDRESS=0x1234567890123456789012345678901234567890  # Optional - auto-derived from private key
 

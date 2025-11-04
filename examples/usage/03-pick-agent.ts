@@ -16,7 +16,7 @@ import { TeneoSDK, SDKConfigBuilder, FormattedResponse } from "../../dist/index.
 
 // Load configuration from environment
 const WS_URL =
-  process.env.WS_URL || "wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws";
+  process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 

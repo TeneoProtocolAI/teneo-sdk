@@ -76,7 +76,7 @@ cp .env.example .env
 nano .env  # or your preferred editor
 
 # Required:
-#   WS_URL=wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws
+#   WS_URL=wss://your-teneo-server.com/ws
 #   PRIVATE_KEY=0x...
 #   WALLET_ADDRESS=0x... (optional - auto-derived from private key)
 #   DEFAULT_ROOM=general (or x-agent-enterprise-v2 for X features)
