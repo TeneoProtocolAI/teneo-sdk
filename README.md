@@ -376,7 +376,7 @@ const sdk = new TeneoSDK(config);
 Create `.env`:
 
 ```bash
-TENEO_WS_URL=wss://developer.chatroom.teneo-protocol.ai/ws
+TENEO_WS_URL=wss://your-teneo-server.com/ws
 PRIVATE_KEY=your_private_key_without_0x
 WALLET_ADDRESS=0xYourWalletAddress
 DEFAULT_ROOM=general

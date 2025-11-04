@@ -29,7 +29,7 @@ Create a `.env` file in the project root or export these variables:
 ```bash
 # Required
 PRIVATE_KEY=your_ethereum_private_key_here
-WS_URL=wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws
+WS_URL=wss://your-teneo-server.com/ws
 
 # Optional
 DEFAULT_ROOM=general
