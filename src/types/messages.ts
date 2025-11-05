@@ -128,13 +128,13 @@ export const AgentStatusSchema = z.enum(["online", "offline"]);
 // Supporting schemas
 export const CapabilitySchema = z.object({
   name: z.string(),
-  description: z.string()
+  description: z.string().optional()
 });
 
 export const CommandSchema = z.object({
   trigger: z.string(),
   argument: z.string().optional(),
-  description: z.string()
+  description: z.string().optional()
 });
 
 export const RoomSchema = z.object({

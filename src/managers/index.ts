@@ -6,5 +6,6 @@
 export { ConnectionManager } from "./connection-manager";
 export { RoomManager } from "./room-manager";
 export { RoomManagementManager } from "./room-management-manager";
+export { AgentRoomManager, type AgentRoomInfo } from "./agent-room-manager";
 export { AgentRegistry } from "./agent-registry";
 export { MessageRouter, type SendMessageOptions, type AgentCommand } from "./message-router";
