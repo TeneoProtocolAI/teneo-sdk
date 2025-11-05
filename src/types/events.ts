@@ -303,6 +303,14 @@ export interface SDKEvents {
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
   "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;
 
+  // Room Management events (v2.0.0)
+  "room:created": (room: z.infer<typeof RoomInfoSchema>) => void;
+  "room:updated": (room: z.infer<typeof RoomInfoSchema>) => void;
+  "room:deleted": (roomId: string) => void;
+  "room:create_error": (error: Error) => void;
+  "room:update_error": (error: Error, roomId?: string) => void;
+  "room:delete_error": (error: Error, roomId?: string) => void;
+
   // Coordinator events
   "coordinator:processing": (userRequest: string) => void;
   "coordinator:selected": (agentId: string, reasoning: string) => void;

@@ -22,6 +22,7 @@ export { PingHandler, PongHandler } from "./ping-pong-handler";
 export { SubscribeResponseHandler } from "./subscribe-response-handler";
 export { UnsubscribeResponseHandler } from "./unsubscribe-response-handler";
 export { ListRoomsResponseHandler } from "./list-rooms-response-handler";
+export { RoomOperationResponseHandler } from "./room-operation-response-handler";
 
 // Import for convenience function
 import { TaskResponseHandler } from "./task-response-handler";
@@ -38,6 +39,7 @@ import { PingHandler, PongHandler } from "./ping-pong-handler";
 import { SubscribeResponseHandler } from "./subscribe-response-handler";
 import { UnsubscribeResponseHandler } from "./unsubscribe-response-handler";
 import { ListRoomsResponseHandler } from "./list-rooms-response-handler";
+import { RoomOperationResponseHandler } from "./room-operation-response-handler";
 import { MessageHandler } from "./types";
 
 /**
@@ -69,6 +71,9 @@ export function getDefaultHandlers(
     new SubscribeResponseHandler(),
     new UnsubscribeResponseHandler(),
     new ListRoomsResponseHandler(),
+
+    // Room Management handlers (v2.0.0)
+    new RoomOperationResponseHandler(),
 
     // Keepalive handlers
     new PingHandler(),

@@ -6,7 +6,6 @@
 import { EventEmitter } from "eventemitter3";
 import { WebSocketClient } from "../core/websocket-client";
 import {
-  Room,
   createSubscribe,
   createUnsubscribe,
   createListRooms,
@@ -20,7 +19,7 @@ import { RoomIdSchema } from "../types/validation";
 export class RoomManager extends EventEmitter<SDKEvents> {
   private readonly wsClient: WebSocketClient;
   private readonly logger: Logger;
-  private readonly rooms = new Map<string, Room>();
+  private readonly rooms = new Map<string, RoomInfo>();
   private readonly subscribedRooms = new Set<string>();
 
   constructor(wsClient: WebSocketClient, logger: Logger) {
@@ -141,7 +140,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * rooms.forEach(room => console.log(`${room.id}: ${room.name}`));
    * ```
    */
-  public getRooms(): ReadonlyArray<Readonly<Room>> {
+  public getRooms(): ReadonlyArray<Readonly<RoomInfo>> {
     return Array.from(this.rooms.values()).map((room) => ({ ...room }));
   }
 
@@ -162,7 +161,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
-  public getRoom(roomId: string): Readonly<Room> | undefined {
+  public getRoom(roomId: string): Readonly<RoomInfo> | undefined {
     const room = this.rooms.get(roomId);
     return room ? { ...room } : undefined;
   }
@@ -213,7 +212,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * roomManager.updateRoomsFromAuth(authState.roomObjects);
    * ```
    */
-  public updateRoomsFromAuth(rooms: Room[]): void {
+  public updateRoomsFromAuth(rooms: RoomInfo[]): void {
     this.logger.debug("RoomManager: Updating rooms from auth", { count: rooms.length });
 
     for (const room of rooms) {

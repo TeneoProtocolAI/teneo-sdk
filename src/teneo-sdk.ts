@@ -12,7 +12,6 @@ import {
   PartialSDKConfigSchema,
   SDKConfigBuilder,
   Agent,
-  Room,
   RoomInfo,
   Logger,
   validateConfig,
@@ -32,6 +31,7 @@ import {
 import {
   ConnectionManager,
   RoomManager,
+  RoomManagementManager,
   AgentRegistry,
   MessageRouter,
   SendMessageOptions,
@@ -71,6 +71,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   // Managers
   private readonly connection: ConnectionManager;
   private readonly rooms: RoomManager;
+  private readonly roomManagement: RoomManagementManager;
   private readonly agents: AgentRegistry;
   private readonly messages: MessageRouter;
 
@@ -149,7 +150,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Initialize managers
       this.connection = new ConnectionManager(this.wsClient, this.logger);
       this.rooms = new RoomManager(this.wsClient, this.logger);
+      this.roomManagement = new RoomManagementManager(this.wsClient, this.logger);
       this.wsClient.setRoomManager(this.rooms); // Enable subscription tracking in handlers
+      this.wsClient.setRoomManagementManager(this.roomManagement); // Enable room CRUD in handlers (v2.0.0)
       this.agents = new AgentRegistry(this.logger);
       this.messages = new MessageRouter(
         this.wsClient,
@@ -501,7 +504,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public getRooms(): ReadonlyArray<Room> {
+  public getRooms(): ReadonlyArray<RoomInfo> {
     return this.rooms.getRooms();
   }
 
@@ -523,8 +526,176 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
-  public getRoom(roomId: string): Room | undefined {
+  public getRoom(roomId: string): RoomInfo | undefined {
     return this.rooms.getRoom(roomId);
+  }
+
+  // ============================================================================
+  // ROOM MANAGEMENT API (v2.0.0)
+  // ============================================================================
+
+  /**
+   * Creates a new private or public room.
+   * Checks room limit before creating (for private rooms).
+   * Emits 'room:created' event on success, 'room:create_error' on failure.
+   *
+   * @param options - Room creation options
+   * @param options.name - Room name (1-100 characters)
+   * @param options.description - Optional room description (max 500 characters)
+   * @param options.isPublic - Whether room is public (default: false)
+   * @returns Promise that resolves with created room info
+   * @throws {SDKError} If not connected, over limit, or validation fails
+   *
+   * @example
+   * ```typescript
+   * const room = await sdk.createRoom({
+   *   name: 'My Project Room',
+   *   description: 'Collaboration space for my project',
+   *   isPublic: false
+   * });
+   * console.log(`Created room: ${room.id}`);
+   * ```
+   */
+  public async createRoom(options: {
+    name: string;
+    description?: string;
+    isPublic?: boolean;
+  }): Promise<RoomInfo> {
+    return this.roomManagement.createRoom(options);
+  }
+
+  /**
+   * Updates an existing room's name and/or description.
+   * User must own the room to update it.
+   * Emits 'room:updated' event on success, 'room:update_error' on failure.
+   *
+   * @param roomId - ID of room to update
+   * @param updates - Fields to update
+   * @param updates.name - New room name (1-100 characters)
+   * @param updates.description - New room description (max 500 characters)
+   * @returns Promise that resolves with updated room info
+   * @throws {SDKError} If not connected, not owner, or validation fails
+   *
+   * @example
+   * ```typescript
+   * const room = await sdk.updateRoom('room-123', {
+   *   name: 'Updated Room Name',
+   *   description: 'New description'
+   * });
+   * ```
+   */
+  public async updateRoom(
+    roomId: string,
+    updates: { name?: string; description?: string }
+  ): Promise<RoomInfo> {
+    return this.roomManagement.updateRoom(roomId, updates);
+  }
+
+  /**
+   * Deletes a room permanently.
+   * User must own the room to delete it.
+   * Emits 'room:deleted' event on success, 'room:delete_error' on failure.
+   *
+   * @param roomId - ID of room to delete
+   * @returns Promise that resolves when room is deleted
+   * @throws {SDKError} If not connected or not owner
+   *
+   * @example
+   * ```typescript
+   * await sdk.deleteRoom('room-123');
+   * console.log('Room deleted successfully');
+   * ```
+   */
+  public async deleteRoom(roomId: string): Promise<void> {
+    return this.roomManagement.deleteRoom(roomId);
+  }
+
+  /**
+   * Gets all rooms owned by the current user.
+   * Synchronous method that returns cached data from authentication.
+   *
+   * @returns Array of owned room info
+   *
+   * @example
+   * ```typescript
+   * const myRooms = sdk.getOwnedRooms();
+   * console.log(`I own ${myRooms.length} rooms`);
+   * myRooms.forEach(room => {
+   *   console.log(`- ${room.name} (${room.id})`);
+   * });
+   * ```
+   */
+  public getOwnedRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return this.roomManagement.getOwnedRooms();
+  }
+
+  /**
+   * Gets all rooms the user is a member of (but doesn't own).
+   * Synchronous method that returns cached data from authentication.
+   *
+   * @returns Array of shared room info
+   *
+   * @example
+   * ```typescript
+   * const sharedRooms = sdk.getSharedRooms();
+   * console.log(`I'm a member of ${sharedRooms.length} shared rooms`);
+   * ```
+   */
+  public getSharedRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return this.roomManagement.getSharedRooms();
+  }
+
+  /**
+   * Gets the maximum number of private rooms the user can create.
+   * Based on user's subscription/plan.
+   *
+   * @returns Maximum private room limit
+   *
+   * @example
+   * ```typescript
+   * const limit = sdk.getRoomLimit();
+   * const current = sdk.getOwnedRoomCount();
+   * console.log(`Using ${current}/${limit} room slots`);
+   * ```
+   */
+  public getRoomLimit(): number {
+    return this.roomManagement.getRoomLimit();
+  }
+
+  /**
+   * Gets the current count of owned private rooms.
+   *
+   * @returns Number of rooms user owns
+   *
+   * @example
+   * ```typescript
+   * const count = sdk.getOwnedRoomCount();
+   * if (sdk.canCreateRoom()) {
+   *   console.log(`Can create ${sdk.getRoomLimit() - count} more rooms`);
+   * }
+   * ```
+   */
+  public getOwnedRoomCount(): number {
+    return this.roomManagement.getOwnedRoomCount();
+  }
+
+  /**
+   * Checks if user can create another private room.
+   * Compares current owned room count against limit.
+   *
+   * @returns True if under limit, false otherwise
+   *
+   * @example
+   * ```typescript
+   * if (sdk.canCreateRoom()) {
+   *   await sdk.createRoom({ name: 'New Room' });
+   * } else {
+   *   console.log('Room limit reached! Upgrade your plan.');
+   * }
+   * ```
+   */
+  public canCreateRoom(): boolean {
+    return this.roomManagement.canCreateRoom();
   }
 
   /**
@@ -992,6 +1163,18 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward room events from WebSocketClient (emitted by room subscription handlers)
     this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
     this.wsClient.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
+
+    // Forward room management events from RoomManagementManager (v2.0.0)
+    this.roomManagement.on("room:created", (room) => this.emit("room:created", room));
+    this.roomManagement.on("room:updated", (room) => this.emit("room:updated", room));
+    this.roomManagement.on("room:deleted", (roomId) => this.emit("room:deleted", roomId));
+    this.roomManagement.on("room:create_error", (error) => this.emit("room:create_error", error));
+    this.roomManagement.on("room:update_error", (error, roomId) =>
+      this.emit("room:update_error", error, roomId)
+    );
+    this.roomManagement.on("room:delete_error", (error, roomId) =>
+      this.emit("room:delete_error", error, roomId)
+    );
 
     // Forward webhook events from WebhookHandler
     this.webhookHandler.on("webhook:sent", (payload, url) =>

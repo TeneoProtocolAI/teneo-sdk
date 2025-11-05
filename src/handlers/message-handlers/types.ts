@@ -34,6 +34,9 @@ export interface HandlerContext {
   // Room manager for subscription updates (optional)
   roomManager?: any;
 
+  // Room management manager for CRUD operations (v2.0.0, optional)
+  roomManagementManager?: any;
+
   // Account for signing (optional, for auth handlers)
   account?: PrivateKeyAccount;
 

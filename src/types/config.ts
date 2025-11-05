@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { ClientTypeSchema, RoomSchema, MessageTypeSchema, MessageType } from "./messages";
+import { ClientTypeSchema, RoomInfoSchema, MessageTypeSchema, MessageType } from "./messages";
 import { RetryStrategySchema, type RetryStrategy } from "../utils/retry-policy";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
@@ -146,11 +146,16 @@ export const AuthenticationStateSchema = z.object({
   isWhitelisted: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
   nftVerified: z.boolean().optional(),
-  rooms: z.array(z.string()).optional(), // Room IDs for backward compatibility
-  roomObjects: z.array(RoomSchema).optional(), // Full room objects from auth
-  privateRoomId: z.string().optional(),
+  rooms: z.array(z.string()).optional(), // Room IDs for backward compatibility (deprecated)
+  roomObjects: z.array(RoomInfoSchema).optional(), // Full room objects from auth (v2.0.0: uses RoomInfo)
+  privateRoomId: z.string().optional(), // DEPRECATED: Single room ID (use privateRoomIds instead)
   challenge: z.string().optional(),
-  challengeTimestamp: z.number().optional()
+  challengeTimestamp: z.number().optional(),
+
+  // NEW in v2.0.0: Room categorization
+  privateRoomIds: z.array(z.string()).optional(), // IDs of rooms user owns
+  sharedRoomIds: z.array(z.string()).optional(), // IDs of rooms user is member of
+  maxPrivateRooms: z.number().optional() // Max rooms user can create
 });
 
 // Webhook config schema

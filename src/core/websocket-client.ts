@@ -56,6 +56,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private deduplicationCache?: DeduplicationCache;
   private reconnectPolicy: RetryPolicy;
   private roomManager?: any; // Reference to RoomManager for handler context
+  private roomManagementManager?: any; // Reference to RoomManagementManager for handler context (v2.0.0)
   private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
 
   private connectionState: ConnectionState = {
@@ -209,6 +210,14 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    */
   public setRoomManager(roomManager: any): void {
     this.roomManager = roomManager;
+  }
+
+  /**
+   * Sets the room management manager for room CRUD operations (v2.0.0)
+   * @internal
+   */
+  public setRoomManagementManager(roomManagementManager: any): void {
+    this.roomManagementManager = roomManagementManager;
   }
 
   /**
@@ -653,6 +662,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       updateConnectionState: (update: any) => this.updateConnectionState(update),
       updateAuthState: (update: any) => this.updateAuthState(update),
       roomManager: this.roomManager,
+      roomManagementManager: this.roomManagementManager,
       account: this.account,
       sendMessage: (message: BaseMessage) => this.sendMessage(message)
     };
