@@ -93,8 +93,10 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
     const message = {
       type: "add_agent_to_room" as const,
-      room_id: roomId,
-      agent_id: agentId
+      data: {
+        room_id: roomId,
+        agent_id: agentId
+      }
     };
 
     return new Promise((resolve, reject) => {
@@ -168,8 +170,10 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
     const message = {
       type: "remove_agent_from_room" as const,
-      room_id: roomId,
-      agent_id: agentId
+      data: {
+        room_id: roomId,
+        agent_id: agentId
+      }
     };
 
     return new Promise((resolve, reject) => {
@@ -252,7 +256,9 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
     const message = {
       type: "list_room_agents" as const,
-      room_id: roomId
+      data: {
+        room_id: roomId
+      }
     };
 
     return new Promise((resolve, reject) => {
@@ -330,7 +336,9 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
     const message = {
       type: "list_available_agents" as const,
-      room_id: roomId
+      data: {
+        room_id: roomId
+      }
     };
 
     return new Promise((resolve, reject) => {

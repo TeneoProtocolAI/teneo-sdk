@@ -11,7 +11,9 @@ This is the **ultimate reference implementation** showcasing every SDK capabilit
 ✅ **WebSocket Connection** - Auto-reconnection with exponential backoff
 ✅ **Ethereum Authentication** - Wallet-based authentication
 ✅ **Message Sending** - Coordinator-based and direct agent commands
-✅ **Room Management** - Subscribe, unsubscribe, and list rooms
+✅ **Room Management (v1)** - Subscribe, unsubscribe, and list rooms
+✅ **Room Management (v2.0)** - Create, update, delete rooms with ownership tracking
+✅ **Agent-Room Management (v2.0)** - Add/remove agents per room, list room agents
 ✅ **Agent Discovery** - List agents with capabilities
 ✅ **Response Formatting** - Raw JSON, humanized text, or both
 
@@ -28,6 +30,17 @@ This is the **ultimate reference implementation** showcasing every SDK capabilit
 ✅ **SSRF Protection** - Webhook URL validation
 ✅ **Error Handling** - Custom error classes with recovery strategies
 ✅ **Event System** - Complete event-driven architecture
+
+### v2.0 Features (New!)
+
+✅ **Multi-Room Management** - Create, update, and delete your own rooms
+✅ **Room Ownership Tracking** - Distinguish between owned and shared rooms
+✅ **Room Limits** - Track and display room creation quotas
+✅ **Agent-Room Customization** - Add/remove agents per room (owner only)
+✅ **Room Agent Listing** - List agents in specific rooms with caching
+✅ **Available Agents** - See which agents can be added to a room
+✅ **Real-time Room Events** - Live updates for room creation/updates/deletions
+✅ **Real-time Agent-Room Events** - Live updates when agents are added/removed
 
 ### Production Features
 
@@ -205,15 +218,47 @@ const config = new SDKConfigBuilder()
 - `GET /api/agents/search/capability/:capability` - **PERF-3**: Search by capability (O(1))
 - `GET /api/agents/search/name/:name` - **PERF-3**: Search by name (O(k))
 - `GET /api/agents/search/status/:status` - **PERF-3**: Search by status (O(1))
-- `GET /api/rooms` - List all available rooms
+- `GET /api/rooms` - List all available rooms (v1)
 - `GET /api/deduplication` - **CB-4**: Get message deduplication status
-- `POST /api/room/subscribe` - Subscribe to a room
+- `POST /api/room/subscribe` - Subscribe to a room (v1)
   ```json
   {
     "roomId": "tech-support"
   }
   ```
-- `POST /api/room/unsubscribe` - Unsubscribe from a room
+- `POST /api/room/unsubscribe` - Unsubscribe from a room (v1)
+
+### Room Management v2.0 API
+
+- `GET /api/v2/rooms/owned` - Get all rooms you own
+- `GET /api/v2/rooms/shared` - Get all rooms you're a member of
+- `GET /api/v2/rooms/limit` - Get your room creation limit
+- `POST /api/v2/rooms` - Create a new room
+  ```json
+  {
+    "name": "My Room",
+    "description": "Optional description",
+    "isPublic": false
+  }
+  ```
+- `PUT /api/v2/rooms/:id` - Update room (owner only)
+  ```json
+  {
+    "name": "Updated Name",
+    "description": "New description"
+  }
+  ```
+- `DELETE /api/v2/rooms/:id` - Delete room (owner only)
+
+### Agent-Room Management v2.0 API
+
+- `GET /api/v2/rooms/:id/agents` - List agents in room (with 5-min cache)
+- `GET /api/v2/rooms/:id/available-agents` - List agents available to add
+- `GET /api/v2/rooms/:id/agents/count` - Get agent count (instant, from cache)
+- `GET /api/v2/rooms/:roomId/agents/:agentId/check` - Check if agent is in room
+- `POST /api/v2/rooms/:roomId/agents/:agentId` - Add agent to room (owner only)
+- `DELETE /api/v2/rooms/:roomId/agents/:agentId` - Remove agent from room (owner only)
+- `POST /api/v2/rooms/:id/cache/invalidate` - Manually invalidate agent-room cache
 
 ### Real-time Data
 
@@ -240,10 +285,12 @@ const config = new SDKConfigBuilder()
 ### Tabs
 
 1. **Agents Tab**: List all agents with capabilities and status
-2. **Rooms Tab**: Manage room subscriptions (subscribe/unsubscribe)
-3. **Messages Tab**: View message history with responses
-4. **Webhooks Tab**: Monitor received webhooks
-5. **Events Tab**: Real-time event stream
+2. **Rooms Tab**: Manage room subscriptions (subscribe/unsubscribe) - v1
+3. **Room Mgmt Tab** 🆕: Create, update, delete rooms - View owned/shared rooms with room limits (v2.0)
+4. **Agent-Room Tab** 🆕: Add/remove agents to rooms - List room agents and available agents (v2.0)
+5. **Messages Tab**: View message history with responses
+6. **Webhooks Tab**: Monitor received webhooks
+7. **Events Tab**: Real-time event stream (includes v2.0 room and agent-room events)
 
 ### Health Monitor
 
@@ -265,18 +312,18 @@ import { SecurePrivateKey } from "@teneo-protocol/sdk";
 const secureKey = new SecurePrivateKey(process.env.PRIVATE_KEY);
 
 // Use with SDK - automatically decrypted when needed
-const config = new SDKConfigBuilder()
-  .withAuthentication(secureKey, WALLET_ADDRESS)
-  .build();
+const config = new SDKConfigBuilder().withAuthentication(secureKey, WALLET_ADDRESS).build();
 ```
 
 **Security Benefits:**
+
 - Private key is encrypted in memory using AES-256-GCM
 - Protected from memory dumps and debugging tools
 - Automatic secure cleanup when no longer needed
 - Minimal performance overhead
 
 **Example Test:**
+
 ```bash
 # Without encryption: private key visible in memory dump
 # With encryption: only encrypted bytes visible
@@ -298,17 +345,20 @@ Prevent duplicate message processing using a TTL-based cache:
 ```
 
 **How It Works:**
+
 - Maintains an in-memory cache of processed message IDs
 - Automatically expires entries after TTL (Time To Live)
 - Bounded size prevents unbounded memory growth
 - Messages without IDs are allowed through (graceful degradation)
 
 **Configuration Options:**
+
 - `enabled`: Enable/disable deduplication (default: true)
 - `ttl`: How long to remember message IDs in milliseconds (default: 60000ms = 1 minute)
 - `maxSize`: Maximum number of message IDs to cache (default: 10000)
 
 **Monitoring:**
+
 ```bash
 # Check deduplication status
 curl http://localhost:3000/api/deduplication
@@ -324,15 +374,18 @@ curl http://localhost:3000/api/deduplication
 ```
 
 **Events:**
+
 - `message:duplicate` - Emitted when a duplicate message is detected and skipped
 
 **Testing:**
+
 1. Send the same message multiple times rapidly
 2. Watch Events tab for `message:duplicate` events
 3. Verify duplicates are not processed
 4. Monitor `/api/deduplication` to see cache size increase
 
 **Production Benefits:**
+
 - Prevents duplicate task execution if messages are retransmitted
 - Protects against network-level duplicates during reconnections
 - Configurable TTL balances memory usage vs duplicate window
@@ -354,11 +407,13 @@ curl http://localhost:3000/api/agents/search/status/online
 ```
 
 **Performance Comparison:**
+
 - Traditional: O(n) - iterate through all agents
 - Indexed: O(1) - direct map lookup for capability/status
 - Indexed: O(k) - token-based search for names (k = tokens)
 
 **SDK Usage:**
+
 ```typescript
 // Fast capability search
 const weatherAgents = sdk.findAgentsByCapability("weather-forecast");
@@ -524,13 +579,36 @@ Monitor rate limit status via `/metrics` endpoint.
 - Watch Webhooks tab for incoming webhook events
 - See event types: `task`, `agent_selected`, `task_response`
 
-### 5. Test Room Management
+### 5. Test Room Management (v1)
 
 - Go to Rooms tab
 - Enter a room ID
 - Click "Subscribe to Room"
 - See room appear in subscribed list
 - Click "Unsubscribe" to unsubscribe from room
+
+### 5b. Test Room Management v2.0
+
+- Go to **Room Mgmt** tab
+- See your owned and shared rooms
+- Check your room limit (e.g., "2/50 rooms")
+- **Create a room**: Enter name and description, click "Create Room"
+- See room appear in "Private Rooms" list with owner badge
+- **Update room**: Click "Update" on an owned room, modify name/description
+- **Delete room**: Click "Delete" on an owned room
+- Watch Events tab for `room:created`, `room:updated`, `room:deleted` events
+
+### 5c. Test Agent-Room Management v2.0
+
+- Go to **Agent-Room** tab
+- Select a room you own from the dropdown
+- See "Agents in Room" list (may be empty for new rooms)
+- See "Available Agents" list (agents you can add)
+- **Add an agent**: Click "Add" next to an available agent
+- Watch agent move from "Available" to "Agents in Room"
+- See agent count update in real-time
+- **Remove an agent**: Click "Remove" next to an agent in room
+- Watch Events tab for `agent_room:agent_added`, `agent_room:agent_removed` events
 
 ### 6. Test Signature Verification
 

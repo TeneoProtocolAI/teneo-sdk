@@ -65,9 +65,10 @@ describe("RoomManagementManager", () => {
       expect(result).toEqual(createdRoom);
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "create_room",
-        name: roomOptions.name,
-        description: roomOptions.description,
-        is_public: false
+        data: {
+          name: roomOptions.name,
+          description: roomOptions.description
+        }
       });
     });
 
@@ -189,9 +190,11 @@ describe("RoomManagementManager", () => {
       expect(result).toEqual(updatedRoom);
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "update_room",
-        room_id: "room-123",
-        name: updates.name,
-        description: updates.description
+        data: {
+          room_id: "room-123",
+          name: updates.name,
+          description: updates.description
+        }
       });
     });
 
@@ -241,7 +244,9 @@ describe("RoomManagementManager", () => {
       await expect(deletePromise).resolves.toBeUndefined();
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "delete_room",
-        room_id: "room-123"
+        data: {
+          room_id: "room-123"
+        }
       });
     });
 

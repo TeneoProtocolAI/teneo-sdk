@@ -139,26 +139,29 @@ export const CommandSchema = z.object({
 
 export const RoomSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.string().optional(),
   description: z.string().optional(),
-  is_public: stringToBoolean,
-  is_active: stringToBoolean,
-  created_by: z.string(),
-  created_at: z.string(),
-  updated_at: z.string()
+  is_public: stringToBoolean.optional(),
+  is_active: stringToBoolean.optional(),
+  is_owner: stringToBoolean.optional(),
+  created_by: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional()
 });
 
 // RoomInfo schema for v2.0.0 - used in auth responses and room management
-export const RoomInfoSchema = z.object({
-  id: z.string(),
-  name: z.string().optional(), // Optional for permissive parsing
-  description: z.string().optional().nullable(),
-  is_public: z.boolean().optional(), // Optional - defaults to false on backend
-  created_by: z.string().optional(), // Optional in case backend doesn't send it yet
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-  is_owner: z.boolean().optional() // Client-side enrichment, may not always be present
-}).passthrough(); // Allow extra fields backend might add
+export const RoomInfoSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(), // Optional for permissive parsing
+    description: z.string().optional().nullable(),
+    is_public: z.boolean().optional(), // Optional - defaults to false on backend
+    created_by: z.string().optional(), // Optional in case backend doesn't send it yet
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+    is_owner: z.boolean().optional() // Client-side enrichment, may not always be present
+  })
+  .passthrough(); // Allow extra fields backend might add
 
 export const AgentSchema = z.object({
   id: z.string(),
@@ -175,21 +178,23 @@ export const AgentSchema = z.object({
 });
 
 // Base message schema
-export const BaseMessageSchema = z.object({
-  type: MessageTypeSchema,
-  content: z.any().optional(),
-  content_type: ContentTypeSchema.optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  room: z.string().optional(),
-  timestamp: z.string().optional(),
-  data: z.record(z.any()).optional(),
-  signature: z.string().optional(),
-  publicKey: z.string().optional(),
-  reasoning: z.string().optional(),
-  task_id: z.string().optional(),
-  id: z.string().optional() // Added for message tracking
-});
+export const BaseMessageSchema = z
+  .object({
+    type: MessageTypeSchema,
+    content: z.any().optional(),
+    content_type: ContentTypeSchema.optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    room: z.string().optional(),
+    timestamp: z.string().optional(),
+    data: z.record(z.any()).optional(),
+    signature: z.string().optional(),
+    publicKey: z.string().optional(),
+    reasoning: z.string().optional(),
+    task_id: z.string().optional(),
+    id: z.string().optional() // Added for message tracking
+  })
+  .passthrough(); // Allow message-specific fields to pass through
 
 // Authentication message schemas
 export const RequestChallengeMessageSchema = BaseMessageSchema.extend({
@@ -243,8 +248,10 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       is_whitelisted: stringToBoolean.optional(),
       is_admin_whitelisted: stringToBoolean.optional(),
       rooms: z.array(RoomSchema).optional(),
+      private_rooms: z.array(RoomSchema).optional(),
       private_room_id: z.string().optional(),
-      cached_auth: stringToBoolean.optional()
+      cached_auth: stringToBoolean.optional(),
+      max_private_rooms: z.number().optional()
     })
     .optional()
 });
@@ -425,170 +432,228 @@ export const ListRoomsResponseSchema = BaseMessageSchema.extend({
 // ============================================================================
 
 // Room CRUD Operations
-export const CreateRoomMessageSchema = z.object({
-  type: z.literal("create_room"),
-  name: z.string(),
-  description: z.string().optional(),
-  is_public: z.boolean().optional()
-}).passthrough(); // Allow extra fields
+export const CreateRoomMessageSchema = z
+  .object({
+    type: z.literal("create_room"),
+    name: z.string(),
+    description: z.string().optional(),
+    is_public: z.boolean().optional()
+  })
+  .passthrough(); // Allow extra fields
 
-export const UpdateRoomMessageSchema = z.object({
-  type: z.literal("update_room"),
-  room_id: z.string(),
-  name: z.string().optional(),
-  description: z.string().optional()
-}).passthrough();
+export const UpdateRoomMessageSchema = z
+  .object({
+    type: z.literal("update_room"),
+    room_id: z.string(),
+    name: z.string().optional(),
+    description: z.string().optional()
+  })
+  .passthrough();
 
-export const DeleteRoomMessageSchema = z.object({
-  type: z.literal("delete_room"),
-  room_id: z.string()
-}).passthrough();
+export const DeleteRoomMessageSchema = z
+  .object({
+    type: z.literal("delete_room"),
+    room_id: z.string()
+  })
+  .passthrough();
 
-export const RoomOperationResponseSchema = z.object({
-  type: z.literal("room_operation_response"),
-  data: z.object({
-    success: z.boolean().optional(), // Optional - consuming code should handle missing as false
-    message: z.string().optional(),
-    room_id: z.string().optional(),
-    room: RoomInfoSchema.optional(),
-    max_rooms: z.number().optional(),
-    current_count: z.number().optional()
-  }).passthrough() // Allow extra fields backend might add
-}).passthrough();
+export const RoomOperationResponseSchema = z
+  .object({
+    type: z.literal("room_operation_response"),
+    data: z
+      .object({
+        success: z.boolean().optional(), // Optional - consuming code should handle missing as false
+        message: z.string().optional(),
+        room_id: z.string().optional(),
+        room: RoomInfoSchema.optional(),
+        max_rooms: z.number().optional(),
+        current_count: z.number().optional()
+      })
+      .passthrough() // Allow extra fields backend might add
+  })
+  .passthrough();
 
 // Room Member Management
-export const RoomMemberInfoSchema = z.object({
-  user_id: z.string(),
-  added_by: z.string().optional(), // May not always be present
-  added_at: z.string().optional(),
-  role: z.string().optional()
-}).passthrough();
+export const RoomMemberInfoSchema = z
+  .object({
+    user_id: z.string(),
+    added_by: z.string().optional(), // May not always be present
+    added_at: z.string().optional(),
+    role: z.string().optional()
+  })
+  .passthrough();
 
-export const AddRoomMemberMessageSchema = z.object({
-  type: z.literal("add_room_member"),
-  room_id: z.string(),
-  user_id: z.string()
-}).passthrough();
-
-export const RemoveRoomMemberMessageSchema = z.object({
-  type: z.literal("remove_room_member"),
-  room_id: z.string(),
-  user_id: z.string()
-}).passthrough();
-
-export const ListRoomMembersMessageSchema = z.object({
-  type: z.literal("list_room_members"),
-  room_id: z.string()
-}).passthrough();
-
-export const RoomMembersResponseSchema = z.object({
-  type: z.literal("room_members_response"),
-  data: z.object({
+export const AddRoomMemberMessageSchema = z
+  .object({
+    type: z.literal("add_room_member"),
     room_id: z.string(),
-    members: z.array(RoomMemberInfoSchema).optional() // Optional - consuming code should handle missing as []
-  }).passthrough()
-}).passthrough();
+    user_id: z.string()
+  })
+  .passthrough();
 
-export const RoomMemberOperationResponseSchema = z.object({
-  type: z.literal("room_member_operation_response"),
-  data: z.object({
-    success: z.boolean().optional(),
-    message: z.string().optional(),
-    room_id: z.string().optional(),
-    user_id: z.string().optional(),
-    member_count: z.number().optional()
-  }).passthrough()
-}).passthrough();
+export const RemoveRoomMemberMessageSchema = z
+  .object({
+    type: z.literal("remove_room_member"),
+    room_id: z.string(),
+    user_id: z.string()
+  })
+  .passthrough();
+
+export const ListRoomMembersMessageSchema = z
+  .object({
+    type: z.literal("list_room_members"),
+    room_id: z.string()
+  })
+  .passthrough();
+
+export const RoomMembersResponseSchema = z
+  .object({
+    type: z.literal("room_members_response"),
+    data: z
+      .object({
+        room_id: z.string(),
+        members: z.array(RoomMemberInfoSchema).optional() // Optional - consuming code should handle missing as []
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export const RoomMemberOperationResponseSchema = z
+  .object({
+    type: z.literal("room_member_operation_response"),
+    data: z
+      .object({
+        success: z.boolean().optional(),
+        message: z.string().optional(),
+        room_id: z.string().optional(),
+        user_id: z.string().optional(),
+        member_count: z.number().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
 
 // ============================================================================
 // AGENT ROOM MANAGEMENT SCHEMAS (v2.0.0)
 // Note: Permissive schemas to handle backend changes gracefully
 // ============================================================================
 
-export const AgentRoomInfoSchema = z.object({
-  agent_id: z.string(),
-  agent_name: z.string().optional(),
-  description: z.string().optional(),
-  capabilities: z.array(CapabilitySchema).optional(),
-  commands: z.array(CommandSchema).optional(),
-  image: z.string().optional(),
-  status: z.string().optional(),
-  added_by: z.string().optional(),
-  added_at: z.string().optional()
-}).passthrough();
-
-export const AddAgentToRoomMessageSchema = z.object({
-  type: z.literal("add_agent_to_room"),
-  room_id: z.string(),
-  agent_id: z.string()
-}).passthrough();
-
-export const RemoveAgentFromRoomMessageSchema = z.object({
-  type: z.literal("remove_agent_from_room"),
-  room_id: z.string(),
-  agent_id: z.string()
-}).passthrough();
-
-export const ListRoomAgentsMessageSchema = z.object({
-  type: z.literal("list_room_agents"),
-  room_id: z.string()
-}).passthrough();
-
-export const ListAvailableAgentsMessageSchema = z.object({
-  type: z.literal("list_available_agents"),
-  room_id: z.string()
-}).passthrough();
-
-export const RoomAgentsResponseSchema = z.object({
-  type: z.literal("room_agents_response"),
-  data: z.object({
-    room_id: z.string(),
-    agents: z.array(AgentRoomInfoSchema).optional() // Optional - consuming code should handle missing as []
-  }).passthrough()
-}).passthrough();
-
-export const AvailableAgentsResponseSchema = z.object({
-  type: z.literal("available_agents_response"),
-  data: z.object({
-    agents: z.array(AgentRoomInfoSchema).optional()
-  }).passthrough()
-}).passthrough();
-
-export const AgentRoomOperationResponseSchema = z.object({
-  type: z.literal("agent_room_operation_response"),
-  data: z.object({
-    success: z.boolean().optional(),
-    message: z.string().optional(),
-    room_id: z.string().optional(),
-    agent_id: z.string().optional(),
-    agent_count: z.number().optional()
-  }).passthrough()
-}).passthrough();
-
-export const AgentStatusUpdateMessageSchema = z.object({
-  type: z.literal("agent_status_update"),
-  data: z.object({
-    room_id: z.string(),
+export const AgentRoomInfoSchema = z
+  .object({
     agent_id: z.string(),
-    status: z.string(),
-    agent: AgentRoomInfoSchema.optional()
-  }).passthrough()
-}).passthrough();
+    agent_name: z.string().optional(),
+    description: z.string().optional(),
+    capabilities: z.array(CapabilitySchema).optional(),
+    commands: z.array(CommandSchema).optional(),
+    image: z.string().optional(),
+    status: z.string().optional(),
+    added_by: z.string().optional(),
+    added_at: z.string().optional()
+  })
+  .passthrough();
+
+export const AddAgentToRoomMessageSchema = z
+  .object({
+    type: z.literal("add_agent_to_room"),
+    room_id: z.string(),
+    agent_id: z.string()
+  })
+  .passthrough();
+
+export const RemoveAgentFromRoomMessageSchema = z
+  .object({
+    type: z.literal("remove_agent_from_room"),
+    room_id: z.string(),
+    agent_id: z.string()
+  })
+  .passthrough();
+
+export const ListRoomAgentsMessageSchema = z
+  .object({
+    type: z.literal("list_room_agents"),
+    room_id: z.string()
+  })
+  .passthrough();
+
+export const ListAvailableAgentsMessageSchema = z
+  .object({
+    type: z.literal("list_available_agents"),
+    room_id: z.string()
+  })
+  .passthrough();
+
+export const RoomAgentsResponseSchema = z
+  .object({
+    type: z.literal("room_agents_response"),
+    data: z
+      .object({
+        room_id: z.string(),
+        agents: z.array(AgentRoomInfoSchema).optional() // Optional - consuming code should handle missing as []
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export const AvailableAgentsResponseSchema = z
+  .object({
+    type: z.literal("available_agents_response"),
+    data: z
+      .object({
+        agents: z.array(AgentRoomInfoSchema).optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export const AgentRoomOperationResponseSchema = z
+  .object({
+    type: z.literal("agent_room_operation_response"),
+    data: z
+      .object({
+        success: z.boolean().optional(),
+        message: z.string().optional(),
+        room_id: z.string().optional(),
+        agent_id: z.string().optional(),
+        agent_count: z.number().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export const AgentStatusUpdateMessageSchema = z
+  .object({
+    type: z.literal("agent_status_update"),
+    data: z
+      .object({
+        room_id: z.string(),
+        agent_id: z.string(),
+        status: z.string(),
+        agent: AgentRoomInfoSchema.optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
 
 // Room Ping System
-export const RoomPingMessageSchema = z.object({
-  type: z.literal("room_ping"),
-  room_id: z.string()
-}).passthrough();
+export const RoomPingMessageSchema = z
+  .object({
+    type: z.literal("room_ping"),
+    room_id: z.string()
+  })
+  .passthrough();
 
-export const RoomPongResponseSchema = z.object({
-  type: z.literal("room_pong"),
-  data: z.object({
-    room_id: z.string(),
-    live_count: z.number().optional(), // Optional - consuming code should handle missing as 0
-    timestamp: z.string()
-  }).passthrough()
-}).passthrough();
+export const RoomPongResponseSchema = z
+  .object({
+    type: z.literal("room_pong"),
+    data: z
+      .object({
+        room_id: z.string(),
+        live_count: z.number().optional(), // Optional - consuming code should handle missing as 0
+        timestamp: z.string()
+      })
+      .passthrough()
+  })
+  .passthrough();
 
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
@@ -818,12 +883,21 @@ export function validateMessage(message: unknown): AnyMessage {
 // Safe parse helper
 export function safeParseMessage(message: unknown): {
   success: boolean;
-  data?: AnyMessage;
+  data?: AnyMessage | BaseMessage;
   error?: z.ZodError;
 } {
+  // Try specific message schemas first
   const result = AnyMessageSchema.safeParse(message);
   if (result.success) {
     return { success: true, data: result.data };
   }
+
+  // Fall back to basic BaseMessage schema for unknown message types
+  // This allows the SDK to be more resilient to backend changes
+  const fallbackResult = BaseMessageSchema.safeParse(message);
+  if (fallbackResult.success) {
+    return { success: true, data: fallbackResult.data as BaseMessage };
+  }
+
   return { success: false, error: result.error };
 }

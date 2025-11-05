@@ -16,6 +16,14 @@
  * - Real-time event streaming
  * - Complete error handling
  *
+ * 🆕 V2.0 Features:
+ * - Multi-room management (create, update, delete rooms)
+ * - Room ownership tracking (owned vs shared rooms)
+ * - Room limits and quotas
+ * - Agent-room customization (add/remove agents per room)
+ * - Agent-room caching with 5-minute TTL
+ * - Real-time agent status updates
+ *
  * Run with: bun run server.ts
  */
 
@@ -28,11 +36,9 @@ import { SDKConfigBuilder, TeneoSDK, SecurePrivateKey } from "../../dist/index.j
 
 // Load environment variables
 const PORT = parseInt(process.env.PORT || "3001");
-const WS_URL =
-  process.env.WS_URL || "wss://your-teneo-server.com/ws";
+const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "as1LfBarJNzOIpOQJQ7PH";
 const ENABLE_SIG_VERIFICATION = process.env.ENABLE_SIGNATURE_VERIFICATION === "true";
 const TRUSTED_ADDRESSES = process.env.TRUSTED_ADDRESSES?.split(",").filter(Boolean) || [];
 
@@ -75,7 +81,6 @@ async function initializeSDK() {
     const config = new SDKConfigBuilder()
       .withWebSocketUrl(WS_URL)
       .withAuthentication(secureKey, WALLET_ADDRESS) // Pass SecurePrivateKey instead of plain string
-      .withAutoJoinRooms([DEFAULT_ROOM])
       .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 })
       // REL-3: Configure custom retry strategies for production resilience
       .withReconnectionStrategy({
@@ -255,6 +260,81 @@ function setupSDKEventListeners(sdk: TeneoSDK) {
   sdk.on("room:list", (rooms) => {
     addEvent("room:list", { count: rooms.length });
     broadcastSSE({ type: "room:list", rooms });
+  });
+
+  // Room Management events (v2.0.0)
+  sdk.on("room:created", (room) => {
+    addEvent("room:created", { roomId: room.id, name: room.name });
+    broadcastSSE({ type: "room:created", room });
+  });
+
+  sdk.on("room:updated", (room) => {
+    addEvent("room:updated", { roomId: room.id, name: room.name });
+    broadcastSSE({ type: "room:updated", room });
+  });
+
+  sdk.on("room:deleted", (roomId) => {
+    addEvent("room:deleted", { roomId });
+    broadcastSSE({ type: "room:deleted", roomId });
+  });
+
+  sdk.on("room:create_error", (error) => {
+    addEvent("room:create_error", { error: error.message });
+    errorCounter++;
+  });
+
+  sdk.on("room:update_error", (error, roomId) => {
+    addEvent("room:update_error", { error: error.message, roomId });
+    errorCounter++;
+  });
+
+  sdk.on("room:delete_error", (error, roomId) => {
+    addEvent("room:delete_error", { error: error.message, roomId });
+    errorCounter++;
+  });
+
+  // Agent Room Management events (v2.0.0)
+  sdk.on("agent_room:agent_added", (roomId, agentId) => {
+    addEvent("agent_room:agent_added", { roomId, agentId });
+    broadcastSSE({ type: "agent_room:agent_added", roomId, agentId });
+  });
+
+  sdk.on("agent_room:agent_removed", (roomId, agentId) => {
+    addEvent("agent_room:agent_removed", { roomId, agentId });
+    broadcastSSE({ type: "agent_room:agent_removed", roomId, agentId });
+  });
+
+  sdk.on("agent_room:agents_listed", (roomId, agents) => {
+    addEvent("agent_room:agents_listed", { roomId, count: agents.length });
+  });
+
+  sdk.on("agent_room:available_agents_listed", (agents) => {
+    addEvent("agent_room:available_agents_listed", { count: agents.length });
+  });
+
+  sdk.on("agent_room:status_update", (data) => {
+    addEvent("agent_room:status_update", data);
+    broadcastSSE({ type: "agent_room:status_update", data });
+  });
+
+  sdk.on("agent_room:add_error", (error, roomId) => {
+    addEvent("agent_room:add_error", { error: error.message, roomId });
+    errorCounter++;
+  });
+
+  sdk.on("agent_room:remove_error", (error, roomId) => {
+    addEvent("agent_room:remove_error", { error: error.message, roomId });
+    errorCounter++;
+  });
+
+  sdk.on("agent_room:list_error", (error, roomId) => {
+    addEvent("agent_room:list_error", { error: error.message, roomId });
+    errorCounter++;
+  });
+
+  sdk.on("agent_room:list_available_error", (error) => {
+    addEvent("agent_room:list_available_error", { error: error.message });
+    errorCounter++;
   });
 
   // Webhook events
@@ -594,7 +674,7 @@ app.get("/api/rooms", (c) => {
   return c.json(rooms);
 });
 
-// Get available rooms for sending messages (subscribed + private room)
+// Get available rooms for sending messages (subscribed + private room + owned rooms)
 app.get("/api/rooms/available", (c) => {
   if (!sdk) {
     return c.json({ error: "SDK not initialized" }, 503);
@@ -602,6 +682,8 @@ app.get("/api/rooms/available", (c) => {
 
   const authState = sdk.getAuthState();
   const subscribedRooms = sdk.getSubscribedRooms();
+  const ownedRooms = sdk.getOwnedRooms(); // v2.0.0: Include newly created rooms
+  const sharedRooms = sdk.getSharedRooms(); // v2.0.0: Include shared rooms
 
   // Combine all available rooms
   const availableRooms: Array<{
@@ -632,6 +714,36 @@ app.get("/api/rooms/available", (c) => {
           name: room.name || room.id,
           type: room.is_public ? "public" : "private",
           description: room.description
+        });
+      }
+    });
+  }
+
+  // Add owned rooms (v2.0.0) - includes newly created rooms
+  if (ownedRooms && ownedRooms.length > 0) {
+    ownedRooms.forEach((room) => {
+      // Only add if not already in the list
+      if (!availableRooms.find((r) => r.id === room.id)) {
+        availableRooms.push({
+          id: room.id,
+          name: room.name || room.id,
+          type: room.is_public ? "public" : "private",
+          description: room.description || undefined
+        });
+      }
+    });
+  }
+
+  // Add shared rooms (v2.0.0) - rooms user is a member of
+  if (sharedRooms && sharedRooms.length > 0) {
+    sharedRooms.forEach((room) => {
+      // Only add if not already in the list
+      if (!availableRooms.find((r) => r.id === room.id)) {
+        availableRooms.push({
+          id: room.id,
+          name: room.name || room.id,
+          type: room.is_public ? "public" : "private",
+          description: room.description || undefined
         });
       }
     });
@@ -701,6 +813,236 @@ app.post("/api/room/leave", async (c) => {
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
+});
+
+// ========================================
+// 🆕 V2.0 ROOM MANAGEMENT API
+// ========================================
+
+// Get owned rooms (v2.0)
+app.get("/api/v2/rooms/owned", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const ownedRooms = sdk.getOwnedRooms();
+  return c.json(ownedRooms);
+});
+
+// Get shared rooms (v2.0)
+app.get("/api/v2/rooms/shared", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const sharedRooms = sdk.getSharedRooms();
+  return c.json(sharedRooms);
+});
+
+// Get room limit info (v2.0)
+app.get("/api/v2/rooms/limit", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  return c.json({
+    limit: sdk.getRoomLimit(),
+    count: sdk.getOwnedRoomCount(),
+    canCreate: sdk.canCreateRoom()
+  });
+});
+
+// Create room (v2.0)
+app.post("/api/v2/rooms", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const { name, description, isPublic } = await c.req.json();
+
+    if (!name) {
+      return c.json({ error: "Room name is required" }, 400);
+    }
+
+    const room = await sdk.createRoom({ name, description, isPublic });
+    return c.json(room);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Update room (v2.0)
+app.put("/api/v2/rooms/:id", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("id");
+    const updates = await c.req.json();
+
+    if (!updates.name && !updates.description) {
+      return c.json({ error: "At least one field (name or description) must be provided" }, 400);
+    }
+
+    const room = await sdk.updateRoom(roomId, updates);
+    return c.json(room);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Delete room (v2.0)
+app.delete("/api/v2/rooms/:id", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("id");
+    await sdk.deleteRoom(roomId);
+    return c.json({ success: true, message: "Room deleted successfully" });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// ========================================
+// 🆕 V2.0 AGENT ROOM MANAGEMENT API
+// ========================================
+
+// List agents in a room (v2.0)
+app.get("/api/v2/rooms/:id/agents", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("id");
+    const useCache = c.req.query("cache") !== "false"; // Default to true
+
+    const agents = await sdk.listRoomAgents(roomId, useCache);
+    return c.json({
+      roomId,
+      agents,
+      cached: useCache,
+      count: agents.length
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// List available agents for a room (v2.0)
+app.get("/api/v2/rooms/:id/available-agents", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("id");
+    const useCache = c.req.query("cache") !== "false"; // Default to true
+
+    const agents = await sdk.listAvailableAgents(roomId, useCache);
+    return c.json({
+      roomId,
+      agents,
+      cached: useCache,
+      count: agents.length
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Add agent to room (v2.0)
+app.post("/api/v2/rooms/:roomId/agents/:agentId", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("roomId");
+    const agentId = c.req.param("agentId");
+
+    await sdk.addAgentToRoom(roomId, agentId);
+    return c.json({
+      success: true,
+      message: `Agent ${agentId} added to room ${roomId}`
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Remove agent from room (v2.0)
+app.delete("/api/v2/rooms/:roomId/agents/:agentId", async (c) => {
+  if (!sdk || !sdk.isConnected) {
+    return c.json({ error: "SDK not connected" }, 503);
+  }
+
+  try {
+    const roomId = c.req.param("roomId");
+    const agentId = c.req.param("agentId");
+
+    await sdk.removeAgentFromRoom(roomId, agentId);
+    return c.json({
+      success: true,
+      message: `Agent ${agentId} removed from room ${roomId}`
+    });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Check if agent is in room - instant cache query (v2.0)
+app.get("/api/v2/rooms/:roomId/agents/:agentId/check", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const roomId = c.req.param("roomId");
+  const agentId = c.req.param("agentId");
+  const isInRoom = sdk.isAgentInRoom(roomId, agentId);
+
+  return c.json({
+    roomId,
+    agentId,
+    inRoom: isInRoom,
+    cached: true
+  });
+});
+
+// Get room agent count - instant cache query (v2.0)
+app.get("/api/v2/rooms/:id/agents/count", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const roomId = c.req.param("id");
+  const count = sdk.getRoomAgentCount(roomId);
+
+  return c.json({
+    roomId,
+    count,
+    cached: true
+  });
+});
+
+// Invalidate agent-room cache for a room (v2.0)
+app.post("/api/v2/rooms/:id/cache/invalidate", (c) => {
+  if (!sdk) {
+    return c.json({ error: "SDK not initialized" }, 503);
+  }
+
+  const roomId = c.req.param("id");
+  sdk.invalidateAgentRoomCache(roomId);
+
+  return c.json({
+    success: true,
+    message: `Cache invalidated for room ${roomId}`
+  });
 });
 
 // Get recent events

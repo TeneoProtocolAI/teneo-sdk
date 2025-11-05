@@ -314,7 +314,11 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           if (parseResult.success) {
             this.handleMessage(parseResult.data as BaseMessage);
           } else {
-            this.logger.error("Invalid message format", parseResult.error);
+            // Use warn instead of error - allows SDK to be more resilient
+            this.logger.warn("Received message with unknown or invalid format", {
+              type: rawMessage?.type,
+              error: parseResult.error?.message
+            });
             this.emit(
               "message:error",
               new ValidationError("Invalid message format", parseResult.error),
@@ -512,7 +516,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           this.logger.error("Failed to send message", error);
           reject(error);
         } else {
-          this.logger.debug("Message sent", { type: validatedMessage.type });
+          this.logger.debug("Message sent", validatedMessage);
           this.emit("message:sent", validatedMessage);
           resolve();
         }

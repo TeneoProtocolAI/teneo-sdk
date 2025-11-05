@@ -3,10 +3,7 @@
  * Processes responses from list_available_agents requests
  */
 
-import {
-  AvailableAgentsResponse,
-  AvailableAgentsResponseSchema
-} from "../../types";
+import { AvailableAgentsResponse, AvailableAgentsResponseSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 import { AgentRoomInfo } from "../../managers/agent-room-manager";
@@ -15,10 +12,7 @@ export class ListAvailableAgentsHandler extends BaseMessageHandler<AvailableAgen
   readonly type = "available_agents_response" as const;
   readonly schema = AvailableAgentsResponseSchema;
 
-  protected handleValidated(
-    message: AvailableAgentsResponse,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: AvailableAgentsResponse, context: HandlerContext): void {
     const { agents } = message.data;
 
     context.logger.debug("Handling available_agents_response", {

@@ -82,9 +82,10 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
     // Send create_room message
     const message = {
       type: "create_room" as const,
-      name: options.name,
-      description: options.description,
-      is_public: options.isPublic ?? false
+      data: {
+        name: options.name,
+        description: options.description
+      }
     };
 
     // Return promise that will be resolved by the response handler
@@ -168,9 +169,11 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
     // Send update_room message
     const message = {
       type: "update_room" as const,
-      room_id: roomId,
-      name: updates.name,
-      description: updates.description
+      data: {
+        room_id: roomId,
+        name: updates.name,
+        description: updates.description
+      }
     };
 
     return new Promise((resolve, reject) => {
@@ -239,7 +242,9 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
     // Send delete_room message
     const message = {
       type: "delete_room" as const,
-      room_id: roomId
+      data: {
+        room_id: roomId
+      }
     };
 
     return new Promise((resolve, reject) => {
@@ -309,6 +314,27 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
    */
   public getSharedRooms(): ReadonlyArray<Readonly<RoomInfo>> {
     return Array.from(this.sharedRooms.values()).map((room) => ({ ...room }));
+  }
+
+  /**
+   * Gets all rooms the user has access to (both owned and shared).
+   * Convenience method that combines getOwnedRooms() and getSharedRooms().
+   * Synchronous method that returns cached data.
+   *
+   * @returns Array of all room info (owned + shared)
+   *
+   * @example
+   * ```typescript
+   * const allRooms = sdk.getAllRooms();
+   * console.log(`I have access to ${allRooms.length} total rooms`);
+   *
+   * // Filter by ownership if needed
+   * const myRooms = allRooms.filter(r => r.is_owner);
+   * const sharedWithMe = allRooms.filter(r => !r.is_owner);
+   * ```
+   */
+  public getAllRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return [...this.getOwnedRooms(), ...this.getSharedRooms()];
   }
 
   /**

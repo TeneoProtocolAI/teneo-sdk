@@ -52,8 +52,10 @@ describe("AgentRoomManager", () => {
       await expect(addPromise).resolves.toBeUndefined();
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "add_agent_to_room",
-        room_id: "room-123",
-        agent_id: "agent-456"
+        data: {
+          room_id: "room-123",
+          agent_id: "agent-456"
+        }
       });
     });
 
@@ -151,8 +153,10 @@ describe("AgentRoomManager", () => {
       await expect(removePromise).resolves.toBeUndefined();
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "remove_agent_from_room",
-        room_id: "room-123",
-        agent_id: "agent-456"
+        data: {
+          room_id: "room-123",
+          agent_id: "agent-456"
+        }
       });
     });
 
@@ -238,7 +242,9 @@ describe("AgentRoomManager", () => {
       expect(result[0].agent_id).toBe("agent-1");
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "list_room_agents",
-        room_id: "room-123"
+        data: {
+          room_id: "room-123"
+        }
       });
     });
 
@@ -333,7 +339,9 @@ describe("AgentRoomManager", () => {
       expect(result[0].agent_id).toBe("agent-3");
       expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
         type: "list_available_agents",
-        room_id: "room-123"
+        data: {
+          room_id: "room-123"
+        }
       });
     });
 
