@@ -56,6 +56,8 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private deduplicationCache?: DeduplicationCache;
   private reconnectPolicy: RetryPolicy;
   private roomManager?: any; // Reference to RoomManager for handler context
+  private roomManagementManager?: any; // Reference to RoomManagementManager for handler context (v2.0.0)
+  private agentRoomManager?: any; // Reference to AgentRoomManager for handler context (v2.0.0)
   private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
 
   private connectionState: ConnectionState = {
@@ -212,6 +214,22 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Sets the room management manager for room CRUD operations (v2.0.0)
+   * @internal
+   */
+  public setRoomManagementManager(roomManagementManager: any): void {
+    this.roomManagementManager = roomManagementManager;
+  }
+
+  /**
+   * Sets the agent room manager for agent-room operations (v2.0.0)
+   * @internal
+   */
+  public setAgentRoomManager(agentRoomManager: any): void {
+    this.agentRoomManager = agentRoomManager;
+  }
+
+  /**
    * Establishes a WebSocket connection to the Teneo server.
    * Handles connection timeout, authentication challenge-response flow,
    * and automatic message queue processing after successful connection.
@@ -296,7 +314,11 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           if (parseResult.success) {
             this.handleMessage(parseResult.data as BaseMessage);
           } else {
-            this.logger.error("Invalid message format", parseResult.error);
+            // Use warn instead of error - allows SDK to be more resilient
+            this.logger.warn("Received message with unknown or invalid format", {
+              type: rawMessage?.type,
+              error: parseResult.error?.message
+            });
             this.emit(
               "message:error",
               new ValidationError("Invalid message format", parseResult.error),
@@ -494,7 +516,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           this.logger.error("Failed to send message", error);
           reject(error);
         } else {
-          this.logger.debug("Message sent", { type: validatedMessage.type });
+          this.logger.debug("Message sent", validatedMessage);
           this.emit("message:sent", validatedMessage);
           resolve();
         }
@@ -653,6 +675,8 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       updateConnectionState: (update: any) => this.updateConnectionState(update),
       updateAuthState: (update: any) => this.updateAuthState(update),
       roomManager: this.roomManager,
+      roomManagementManager: this.roomManagementManager,
+      agentRoomManager: this.agentRoomManager,
       account: this.account,
       sendMessage: (message: BaseMessage) => this.sendMessage(message)
     };
