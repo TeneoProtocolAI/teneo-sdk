@@ -9,6 +9,7 @@ import { WebSocketClient } from "../core/websocket-client";
 import { Logger } from "../types";
 import { SDKEvents, SDKError } from "../types/events";
 import { ErrorCode } from "../types/error-codes";
+import { RoomManagementManager } from "./room-management-manager";
 
 // AgentRoomInfo from server response
 export interface AgentRoomInfo {
@@ -29,7 +30,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 export class AgentRoomManager extends EventEmitter<SDKEvents> {
   private readonly wsClient: WebSocketClient;
   private readonly logger: Logger;
-  private readonly roomManagementManager: any; // Reference to check ownership
+  private readonly roomManagementManager: RoomManagementManager; // Reference to check ownership
 
   // Caches with TTL
   private readonly roomAgentsCache = new Map<string, AgentRoomInfo[]>();
@@ -40,7 +41,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
   constructor(
     wsClient: WebSocketClient,
     logger: Logger,
-    roomManagementManager: any
+    roomManagementManager: RoomManagementManager
   ) {
     super();
     this.wsClient = wsClient;
