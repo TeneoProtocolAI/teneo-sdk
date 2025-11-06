@@ -13,7 +13,6 @@ import { ErrorCode } from "../types/error-codes";
 export interface CreateRoomOptions {
   name: string;
   description?: string;
-  isPublic?: boolean;
 }
 
 export interface UpdateRoomOptions {
@@ -41,8 +40,8 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
   // ============================================================================
 
   /**
-   * Creates a new private or public room.
-   * Checks room limit before creating (for private rooms).
+   * Creates a new private room.
+   * Checks room limit before creating.
    *
    * @param options - Room creation options
    * @returns Promise that resolves when room is created
@@ -52,8 +51,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
    * ```typescript
    * const room = await sdk.rooms.createRoom({
    *   name: 'My Private Room',
-   *   description: 'A room for my project',
-   *   isPublic: false
+   *   description: 'A room for my project'
    * });
    * console.log(`Created room: ${room.id}`);
    * ```
@@ -69,8 +67,8 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
       this.validateRoomDescription(options.description);
     }
 
-    // Check room limit for private rooms
-    if (!options.isPublic && !this.canCreateRoom()) {
+    // Check room limit
+    if (!this.canCreateRoom()) {
       throw new SDKError(
         `Room limit reached. Maximum ${this.maxPrivateRooms} private rooms allowed.`,
         ErrorCode.VALIDATION_ERROR

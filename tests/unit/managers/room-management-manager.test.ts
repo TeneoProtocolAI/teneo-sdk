@@ -37,8 +37,7 @@ describe("RoomManagementManager", () => {
     it("should create a room successfully", async () => {
       const roomOptions = {
         name: "Test Room",
-        description: "Test Description",
-        isPublic: false
+        description: "Test Description"
       };
 
       const createdRoom: RoomInfo = {
@@ -108,28 +107,8 @@ describe("RoomManagementManager", () => {
       ]);
 
       await expect(
-        manager.createRoom({ name: "New Room", isPublic: false })
+        manager.createRoom({ name: "New Room" })
       ).rejects.toThrow("Room limit reached");
-    });
-
-    it("should not check limit for public rooms", async () => {
-      manager.setRoomLimit(0);
-
-      const createPromise = manager.createRoom({
-        name: "Public Room",
-        isPublic: true
-      });
-
-      setTimeout(() => {
-        manager.emit("room:created", {
-          id: "room-123",
-          name: "Public Room",
-          is_public: true,
-          is_owner: true
-        } as RoomInfo);
-      }, 10);
-
-      await expect(createPromise).resolves.toBeDefined();
     });
 
     it("should timeout if no response", async () => {

@@ -225,8 +225,7 @@ describe.skip("Room Management Integration Tests", () => {
     it("should create a private room", async () => {
       const roomOptions = {
         name: "Test Private Room",
-        description: "A test private room",
-        isPublic: false
+        description: "A test private room"
       };
 
       const room = await sdk.createRoom(roomOptions);
@@ -246,17 +245,6 @@ describe.skip("Room Management Integration Tests", () => {
       expect(ownedRooms[0].id).toBe(room.id);
     });
 
-    it("should create a public room", async () => {
-      const roomOptions = {
-        name: "Test Public Room",
-        isPublic: true
-      };
-
-      const room = await sdk.createRoom(roomOptions);
-
-      expect(room.is_public).toBe(true);
-      expect(room.name).toBe(roomOptions.name);
-    });
 
     it("should emit room:created event", async () => {
       const roomOptions = {

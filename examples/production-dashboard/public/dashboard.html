@@ -294,10 +294,6 @@
                   placeholder="Description (optional)"
                   class="w-full bg-gray-800 rounded p-2 text-gray-100 border border-gray-600 focus:border-blue-500 focus:outline-none"
                 />
-                <label class="flex items-center text-sm text-gray-400">
-                  <input id="new-room-public" type="checkbox" class="mr-2" />
-                  Public room (visible to everyone)
-                </label>
                 <button
                   id="create-room-btn"
                   class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
@@ -1062,7 +1058,6 @@
         document.getElementById("create-room-btn").addEventListener("click", async () => {
           const name = document.getElementById("new-room-name").value.trim();
           const description = document.getElementById("new-room-desc").value.trim();
-          const isPublic = document.getElementById("new-room-public").checked;
 
           if (!name) {
             addEventItem("Room name is required", "yellow");
@@ -1073,7 +1068,7 @@
             const response = await fetch("/api/v2/rooms", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name, description: description || undefined, isPublic })
+              body: JSON.stringify({ name, description: description || undefined })
             });
 
             const result = await response.json();
@@ -1081,7 +1076,6 @@
             if (response.ok) {
               document.getElementById("new-room-name").value = "";
               document.getElementById("new-room-desc").value = "";
-              document.getElementById("new-room-public").checked = false;
 
               addEventItem(`Created room: ${result.name}`, "green");
               setTimeout(() => {

@@ -859,13 +859,13 @@ app.post("/api/v2/rooms", async (c) => {
   }
 
   try {
-    const { name, description, isPublic } = await c.req.json();
+    const { name, description } = await c.req.json();
 
     if (!name) {
       return c.json({ error: "Room name is required" }, 400);
     }
 
-    const room = await sdk.createRoom({ name, description, isPublic });
+    const room = await sdk.createRoom({ name, description });
     return c.json(room);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

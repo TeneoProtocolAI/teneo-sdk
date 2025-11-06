@@ -292,8 +292,7 @@ Create and manage multiple rooms for different contexts and use cases.
 // Create a new room
 const room = await sdk.createRoom({
   name: "Crypto Research",
-  description: "Room for crypto analysis",
-  isPublic: true
+  description: "Room for crypto analysis"
 });
 console.log(`Created room: ${room.id}`);
 

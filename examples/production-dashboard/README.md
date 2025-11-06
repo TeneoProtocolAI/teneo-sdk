@@ -237,8 +237,7 @@ const config = new SDKConfigBuilder()
   ```json
   {
     "name": "My Room",
-    "description": "Optional description",
-    "isPublic": false
+    "description": "Optional description"
   }
   ```
 - `PUT /api/v2/rooms/:id` - Update room (owner only)

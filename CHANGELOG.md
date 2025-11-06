@@ -16,7 +16,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 #### Phase 1: Room Management System
 
 - **Room CRUD Operations**
-  - `createRoom(name, description?, isPublic?)` - Create new rooms with validation
+  - `createRoom(name, description?)` - Create new private rooms with validation
   - `updateRoom(roomId, updates)` - Update room name/description (owner only)
   - `deleteRoom(roomId)` - Delete owned rooms
 
