@@ -4,8 +4,8 @@ on:
       branches: [main]
 
 permissions:
-  id-token: write  # Required for OIDC
   contents: read
+  id-token: write  # Required for npm provenance/OIDC
 
 jobs:
   publish:
@@ -20,7 +20,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Install dependencies
