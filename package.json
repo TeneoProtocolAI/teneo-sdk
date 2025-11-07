@@ -34,6 +34,14 @@
   ],
   "author": "Teneo Protocol",
   "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Teneo-Protocol/teneo-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Teneo-Protocol/teneo-sdk/issues"
+  },
+  "homepage": "https://github.com/Teneo-Protocol/teneo-sdk#readme",
   "dependencies": {
     "eventemitter3": "^5.0.1",
     "node-fetch": "^3.3.2",
