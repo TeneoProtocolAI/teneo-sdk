@@ -5,7 +5,7 @@ on:
   
 jobs:
   mirror-to-test-repo:
-    if: github.repository == 'Teneo-Protocol/teneo-sdk'
+    if: github.repository_owner == 'Teneo-Protocol'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Repo

@@ -1,0 +1,85 @@
+name: Bug report
+description: File a bug report for teneo-sdk
+title: "<short description of the bug>"
+labels:
+  - "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this issue and help improve teneo-sdk. We'll look into it! 🐛
+
+  - id: issue-type
+    type: dropdown
+    attributes:
+      label: Issue Type
+      description: What type of issue are you reporting?
+      options:
+        - Agent SDK Issue
+        - Network/Protocol Issue
+        - NFT Integration Issue
+        - Build/Dependency Issue
+        - Documentation Issue
+        - Other
+    validations:
+      required: true
+
+  - id: operating-system
+    type: dropdown
+    attributes:
+      label: Operating System
+      description: What operating system are you running?
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - id: description
+    type: textarea
+    attributes:
+      label: Description of the bug
+      description: What happened and what did you expect?
+      placeholder: Describe what went wrong and what you expected to happen instead.
+    validations:
+      required: true
+
+  - id: reproduce
+    type: textarea
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Initialize agent with configuration...
+        2. Call method/function...
+        3. See error
+    validations:
+      required: true
+
+  - id: screenshots
+    type: textarea
+    attributes:
+      label: Screenshots / Videos
+      description: If applicable, add screenshots or videos to help explain your problem
+      placeholder: Drag and drop images/videos here or paste URLs
+
+  - id: sdk-version
+    type: input
+    attributes:
+      label: SDK Version
+      description: Which version of teneo-sdk are you using? (Check your package.json or run `npm list teneo-sdk`)
+      placeholder: e.g., v0.1.0 or commit hash
+
+  - id: go-version
+    type: input
+    attributes:
+      label: Go Version
+      description: Which version of Go are you using? (Run `go version`)
+      placeholder: e.g., go1.21.0
+
+  - id: additional-context
+    type: textarea
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (logs, error messages, etc.)
+      placeholder: Paste error messages, logs, or any other relevant information...
