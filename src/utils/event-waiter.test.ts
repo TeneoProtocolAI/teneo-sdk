@@ -376,6 +376,9 @@ describe("waitForAllEvents", () => {
     emitter.emit("data", { id: 1, value: "first" });
 
     const results = await promise;
-    expect(results).toEqual([{ id: 1, value: "first" }, { id: 2, value: "second" }]);
+    expect(results).toEqual([
+      { id: 1, value: "first" },
+      { id: 2, value: "second" }
+    ]);
   });
 });

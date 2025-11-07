@@ -303,6 +303,30 @@ export interface SDKEvents {
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
   "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;
 
+  // Room Management events (v2.0.0)
+  "room:created": (room: z.infer<typeof RoomInfoSchema>) => void;
+  "room:updated": (room: z.infer<typeof RoomInfoSchema>) => void;
+  "room:deleted": (roomId: string) => void;
+  "room:create_error": (error: Error) => void;
+  "room:update_error": (error: Error, roomId?: string) => void;
+  "room:delete_error": (error: Error, roomId?: string) => void;
+
+  // Agent Room Management events (v2.0.0)
+  "agent_room:agent_added": (roomId: string, agentId: string) => void;
+  "agent_room:agent_removed": (roomId: string, agentId: string) => void;
+  "agent_room:agents_listed": (roomId: string, agents: any[]) => void;
+  "agent_room:available_agents_listed": (agents: any[]) => void;
+  "agent_room:status_update": (data: {
+    roomId: string;
+    agentId: string;
+    status: string;
+    agent?: any;
+  }) => void;
+  "agent_room:add_error": (error: Error, roomId?: string) => void;
+  "agent_room:remove_error": (error: Error, roomId?: string) => void;
+  "agent_room:list_error": (error: Error, roomId?: string) => void;
+  "agent_room:list_available_error": (error: Error) => void;
+
   // Coordinator events
   "coordinator:processing": (userRequest: string) => void;
   "coordinator:selected": (agentId: string, reasoning: string) => void;

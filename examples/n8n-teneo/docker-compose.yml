@@ -1,0 +1,71 @@
+services:
+  # PostgreSQL for n8n
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: n8n
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-n8npassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - teneo-net
+
+  # n8n workflow automation
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-n8npassword}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin}
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - teneo-net
+
+  # Teneo SDK Service
+  teneo-service:
+    build:
+      context: ../..
+      dockerfile: examples/n8n-teneo/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - WS_URL=${WS_URL}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - DEFAULT_ROOM=${DEFAULT_ROOM:-x-agent-enterprise-v2}
+      - PORT=3000
+    networks:
+      - teneo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  n8n_data:
+
+networks:
+  teneo-net:
+    driver: bridge

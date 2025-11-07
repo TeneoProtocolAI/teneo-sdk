@@ -56,6 +56,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private deduplicationCache?: DeduplicationCache;
   private reconnectPolicy: RetryPolicy;
   private roomManager?: any; // Reference to RoomManager for handler context
+  private roomManagementManager?: any; // Reference to RoomManagementManager for handler context (v2.0.0)
+  private agentRoomManager?: any; // Reference to AgentRoomManager for handler context (v2.0.0)
+  private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
 
   private connectionState: ConnectionState = {
     connected: false,
@@ -94,15 +97,13 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     if (config.privateKey) {
       try {
         // Check if privateKey is already a SecurePrivateKey instance (SEC-3)
-        if (typeof config.privateKey === 'object' && 'use' in config.privateKey) {
+        if (typeof config.privateKey === "object" && "use" in config.privateKey) {
           // Use the provided SecurePrivateKey directly
           this.secureKey = config.privateKey;
           this.ownsSecureKey = false; // User provided it, we don't own it
 
           // Create account using the secure key
-          this.account = this.secureKey.use((key) =>
-            privateKeyToAccount(key as `0x${string}`)
-          );
+          this.account = this.secureKey.use((key) => privateKeyToAccount(key as `0x${string}`));
         } else {
           // privateKey is a plain string - encrypt it immediately
           const privateKeyString = config.privateKey as string;
@@ -117,9 +118,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           this.ownsSecureKey = true; // We created it, we own it
 
           // Create account using the secure key
-          this.account = this.secureKey.use((key) =>
-            privateKeyToAccount(key as `0x${string}`)
-          );
+          this.account = this.secureKey.use((key) => privateKeyToAccount(key as `0x${string}`));
         }
 
         if (
@@ -215,6 +214,22 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Sets the room management manager for room CRUD operations (v2.0.0)
+   * @internal
+   */
+  public setRoomManagementManager(roomManagementManager: any): void {
+    this.roomManagementManager = roomManagementManager;
+  }
+
+  /**
+   * Sets the agent room manager for agent-room operations (v2.0.0)
+   * @internal
+   */
+  public setAgentRoomManager(agentRoomManager: any): void {
+    this.agentRoomManager = agentRoomManager;
+  }
+
+  /**
    * Establishes a WebSocket connection to the Teneo server.
    * Handles connection timeout, authentication challenge-response flow,
    * and automatic message queue processing after successful connection.
@@ -240,6 +255,10 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
 
       // Clear any existing connection
       this.disconnect();
+
+      // Reset intentional disconnect flag after clearing connection
+      // This allows automatic reconnection for this new connection
+      this.intentionalDisconnect = false;
 
       // Build connection URL with webhook parameter
       let url = this.config.wsUrl;
@@ -295,7 +314,11 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           if (parseResult.success) {
             this.handleMessage(parseResult.data as BaseMessage);
           } else {
-            this.logger.error("Invalid message format", parseResult.error);
+            // Use warn instead of error - allows SDK to be more resilient
+            this.logger.warn("Received message with unknown or invalid format", {
+              type: rawMessage?.type,
+              error: parseResult.error?.message
+            });
             this.emit(
               "message:error",
               new ValidationError("Invalid message format", parseResult.error),
@@ -361,6 +384,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    */
   public disconnect(): void {
     this.logger.info("Disconnecting from WebSocket server");
+
+    // Mark as intentional disconnect to prevent reconnection
+    this.intentionalDisconnect = true;
 
     // Clear all timers
     if (this.reconnectTimer) {
@@ -490,7 +516,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           this.logger.error("Failed to send message", error);
           reject(error);
         } else {
-          this.logger.debug("Message sent", { type: validatedMessage.type });
+          this.logger.debug("Message sent", validatedMessage);
           this.emit("message:sent", validatedMessage);
           resolve();
         }
@@ -649,6 +675,8 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       updateConnectionState: (update: any) => this.updateConnectionState(update),
       updateAuthState: (update: any) => this.updateAuthState(update),
       roomManager: this.roomManager,
+      roomManagementManager: this.roomManagementManager,
+      agentRoomManager: this.agentRoomManager,
       account: this.account,
       sendMessage: (message: BaseMessage) => this.sendMessage(message)
     };
@@ -795,6 +823,12 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Handle reconnection logic with configurable retry strategy (REL-3)
    */
   private handleReconnection(): void {
+    // Don't reconnect if disconnect was intentional
+    if (this.intentionalDisconnect) {
+      this.logger.debug("Skipping reconnection - disconnect was intentional");
+      return;
+    }
+
     if (!this.config.reconnect || this.connectionState.reconnecting) {
       return;
     }

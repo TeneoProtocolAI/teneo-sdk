@@ -3,65 +3,72 @@
  * Verifies secure encryption, decryption, memory cleanup, and integration with viem
  */
 
-import { SecurePrivateKey } from './secure-private-key';
-import { privateKeyToAccount } from 'viem/accounts';
+import { SecurePrivateKey } from "./secure-private-key";
+import { privateKeyToAccount } from "viem/accounts";
 
-describe('SecurePrivateKey', () => {
+describe("SecurePrivateKey", () => {
   // Test private key (do NOT use in production)
-  const testPrivateKey = '0x1234567890123456789012345678901234567890123456789012345678901234';
+  const testPrivateKey = "0x1234567890123456789012345678901234567890123456789012345678901234";
 
-  describe('constructor', () => {
-    it('should create instance with valid private key', () => {
+  describe("constructor", () => {
+    it("should create instance with valid private key", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       expect(secureKey).toBeInstanceOf(SecurePrivateKey);
       expect(secureKey.isDestroyed()).toBe(false);
       secureKey.destroy();
     });
 
-    it('should throw error with empty private key', () => {
-      expect(() => new SecurePrivateKey('')).toThrow('Private key must be a non-empty string');
+    it("should throw error with empty private key", () => {
+      expect(() => new SecurePrivateKey("")).toThrow("Private key must be a non-empty string");
     });
 
-    it('should throw error with null private key', () => {
-      expect(() => new SecurePrivateKey(null as any)).toThrow('Private key must be a non-empty string');
-    });
-
-    it('should throw error with undefined private key', () => {
-      expect(() => new SecurePrivateKey(undefined as any)).toThrow(
-        'Private key must be a non-empty string'
+    it("should throw error with null private key", () => {
+      expect(() => new SecurePrivateKey(null as any)).toThrow(
+        "Private key must be a non-empty string"
       );
     });
 
-    it('should throw error with non-string private key', () => {
-      expect(() => new SecurePrivateKey(123 as any)).toThrow('Private key must be a non-empty string');
+    it("should throw error with undefined private key", () => {
+      expect(() => new SecurePrivateKey(undefined as any)).toThrow(
+        "Private key must be a non-empty string"
+      );
+    });
+
+    it("should throw error with non-string private key", () => {
+      expect(() => new SecurePrivateKey(123 as any)).toThrow(
+        "Private key must be a non-empty string"
+      );
     });
   });
 
-  describe('use()', () => {
-    it('should decrypt and pass key to callback', () => {
+  describe("use()", () => {
+    it("should decrypt and pass key to callback", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const result = secureKey.use((key) => {
         expect(key).toBe(testPrivateKey);
-        return 'success';
+        return "success";
       });
 
-      expect(result).toBe('success');
+      expect(result).toBe("success");
       secureKey.destroy();
     });
 
-    it('should return callback result', () => {
+    it("should return callback result", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const result = secureKey.use((key) => {
         return { key: key.substring(0, 10), length: key.length };
       });
 
-      expect(result).toEqual({ key: testPrivateKey.substring(0, 10), length: testPrivateKey.length });
+      expect(result).toEqual({
+        key: testPrivateKey.substring(0, 10),
+        length: testPrivateKey.length
+      });
       secureKey.destroy();
     });
 
-    it('should work with async callbacks', async () => {
+    it("should work with async callbacks", async () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const result = await secureKey.use(async (key) => {
@@ -73,7 +80,7 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should allow multiple uses', () => {
+    it("should allow multiple uses", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const result1 = secureKey.use((key) => key.length);
@@ -87,33 +94,33 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should throw if key has been destroyed', () => {
+    it("should throw if key has been destroyed", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       secureKey.destroy();
 
       expect(() => {
         secureKey.use((key) => key);
-      }).toThrow('SecurePrivateKey has been destroyed and can no longer be used');
+      }).toThrow("SecurePrivateKey has been destroyed and can no longer be used");
     });
 
-    it('should propagate errors from callback', () => {
+    it("should propagate errors from callback", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       expect(() => {
         secureKey.use((key) => {
-          throw new Error('Test error');
+          throw new Error("Test error");
         });
-      }).toThrow('Test error');
+      }).toThrow("Test error");
 
       secureKey.destroy();
     });
 
-    it('should clean up even if callback throws', () => {
+    it("should clean up even if callback throws", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       try {
         secureKey.use((key) => {
-          throw new Error('Test error');
+          throw new Error("Test error");
         });
       } catch (error) {
         // Expected
@@ -127,8 +134,8 @@ describe('SecurePrivateKey', () => {
     });
   });
 
-  describe('destroy()', () => {
-    it('should mark instance as destroyed', () => {
+  describe("destroy()", () => {
+    it("should mark instance as destroyed", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       expect(secureKey.isDestroyed()).toBe(false);
 
@@ -136,7 +143,7 @@ describe('SecurePrivateKey', () => {
       expect(secureKey.isDestroyed()).toBe(true);
     });
 
-    it('should be idempotent (safe to call multiple times)', () => {
+    it("should be idempotent (safe to call multiple times)", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       secureKey.destroy();
@@ -146,32 +153,32 @@ describe('SecurePrivateKey', () => {
       expect(secureKey.isDestroyed()).toBe(true);
     });
 
-    it('should prevent further use after destruction', () => {
+    it("should prevent further use after destruction", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       secureKey.destroy();
 
       expect(() => {
         secureKey.use((key) => key);
-      }).toThrow('SecurePrivateKey has been destroyed');
+      }).toThrow("SecurePrivateKey has been destroyed");
     });
   });
 
-  describe('isDestroyed()', () => {
-    it('should return false for new instance', () => {
+  describe("isDestroyed()", () => {
+    it("should return false for new instance", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       expect(secureKey.isDestroyed()).toBe(false);
       secureKey.destroy();
     });
 
-    it('should return true after destruction', () => {
+    it("should return true after destruction", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
       secureKey.destroy();
       expect(secureKey.isDestroyed()).toBe(true);
     });
   });
 
-  describe('encryption/decryption', () => {
-    it('should correctly encrypt and decrypt private key', () => {
+  describe("encryption/decryption", () => {
+    it("should correctly encrypt and decrypt private key", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const decrypted = secureKey.use((key) => key);
@@ -180,8 +187,8 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should handle keys with special characters', () => {
-      const specialKey = '0xABCDEF123456!@#$%^&*()_+-=[]{}|;:,.<>?';
+    it("should handle keys with special characters", () => {
+      const specialKey = "0xABCDEF123456!@#$%^&*()_+-=[]{}|;:,.<>?";
       const secureKey = new SecurePrivateKey(specialKey);
 
       const decrypted = secureKey.use((key) => key);
@@ -190,8 +197,8 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should handle very long keys', () => {
-      const longKey = '0x' + 'a'.repeat(1000);
+    it("should handle very long keys", () => {
+      const longKey = "0x" + "a".repeat(1000);
       const secureKey = new SecurePrivateKey(longKey);
 
       const decrypted = secureKey.use((key) => key);
@@ -200,7 +207,7 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should produce different encrypted data for same key (random IV)', () => {
+    it("should produce different encrypted data for same key (random IV)", () => {
       const secureKey1 = new SecurePrivateKey(testPrivateKey);
       const secureKey2 = new SecurePrivateKey(testPrivateKey);
 
@@ -223,8 +230,8 @@ describe('SecurePrivateKey', () => {
     });
   });
 
-  describe('integration with viem', () => {
-    it('should work with privateKeyToAccount', () => {
+  describe("integration with viem", () => {
+    it("should work with privateKeyToAccount", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const account = secureKey.use((key) => {
@@ -238,14 +245,14 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should allow signing messages with account created from secure key', async () => {
+    it("should allow signing messages with account created from secure key", async () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const account = secureKey.use((key) => {
         return privateKeyToAccount(key as `0x${string}`);
       });
 
-      const message = 'Hello, Teneo!';
+      const message = "Hello, Teneo!";
       const signature = await account.signMessage({ message });
 
       expect(signature).toBeDefined();
@@ -255,7 +262,7 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should create consistent account address across multiple uses', () => {
+    it("should create consistent account address across multiple uses", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const address1 = secureKey.use((key) => {
@@ -272,8 +279,8 @@ describe('SecurePrivateKey', () => {
     });
   });
 
-  describe('security properties', () => {
-    it('should not expose private key in toString()', () => {
+  describe("security properties", () => {
+    it("should not expose private key in toString()", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const stringified = String(secureKey);
@@ -283,7 +290,7 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should not expose private key in JSON.stringify()', () => {
+    it("should not expose private key in JSON.stringify()", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       const jsonString = JSON.stringify(secureKey);
@@ -293,7 +300,7 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should not expose private key when inspecting object', () => {
+    it("should not expose private key when inspecting object", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       // Try to access private properties (they're still accessible via 'any' but not exposed)
@@ -307,23 +314,23 @@ describe('SecurePrivateKey', () => {
       secureKey.destroy();
     });
 
-    it('should store key encrypted in memory', () => {
+    it("should store key encrypted in memory", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       // Access encrypted buffer via any
       const encrypted = (secureKey as any).encrypted as Buffer;
 
       // Encrypted data should not contain the plaintext key
-      const encryptedString = encrypted.toString('utf8');
+      const encryptedString = encrypted.toString("utf8");
       expect(encryptedString).not.toContain(testPrivateKey);
-      expect(encryptedString).not.toContain('1234567890');
+      expect(encryptedString).not.toContain("1234567890");
 
       secureKey.destroy();
     });
   });
 
-  describe('memory cleanup', () => {
-    it('should zero out encryption key on destroy', () => {
+  describe("memory cleanup", () => {
+    it("should zero out encryption key on destroy", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       // Get reference to encryption key before destroy
@@ -338,7 +345,7 @@ describe('SecurePrivateKey', () => {
       expect(encryptionKey.every((byte) => byte === 0)).toBe(true);
     });
 
-    it('should zero out encrypted buffer on destroy', () => {
+    it("should zero out encrypted buffer on destroy", () => {
       const secureKey = new SecurePrivateKey(testPrivateKey);
 
       // Get reference to encrypted buffer before destroy

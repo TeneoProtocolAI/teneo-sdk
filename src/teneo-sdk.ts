@@ -12,7 +12,6 @@ import {
   PartialSDKConfigSchema,
   SDKConfigBuilder,
   Agent,
-  Room,
   RoomInfo,
   Logger,
   validateConfig,
@@ -32,6 +31,8 @@ import {
 import {
   ConnectionManager,
   RoomManager,
+  RoomManagementManager,
+  AgentRoomManager,
   AgentRegistry,
   MessageRouter,
   SendMessageOptions,
@@ -71,6 +72,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   // Managers
   private readonly connection: ConnectionManager;
   private readonly rooms: RoomManager;
+  private readonly roomManagement: RoomManagementManager;
+  private readonly agentRoom: AgentRoomManager;
   private readonly agents: AgentRegistry;
   private readonly messages: MessageRouter;
 
@@ -149,7 +152,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Initialize managers
       this.connection = new ConnectionManager(this.wsClient, this.logger);
       this.rooms = new RoomManager(this.wsClient, this.logger);
+      this.roomManagement = new RoomManagementManager(this.wsClient, this.logger);
+      this.agentRoom = new AgentRoomManager(this.wsClient, this.logger, this.roomManagement);
       this.wsClient.setRoomManager(this.rooms); // Enable subscription tracking in handlers
+      this.wsClient.setRoomManagementManager(this.roomManagement); // Enable room CRUD in handlers (v2.0.0)
+      this.wsClient.setAgentRoomManager(this.agentRoom); // Enable agent-room operations in handlers (v2.0.0)
       this.agents = new AgentRegistry(this.logger);
       this.messages = new MessageRouter(
         this.wsClient,
@@ -290,8 +297,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public async sendDirectCommand(command: AgentCommand): Promise<FormattedResponse | void> {
-    return this.messages.sendDirectCommand(command);
+  public async sendDirectCommand(
+    command: AgentCommand,
+    waitForResponse: boolean = false
+  ): Promise<FormattedResponse | void> {
+    return this.messages.sendDirectCommand(command, waitForResponse);
   }
 
   /**
@@ -498,7 +508,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public getRooms(): ReadonlyArray<Room> {
+  public getRooms(): ReadonlyArray<RoomInfo> {
     return this.rooms.getRooms();
   }
 
@@ -520,8 +530,385 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
-  public getRoom(roomId: string): Room | undefined {
+  public getRoom(roomId: string): RoomInfo | undefined {
     return this.rooms.getRoom(roomId);
+  }
+
+  // ============================================================================
+  // ROOM MANAGEMENT API (v2.0.0)
+  // ============================================================================
+
+  /**
+   * Creates a new private or public room.
+   * Checks room limit before creating (for private rooms).
+   * Emits 'room:created' event on success, 'room:create_error' on failure.
+   *
+   * @param options - Room creation options
+   * @param options.name - Room name (1-100 characters)
+   * @param options.description - Optional room description (max 500 characters)
+   * @param options.isPublic - Whether room is public (default: false)
+   * @returns Promise that resolves with created room info
+   * @throws {SDKError} If not connected, over limit, or validation fails
+   *
+   * @example
+   * ```typescript
+   * const room = await sdk.createRoom({
+   *   name: 'My Project Room',
+   *   description: 'Collaboration space for my project',
+   *   isPublic: false
+   * });
+   * console.log(`Created room: ${room.id}`);
+   * ```
+   */
+  public async createRoom(options: {
+    name: string;
+    description?: string;
+    isPublic?: boolean;
+  }): Promise<RoomInfo> {
+    return this.roomManagement.createRoom(options);
+  }
+
+  /**
+   * Updates an existing room's name and/or description.
+   * User must own the room to update it.
+   * Emits 'room:updated' event on success, 'room:update_error' on failure.
+   *
+   * @param roomId - ID of room to update
+   * @param updates - Fields to update
+   * @param updates.name - New room name (1-100 characters)
+   * @param updates.description - New room description (max 500 characters)
+   * @returns Promise that resolves with updated room info
+   * @throws {SDKError} If not connected, not owner, or validation fails
+   *
+   * @example
+   * ```typescript
+   * const room = await sdk.updateRoom('room-123', {
+   *   name: 'Updated Room Name',
+   *   description: 'New description'
+   * });
+   * ```
+   */
+  public async updateRoom(
+    roomId: string,
+    updates: { name?: string; description?: string }
+  ): Promise<RoomInfo> {
+    return this.roomManagement.updateRoom(roomId, updates);
+  }
+
+  /**
+   * Deletes a room permanently.
+   * User must own the room to delete it.
+   * Emits 'room:deleted' event on success, 'room:delete_error' on failure.
+   *
+   * @param roomId - ID of room to delete
+   * @returns Promise that resolves when room is deleted
+   * @throws {SDKError} If not connected or not owner
+   *
+   * @example
+   * ```typescript
+   * await sdk.deleteRoom('room-123');
+   * console.log('Room deleted successfully');
+   * ```
+   */
+  public async deleteRoom(roomId: string): Promise<void> {
+    return this.roomManagement.deleteRoom(roomId);
+  }
+
+  /**
+   * Gets all rooms owned by the current user.
+   * Synchronous method that returns cached data from authentication.
+   *
+   * @returns Array of owned room info
+   *
+   * @example
+   * ```typescript
+   * const myRooms = sdk.getOwnedRooms();
+   * console.log(`I own ${myRooms.length} rooms`);
+   * myRooms.forEach(room => {
+   *   console.log(`- ${room.name} (${room.id})`);
+   * });
+   * ```
+   */
+  public getOwnedRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return this.roomManagement.getOwnedRooms();
+  }
+
+  /**
+   * Gets all rooms the user is a member of (but doesn't own).
+   * Synchronous method that returns cached data from authentication.
+   *
+   * @returns Array of shared room info
+   *
+   * @example
+   * ```typescript
+   * const sharedRooms = sdk.getSharedRooms();
+   * console.log(`I'm a member of ${sharedRooms.length} shared rooms`);
+   * ```
+   */
+  public getSharedRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return this.roomManagement.getSharedRooms();
+  }
+
+  /**
+   * Gets all rooms the user has access to (both owned and shared).
+   * Convenience method that combines getOwnedRooms() and getSharedRooms().
+   * Synchronous method that returns cached data from authentication.
+   *
+   * @returns Array of all room info (owned + shared)
+   *
+   * @example
+   * ```typescript
+   * const allRooms = sdk.getAllRooms();
+   * console.log(`I have access to ${allRooms.length} total rooms`);
+   *
+   * // You can filter by ownership if needed
+   * const myRooms = allRooms.filter(r => r.is_owner);
+   * const sharedWithMe = allRooms.filter(r => !r.is_owner);
+   * ```
+   */
+  public getAllRooms(): ReadonlyArray<Readonly<RoomInfo>> {
+    return this.roomManagement.getAllRooms();
+  }
+
+  /**
+   * Gets the maximum number of private rooms the user can create.
+   * Based on user's subscription/plan.
+   *
+   * @returns Maximum private room limit
+   *
+   * @example
+   * ```typescript
+   * const limit = sdk.getRoomLimit();
+   * const current = sdk.getOwnedRoomCount();
+   * console.log(`Using ${current}/${limit} room slots`);
+   * ```
+   */
+  public getRoomLimit(): number {
+    return this.roomManagement.getRoomLimit();
+  }
+
+  /**
+   * Gets the current count of owned private rooms.
+   *
+   * @returns Number of rooms user owns
+   *
+   * @example
+   * ```typescript
+   * const count = sdk.getOwnedRoomCount();
+   * if (sdk.canCreateRoom()) {
+   *   console.log(`Can create ${sdk.getRoomLimit() - count} more rooms`);
+   * }
+   * ```
+   */
+  public getOwnedRoomCount(): number {
+    return this.roomManagement.getOwnedRoomCount();
+  }
+
+  /**
+   * Checks if user can create another private room.
+   * Compares current owned room count against limit.
+   *
+   * @returns True if under limit, false otherwise
+   *
+   * @example
+   * ```typescript
+   * if (sdk.canCreateRoom()) {
+   *   await sdk.createRoom({ name: 'New Room' });
+   * } else {
+   *   console.log('Room limit reached! Upgrade your plan.');
+   * }
+   * ```
+   */
+  public canCreateRoom(): boolean {
+    return this.roomManagement.canCreateRoom();
+  }
+
+  // ============================================================================
+  // AGENT ROOM MANAGEMENT API (v2.0.0)
+  // ============================================================================
+
+  /**
+   * Adds an agent to a room. Only room owners can add agents.
+   * Emits 'agent_room:agent_added' on success, 'agent_room:add_error' on failure.
+   *
+   * @param roomId - ID of the room to add the agent to
+   * @param agentId - ID of the agent to add
+   * @returns Promise that resolves when agent is added
+   * @throws {SDKError} If not connected, not owner, or agent already in room
+   *
+   * @example
+   * ```typescript
+   * await sdk.addAgentToRoom('room-123', 'weather-agent');
+   * console.log('Agent added to room');
+   * ```
+   */
+  public async addAgentToRoom(roomId: string, agentId: string): Promise<void> {
+    return this.agentRoom.addAgentToRoom(roomId, agentId);
+  }
+
+  /**
+   * Removes an agent from a room. Only room owners can remove agents.
+   * Emits 'agent_room:agent_removed' on success, 'agent_room:remove_error' on failure.
+   *
+   * @param roomId - ID of the room to remove the agent from
+   * @param agentId - ID of the agent to remove
+   * @returns Promise that resolves when agent is removed
+   * @throws {SDKError} If not connected, not owner, or agent not in room
+   *
+   * @example
+   * ```typescript
+   * await sdk.removeAgentFromRoom('room-123', 'weather-agent');
+   * console.log('Agent removed from room');
+   * ```
+   */
+  public async removeAgentFromRoom(roomId: string, agentId: string): Promise<void> {
+    return this.agentRoom.removeAgentFromRoom(roomId, agentId);
+  }
+
+  /**
+   * Lists all agents in a room.
+   * Results are cached for 5 minutes for performance.
+   * Emits 'agent_room:agents_listed' when list is received.
+   *
+   * @param roomId - ID of the room to list agents for
+   * @param useCache - Whether to use cached data if available (default: true)
+   * @returns Promise that resolves to array of agents in the room
+   * @throws {SDKError} If not connected
+   *
+   * @example
+   * ```typescript
+   * const agents = await sdk.listRoomAgents('room-123');
+   * console.log(`Room has ${agents.length} agents`);
+   * agents.forEach(agent => {
+   *   console.log(`- ${agent.agent_name} (${agent.status})`);
+   * });
+   * ```
+   */
+  public async listRoomAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
+    return this.agentRoom.listRoomAgents(roomId, useCache);
+  }
+
+  /**
+   * Lists all agents available to be added to a room.
+   * Shows agents not currently in the room.
+   * Results are cached for 5 minutes for performance.
+   * Emits 'agent_room:available_agents_listed' when list is received.
+   *
+   * @param roomId - ID of the room to check available agents for
+   * @param useCache - Whether to use cached data if available (default: true)
+   * @returns Promise that resolves to array of available agents
+   * @throws {SDKError} If not connected
+   *
+   * @example
+   * ```typescript
+   * const available = await sdk.listAvailableAgents('room-123');
+   * console.log(`${available.length} agents available to add`);
+   * ```
+   */
+  public async listAvailableAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
+    return this.agentRoom.listAvailableAgents(roomId, useCache);
+  }
+
+  /**
+   * Gets agents in a room from cache (synchronous).
+   * Returns undefined if not cached. Use listRoomAgents() to fetch.
+   *
+   * @param roomId - ID of the room
+   * @returns Array of agents if cached, undefined otherwise
+   *
+   * @example
+   * ```typescript
+   * const agents = sdk.getRoomAgents('room-123');
+   * if (agents) {
+   *   console.log(`${agents.length} agents (cached)`);
+   * } else {
+   *   await sdk.listRoomAgents('room-123'); // Fetch from server
+   * }
+   * ```
+   */
+  public getRoomAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getRoomAgents(roomId);
+  }
+
+  /**
+   * Gets available agents for a room from cache (synchronous).
+   * Returns undefined if not cached. Use listAvailableAgents() to fetch.
+   *
+   * @param roomId - ID of the room
+   * @returns Array of available agents if cached, undefined otherwise
+   *
+   * @example
+   * ```typescript
+   * const available = sdk.getAvailableAgents('room-123');
+   * if (available) {
+   *   console.log(`${available.length} agents available (cached)`);
+   * }
+   * ```
+   */
+  public getAvailableAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getAvailableAgents(roomId);
+  }
+
+  /**
+   * Checks if an agent is in a room (synchronous, from cache).
+   * Returns undefined if room data not cached.
+   *
+   * @param roomId - ID of the room
+   * @param agentId - ID of the agent
+   * @returns True if agent is in room, false if not, undefined if not cached
+   *
+   * @example
+   * ```typescript
+   * const inRoom = sdk.isAgentInRoom('room-123', 'weather-agent');
+   * if (inRoom === true) {
+   *   console.log('Agent is in room');
+   * } else if (inRoom === false) {
+   *   console.log('Agent is not in room');
+   * } else {
+   *   console.log('Room data not cached');
+   * }
+   * ```
+   */
+  public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    return this.agentRoom.isAgentInRoom(roomId, agentId);
+  }
+
+  /**
+   * Gets the count of agents in a room (synchronous, from cache).
+   * Returns undefined if room data not cached.
+   *
+   * @param roomId - ID of the room
+   * @returns Number of agents in room, or undefined if not cached
+   *
+   * @example
+   * ```typescript
+   * const count = sdk.getRoomAgentCount('room-123');
+   * if (count !== undefined) {
+   *   console.log(`Room has ${count} agents`);
+   * }
+   * ```
+   */
+  public getRoomAgentCount(roomId: string): number | undefined {
+    return this.agentRoom.getRoomAgentCount(roomId);
+  }
+
+  /**
+   * Invalidates the agent-room cache for a specific room.
+   * Forces the next listRoomAgents() or listAvailableAgents() call to fetch fresh data.
+   * Useful after bulk operations or when you know the cache is stale.
+   *
+   * @param roomId - ID of the room to invalidate cache for
+   *
+   * @example
+   * ```typescript
+   * // After adding/removing agents
+   * await sdk.addAgentToRoom('room-123', 'agent-456');
+   * sdk.invalidateAgentRoomCache('room-123');
+   * const freshAgents = await sdk.listRoomAgents('room-123');
+   * ```
+   */
+  public invalidateAgentRoomCache(roomId: string): void {
+    this.agentRoom.invalidateCache(roomId);
   }
 
   /**
@@ -720,6 +1107,39 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Gets the current message deduplication cache status (CB-4).
+   * Returns statistics about the deduplication cache including size, TTL, and capacity.
+   * Useful for monitoring deduplication behavior and cache health.
+   * Returns undefined if deduplication is not configured or disabled.
+   *
+   * @returns Deduplication cache status object, or undefined if not configured
+   * @returns {number} returns.cacheSize - Number of message IDs currently cached
+   * @returns {number} returns.ttl - Time-to-live for cache entries in milliseconds
+   * @returns {number} returns.maxSize - Maximum cache size capacity
+   *
+   * @example
+   * ```typescript
+   * const status = sdk.getDeduplicationStatus();
+   * if (status) {
+   *   console.log(`Cache: ${status.cacheSize}/${status.maxSize}`);
+   *   console.log(`Utilization: ${(status.cacheSize / status.maxSize * 100).toFixed(1)}%`);
+   *   console.log(`TTL: ${status.ttl}ms`);
+   * } else {
+   *   console.log('Deduplication not enabled');
+   * }
+   * ```
+   */
+  public getDeduplicationStatus():
+    | {
+        cacheSize: number;
+        ttl: number;
+        maxSize: number;
+      }
+    | undefined {
+    return this.wsClient.getDeduplicationStatus();
+  }
+
+  /**
    * Retries all failed webhook deliveries in the queue.
    * Resets attempt counters and immediately attempts to deliver all failed webhooks.
    * Useful for recovering from temporary network issues or webhook endpoint downtime.
@@ -915,12 +1335,27 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.connection.on("auth:success", (state) => {
       this.logger.debug("Received auth:success event in SDK", {
         authenticated: state?.authenticated,
-        hasRooms: !!state?.roomObjects
+        hasRooms: !!state?.roomObjects,
+        ownedRooms: state?.privateRoomIds?.length || 0,
+        sharedRooms: state?.sharedRoomIds?.length || 0
       });
 
       // Update rooms from auth state
       if (state.roomObjects) {
         this.rooms.updateRoomsFromAuth(state.roomObjects);
+      }
+
+      // Ensure RoomManagementManager is synced with auth state
+      // This handles cases where auth handlers might have already set it, but ensures consistency
+      if (state.roomObjects && state.roomObjects.length > 0) {
+        const ownedRooms = state.roomObjects.filter((r) => r.is_owner);
+        const sharedRooms = state.roomObjects.filter((r) => !r.is_owner);
+        this.roomManagement.setOwnedRooms(ownedRooms);
+        this.roomManagement.setSharedRooms(sharedRooms);
+
+        if (state.maxPrivateRooms) {
+          this.roomManagement.setRoomLimit(state.maxPrivateRooms);
+        }
       }
 
       this.emit("auth:success", state);
@@ -953,13 +1388,111 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.agents.updateAgents(agents);
     });
 
-    // Forward room events from WebSocketClient (emitted by handlers)
+    // Forward room events from WebSocketClient (emitted by room subscription handlers)
     this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
     this.wsClient.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
 
-    // Forward room events from RoomManager (if any direct emissions are added later)
-    this.rooms.on("room:subscribed", (data) => this.emit("room:subscribed", data));
-    this.rooms.on("room:unsubscribed", (data) => this.emit("room:unsubscribed", data));
+    // Forward room management events from WebSocketClient (emitted by handlers) (v2.0.0)
+    // These events are emitted by message handlers, so we listen on wsClient
+    // We forward to RoomManagementManager first (for promise resolution), then emit on SDK
+    this.wsClient.on("room:created", (room) => {
+      // Update RoomManagementManager cache
+      this.roomManagement.upsertRoom(room);
+      // Emit on RoomManagementManager for promise resolution (see createRoom method)
+      this.roomManagement.emit("room:created", room);
+      // Emit on SDK for external listeners
+      this.emit("room:created", room);
+    });
+    this.wsClient.on("room:updated", (room) => {
+      // Update RoomManagementManager cache
+      this.roomManagement.upsertRoom(room);
+      // Emit on RoomManagementManager for promise resolution (see updateRoom method)
+      this.roomManagement.emit("room:updated", room);
+      // Emit on SDK for external listeners
+      this.emit("room:updated", room);
+    });
+    this.wsClient.on("room:deleted", (roomId) => {
+      // Remove from RoomManagementManager cache
+      this.roomManagement.removeRoom(roomId);
+      // Emit on RoomManagementManager for promise resolution (see deleteRoom method)
+      this.roomManagement.emit("room:deleted", roomId);
+      // Emit on SDK for external listeners
+      this.emit("room:deleted", roomId);
+    });
+    this.wsClient.on("room:create_error", (error) => {
+      // Emit on RoomManagementManager for promise rejection
+      this.roomManagement.emit("room:create_error", error);
+      // Emit on SDK for external listeners
+      this.emit("room:create_error", error);
+    });
+    this.wsClient.on("room:update_error", (error, roomId) => {
+      // Emit on RoomManagementManager for promise rejection
+      this.roomManagement.emit("room:update_error", error, roomId);
+      // Emit on SDK for external listeners
+      this.emit("room:update_error", error, roomId);
+    });
+    this.wsClient.on("room:delete_error", (error, roomId) => {
+      // Emit on RoomManagementManager for promise rejection
+      this.roomManagement.emit("room:delete_error", error, roomId);
+      // Emit on SDK for external listeners
+      this.emit("room:delete_error", error, roomId);
+    });
+
+    // Forward agent room management events from WebSocketClient (emitted by handlers) (v2.0.0)
+    // These events are emitted by message handlers, so we listen on wsClient
+    // We forward to AgentRoomManager first (for promise resolution), then emit on SDK
+    this.wsClient.on("agent_room:agent_added", (roomId, agentId) => {
+      // Emit on AgentRoomManager for promise resolution (see addAgentToRoom method)
+      this.agentRoom.emit("agent_room:agent_added", roomId, agentId);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:agent_added", roomId, agentId);
+    });
+    this.wsClient.on("agent_room:agent_removed", (roomId, agentId) => {
+      // Emit on AgentRoomManager for promise resolution (see removeAgentFromRoom method)
+      this.agentRoom.emit("agent_room:agent_removed", roomId, agentId);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:agent_removed", roomId, agentId);
+    });
+    this.wsClient.on("agent_room:agents_listed", (roomId, agents) => {
+      // Emit on AgentRoomManager for promise resolution
+      this.agentRoom.emit("agent_room:agents_listed", roomId, agents);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:agents_listed", roomId, agents);
+    });
+    this.wsClient.on("agent_room:available_agents_listed", (agents) => {
+      // Emit on AgentRoomManager for promise resolution
+      this.agentRoom.emit("agent_room:available_agents_listed", agents);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:available_agents_listed", agents);
+    });
+    this.wsClient.on("agent_room:status_update", (data) => {
+      // Emit on SDK for external listeners
+      this.emit("agent_room:status_update", data);
+    });
+    this.wsClient.on("agent_room:add_error", (error, roomId) => {
+      // Emit on AgentRoomManager for promise rejection
+      this.agentRoom.emit("agent_room:add_error", error, roomId);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:add_error", error, roomId);
+    });
+    this.wsClient.on("agent_room:remove_error", (error, roomId) => {
+      // Emit on AgentRoomManager for promise rejection
+      this.agentRoom.emit("agent_room:remove_error", error, roomId);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:remove_error", error, roomId);
+    });
+    this.wsClient.on("agent_room:list_error", (error, roomId) => {
+      // Emit on AgentRoomManager for promise rejection
+      this.agentRoom.emit("agent_room:list_error", error, roomId);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:list_error", error, roomId);
+    });
+    this.wsClient.on("agent_room:list_available_error", (error) => {
+      // Emit on AgentRoomManager for promise rejection
+      this.agentRoom.emit("agent_room:list_available_error", error);
+      // Emit on SDK for external listeners
+      this.emit("agent_room:list_available_error", error);
+    });
 
     // Forward webhook events from WebhookHandler
     this.webhookHandler.on("webhook:sent", (payload, url) =>

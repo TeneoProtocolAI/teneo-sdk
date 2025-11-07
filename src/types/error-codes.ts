@@ -38,6 +38,10 @@ export enum ErrorCode {
   // Rate limit
   RATE_LIMIT = "RATE_LIMIT",
 
+  // Room Management errors (v2.0.0)
+  OPERATION_FAILED = "OPERATION_FAILED",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+
   // Generic timeout (for backward compatibility)
   TIMEOUT_ERROR = "TIMEOUT_ERROR",
   TIMEOUT = "TIMEOUT"

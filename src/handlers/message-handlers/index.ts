@@ -22,6 +22,11 @@ export { PingHandler, PongHandler } from "./ping-pong-handler";
 export { SubscribeResponseHandler } from "./subscribe-response-handler";
 export { UnsubscribeResponseHandler } from "./unsubscribe-response-handler";
 export { ListRoomsResponseHandler } from "./list-rooms-response-handler";
+export { RoomOperationResponseHandler } from "./room-operation-response-handler";
+export { AgentRoomOperationResponseHandler } from "./agent-room-operation-response-handler";
+export { ListRoomAgentsHandler } from "./list-room-agents-handler";
+export { ListAvailableAgentsHandler } from "./list-available-agents-handler";
+export { AgentStatusUpdateHandler } from "./agent-status-update-handler";
 
 // Import for convenience function
 import { TaskResponseHandler } from "./task-response-handler";
@@ -38,6 +43,11 @@ import { PingHandler, PongHandler } from "./ping-pong-handler";
 import { SubscribeResponseHandler } from "./subscribe-response-handler";
 import { UnsubscribeResponseHandler } from "./unsubscribe-response-handler";
 import { ListRoomsResponseHandler } from "./list-rooms-response-handler";
+import { RoomOperationResponseHandler } from "./room-operation-response-handler";
+import { AgentRoomOperationResponseHandler } from "./agent-room-operation-response-handler";
+import { ListRoomAgentsHandler } from "./list-room-agents-handler";
+import { ListAvailableAgentsHandler } from "./list-available-agents-handler";
+import { AgentStatusUpdateHandler } from "./agent-status-update-handler";
 import { MessageHandler } from "./types";
 
 /**
@@ -69,6 +79,15 @@ export function getDefaultHandlers(
     new SubscribeResponseHandler(),
     new UnsubscribeResponseHandler(),
     new ListRoomsResponseHandler(),
+
+    // Room Management handlers (v2.0.0)
+    new RoomOperationResponseHandler(),
+
+    // Agent Room Management handlers (v2.0.0)
+    new AgentRoomOperationResponseHandler(),
+    new ListRoomAgentsHandler(),
+    new ListAvailableAgentsHandler(),
+    new AgentStatusUpdateHandler(),
 
     // Keepalive handlers
     new PingHandler(),

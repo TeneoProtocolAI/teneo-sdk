@@ -55,6 +55,33 @@ export {
   RoomInfoSchema,
   ListRoomsResponseSchema,
 
+  // Room Management schemas (v2.0.0)
+  CreateRoomMessageSchema,
+  UpdateRoomMessageSchema,
+  DeleteRoomMessageSchema,
+  RoomOperationResponseSchema,
+  RoomMemberInfoSchema,
+  AddRoomMemberMessageSchema,
+  RemoveRoomMemberMessageSchema,
+  ListRoomMembersMessageSchema,
+  RoomMembersResponseSchema,
+  RoomMemberOperationResponseSchema,
+
+  // Agent Room Management schemas (v2.0.0)
+  AgentRoomInfoSchema,
+  AddAgentToRoomMessageSchema,
+  RemoveAgentFromRoomMessageSchema,
+  ListRoomAgentsMessageSchema,
+  ListAvailableAgentsMessageSchema,
+  AgentStatusUpdateMessageSchema,
+  RoomAgentsResponseSchema,
+  AvailableAgentsResponseSchema,
+  AgentRoomOperationResponseSchema,
+
+  // Room Ping schemas (v2.0.0)
+  RoomPingMessageSchema,
+  RoomPongResponseSchema,
+
   // Union schema
   AnyMessageSchema,
 
@@ -93,6 +120,34 @@ export {
   type UnsubscribeResponse,
   type RoomInfo,
   type ListRoomsResponse,
+
+  // Room Management types (v2.0.0)
+  type CreateRoomMessage,
+  type UpdateRoomMessage,
+  type DeleteRoomMessage,
+  type RoomOperationResponse,
+  type RoomMemberInfo,
+  type AddRoomMemberMessage,
+  type RemoveRoomMemberMessage,
+  type ListRoomMembersMessage,
+  type RoomMembersResponse,
+  type RoomMemberOperationResponse,
+
+  // Agent Room Management types (v2.0.0)
+  type AgentRoomInfo,
+  type AddAgentToRoomMessage,
+  type RemoveAgentFromRoomMessage,
+  type ListRoomAgentsMessage,
+  type ListAvailableAgentsMessage,
+  type AgentStatusUpdateMessage,
+  type RoomAgentsResponse,
+  type AvailableAgentsResponse,
+  type AgentRoomOperationResponse,
+
+  // Room Ping types (v2.0.0)
+  type RoomPingMessage,
+  type RoomPongResponse,
+
   type AnyMessage,
 
   // Type guards
