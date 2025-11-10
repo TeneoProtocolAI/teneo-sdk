@@ -30,7 +30,7 @@ import { TeneoSDK } from "@teneo-protocol/sdk";
 
 // 1. Initialize with your Ethereum private key
 const sdk = new TeneoSDK({
-  wsUrl: "wss://your-teneo-server.com/ws",
+  wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "your_private_key_here" // No 0x prefix
 });
 
@@ -135,7 +135,7 @@ pnpm run build
 
 # Set credentials
 export PRIVATE_KEY=your_private_key
-export TENEO_WS_URL=wss://your-teneo-server.com/ws
+export TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 ```
 
 ### Production Dashboard Example
@@ -649,7 +649,7 @@ sdk.on("room:unsubscribed", (data) => {
 
 ```typescript
 const sdk = new TeneoSDK({
-  wsUrl: "wss://your-teneo-server.com/ws",
+  wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "your_key", // No 0x prefix
   defaultRoom: "general",
   reconnect: true,
@@ -667,7 +667,7 @@ const secureKey = new SecurePrivateKey(process.env.PRIVATE_KEY!);
 
 const config = new SDKConfigBuilder()
   // Required
-  .withWebSocketUrl("wss://your-teneo-server.com/ws")
+  .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
   .withAuthentication(secureKey) // Encrypted key
 
   // Rooms
@@ -721,7 +721,7 @@ const sdk = new TeneoSDK(config);
 Create `.env`:
 
 ```bash
-TENEO_WS_URL=wss://your-teneo-server.com/ws
+TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 PRIVATE_KEY=your_private_key_without_0x
 WALLET_ADDRESS=0xYourWalletAddress
 DEFAULT_ROOM=general
