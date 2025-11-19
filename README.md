@@ -282,6 +282,39 @@ console.log("Circuit state:", status.circuitState); // OPEN/CLOSED/HALF_OPEN
 
 ---
 
+## WebSocket Endpoints
+
+The Teneo SDK supports two deployment environments via different WebSocket endpoints:
+
+### Development Platform (Testing)
+
+- **URL**: `wss://backend.developer.chatroom.teneo-protocol.ai/ws`
+- **Whitelist**: Not required - open for testing
+- **Use case**: Development, testing, and experimentation
+
+**Configuration:**
+```bash
+# .env file
+TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
+```
+
+### Production Platform (B2B)
+
+- **URL**: `wss://backend.chatroom.teneo-protocol.ai/ws`
+- **Whitelist**: **Required** - you must be whitelisted to use this endpoint
+- **Use case**: Production applications and B2B integrations
+- **Get access**: Request whitelist access at [https://teneo-protocol.ai/chat-room](https://teneo-protocol.ai/chat-room)
+
+**Configuration:**
+```bash
+# .env file
+TENEO_WS_URL=wss://backend.chatroom.teneo-protocol.ai/ws
+```
+
+
+> **Note**: The SDK uses the **development endpoint by default**. For production use, you need to be whitelisted and explicitly configure the production URL. Use the development endpoint for testing without restrictions.
+
+---
 ## 🏠 Room Management API
 
 Create and manage multiple rooms for different contexts and use cases.
