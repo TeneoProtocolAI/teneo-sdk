@@ -40,6 +40,15 @@ export interface HandlerContext {
   // Agent room manager for agent-room operations (v2.0.0, optional)
   agentRoomManager?: any;
 
+  // Payment manager for X402 payment flow (optional)
+  paymentManager?: any;
+
+  // Admin manager for admin-only features (optional)
+  adminManager?: any;
+
+  // Agent registry for agent details lookups (optional)
+  agentRegistry?: any;
+
   // Account for signing (optional, for auth handlers)
   account?: PrivateKeyAccount;
 
