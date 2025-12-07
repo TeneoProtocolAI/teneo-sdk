@@ -35,7 +35,7 @@ const sdk = new TeneoSDK({
   privateKey: "0xYourPrivateKey"
 });
 
-// 2. Listen for responses
+// 2. Set up event listeners (can be done before connecting!)
 sdk.on("agent:response", (response) => {
   console.log(`${response.agentName}: ${response.humanized}`);
 });
@@ -47,17 +47,15 @@ await sdk.connect();
 const rooms = await sdk.listRooms();
 console.log(`You have access to ${rooms.length} rooms`);
 
-// 5. Subscribe to a room
-const myRoom = rooms[0];
-await sdk.subscribeToRoom(myRoom.id);
-
-// 6. Send a message to the room
-await sdk.sendMessage("What's the weather in NYC?", { room: myRoom.id });
+// 5. Send a message to a room
+// Note: For private rooms, you're always subscribed automatically
+// For public rooms, you need to subscribe first with sdk.subscribeToRoom(roomId)
+await sdk.sendMessage("What's the weather in NYC?", { room: rooms[0].id });
 
 // The coordinator will select the best agent and return the results
 ```
 
-**Important:** Messages must be sent to a room. You can use your private rooms or create new ones.
+**Important:** Messages must be sent to a room. Private rooms are always subscribed; public rooms require explicit subscription.
 
 ---
 
@@ -355,6 +353,10 @@ sdk.on("webhook:error", (error) => console.error("Webhook failed:", error.messag
 ## Room Management API
 
 Create and manage multiple rooms for different contexts.
+
+> **Note on Room Types:**
+> - **Private rooms**: You're automatically subscribed. No need to call `subscribeToRoom()`.
+> - **Public rooms**: Require explicit subscription via `subscribeToRoom()` to receive messages.
 
 ### Creating Rooms
 

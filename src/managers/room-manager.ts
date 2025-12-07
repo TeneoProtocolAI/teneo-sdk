@@ -59,19 +59,21 @@ export class RoomManager extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a room in the Teneo Protocol.
+   * Unsubscribes from a public room in the Teneo Protocol.
    * Validates room ID and sends unsubscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:unsubscribed event.
    *
-   * @param roomId - The ID of the room to unsubscribe from
+   * Note: This only applies to public rooms. Private rooms cannot be unsubscribed from.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
    * @returns Promise that resolves when unsubscribed
    * @throws {SDKError} If not connected to the network
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await roomManager.unsubscribeFromRoom('general');
-   * console.log('Unsubscription request sent for general room');
+   * await roomManager.unsubscribeFromRoom('public-announcements');
+   * console.log('Unsubscription request sent for public room');
    * ```
    */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {

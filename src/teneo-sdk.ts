@@ -328,19 +328,22 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Subscribes to a specified room in the Teneo Protocol.
-   * Agents in the room will be able to see and respond to your messages.
+   * Subscribes to a public room in the Teneo Protocol.
+   * This is only needed for public rooms - private rooms are automatically subscribed.
    * Emits 'room:subscribed' event when successfully subscribed.
    *
-   * @param roomId - The ID of the room to subscribe to
+   * @param roomId - The ID of the public room to subscribe to
    * @returns Promise that resolves when the room has been subscribed
    * @throws {SDKError} If not connected to the network (ErrorCode.NOT_CONNECTED)
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await sdk.subscribeToRoom('general');
-   * console.log('Subscribed to general room');
+   * // Subscribe to a public room
+   * await sdk.subscribeToRoom('public-announcements');
+   * console.log('Subscribed to public room');
+   *
+   * // Note: Private rooms don't need subscription - you're always subscribed
    * ```
    */
   public async subscribeToRoom(roomId: string): Promise<void> {
@@ -348,19 +351,21 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a specified room in the Teneo Protocol.
-   * You will no longer receive messages from agents in this room.
+   * Unsubscribes from a public room in the Teneo Protocol.
+   * You will no longer receive messages from this public room.
    * Emits 'room:unsubscribed' event when successfully unsubscribed.
    *
-   * @param roomId - The ID of the room to unsubscribe from
+   * Note: This only applies to public rooms. Private rooms cannot be unsubscribed from.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
    * @returns Promise that resolves when the room has been unsubscribed
    * @throws {SDKError} If not connected to the network (ErrorCode.NOT_CONNECTED)
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await sdk.unsubscribeFromRoom('general');
-   * console.log('Unsubscribed from general room');
+   * await sdk.unsubscribeFromRoom('public-announcements');
+   * console.log('Unsubscribed from public room');
    * ```
    */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
