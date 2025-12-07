@@ -82,6 +82,34 @@ export {
   RoomPingMessageSchema,
   RoomPongResponseSchema,
 
+  // X402 Payment schemas
+  PricingInfoSchema,
+  TaskQuoteDataSchema,
+  RequestTaskMessageSchema,
+  TaskQuoteMessageSchema,
+  ConfirmTaskDataSchema,
+  ConfirmTaskMessageSchema,
+  TaskConfirmedMessageSchema,
+
+  // Agent Details schemas
+  GetAgentDetailsMessageSchema,
+  AgentDetailsResponseSchema,
+
+  // Rate Limit schemas
+  RateLimitNotificationDataSchema,
+  RateLimitNotificationMessageSchema,
+
+  // Admin schemas
+  AdminAgentInfoSchema,
+  ListAllAgentsMessageSchema,
+  AllAgentsResponseSchema,
+  UserCountDataSchema,
+  UserCountMessageSchema,
+
+  // User Presence schemas
+  UserAuthenticatedDataSchema,
+  UserAuthenticatedMessageSchema,
+
   // Union schema
   AnyMessageSchema,
 
@@ -147,6 +175,34 @@ export {
   // Room Ping types (v2.0.0)
   type RoomPingMessage,
   type RoomPongResponse,
+
+  // X402 Payment types
+  type PricingInfo,
+  type TaskQuoteData,
+  type RequestTaskMessage,
+  type TaskQuoteMessage,
+  type ConfirmTaskData,
+  type ConfirmTaskMessage,
+  type TaskConfirmedMessage,
+
+  // Agent Details types
+  type GetAgentDetailsMessage,
+  type AgentDetailsResponse,
+
+  // Rate Limit types
+  type RateLimitNotificationData,
+  type RateLimitNotificationMessage,
+
+  // Admin types
+  type AdminAgentInfo,
+  type ListAllAgentsMessage,
+  type AllAgentsResponse,
+  type UserCountData,
+  type UserCountMessage,
+
+  // User Presence types
+  type UserAuthenticatedData,
+  type UserAuthenticatedMessage,
 
   type AnyMessage,
 
