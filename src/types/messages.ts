@@ -104,7 +104,28 @@ export const MessageTypeSchema = z.enum([
 
   // Room Ping System (2 types)
   "room_ping",
-  "room_pong"
+  "room_pong",
+
+  // === NEW: X402 Payment Flow ===
+  "request_task",
+  "task_quote",
+  "confirm_task",
+  "task_confirmed",
+
+  // === NEW: Agent Details ===
+  "get_agent_details",
+  "agent_details_response",
+
+  // === NEW: Rate Limiting ===
+  "rate_limit_notification",
+
+  // === NEW: Admin Features ===
+  "list_all_agents",
+  "all_agents_response",
+  "user_count",
+
+  // === NEW: User Presence ===
+  "user_authenticated"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -131,11 +152,24 @@ export const CapabilitySchema = z.object({
   description: z.string().optional()
 });
 
-export const CommandSchema = z.object({
-  trigger: z.string(),
-  argument: z.string().optional(),
-  description: z.string().optional()
-});
+export const CommandSchema = z
+  .object({
+    trigger: z.string(),
+    argument: z.string().optional(),
+    description: z.string().optional(),
+    parameters: z.any().optional(), // json.RawMessage - structured parameter array
+    strictArg: z.boolean().optional(),
+    minArgs: z.number().optional(),
+    maxArgs: z.number().optional(),
+    hasVariants: z.boolean().optional(),
+    variants: z.any().optional(), // json.RawMessage - command variants array
+    // Pricing fields (inline, not nested) - camelCase
+    pricePerUnit: z.number().optional(), // Amount in USDC (e.g., 0.001 = $0.001)
+    priceType: z.string().optional(), // "task-transaction" or "time-based-task"
+    taskUnit: z.string().optional(), // For task-transaction: "per-query" or "per-item"
+    timeUnit: z.string().optional() // For time-based-task: "second", "minute", or "hour"
+  })
+  .passthrough();
 
 export const RoomSchema = z.object({
   id: z.string(),
@@ -655,6 +689,209 @@ export const RoomPongResponseSchema = z
   })
   .passthrough();
 
+// ============================================================================
+// X402 PAYMENT SCHEMAS
+// ============================================================================
+
+// Pricing information for commands
+export const PricingInfoSchema = z
+  .object({
+    price_per_unit: z.number(), // Amount in USDC (e.g., 0.001 = $0.001)
+    price_type: z.string(), // "task-transaction" or "time-based-task"
+    task_unit: z.string().optional(), // For task-transaction: "per-query" or "per-item"
+    time_unit: z.string().optional() // For time-based-task: "second", "minute", or "hour"
+  })
+  .passthrough();
+
+// Task quote data returned by server
+export const TaskQuoteDataSchema = z
+  .object({
+    task_id: z.string(),
+    agent_id: z.string(),
+    agent_name: z.string(),
+    agent_wallet: z.string(), // Agent owner's wallet for payment
+    command: z.string().optional(), // Detected command trigger
+    pricing: PricingInfoSchema.optional(), // Pricing for this command
+    expires_at: z.string() // ISO timestamp for quote expiry
+  })
+  .passthrough();
+
+// Request task message (client → server)
+export const RequestTaskMessageSchema = z
+  .object({
+    type: z.literal("request_task"),
+    content: z.string(),
+    room: z.string()
+  })
+  .passthrough();
+
+// Task quote response (server → client)
+export const TaskQuoteMessageSchema = z
+  .object({
+    type: z.literal("task_quote"),
+    data: TaskQuoteDataSchema
+  })
+  .passthrough();
+
+// Confirm task data
+export const ConfirmTaskDataSchema = z
+  .object({
+    task_id: z.string()
+  })
+  .passthrough();
+
+// Confirm task message (client → server)
+export const ConfirmTaskMessageSchema = z
+  .object({
+    type: z.literal("confirm_task"),
+    data: ConfirmTaskDataSchema,
+    payment: z.string().optional() // x402 payment payload (base64-encoded)
+  })
+  .passthrough();
+
+// Task confirmed response (server → client)
+export const TaskConfirmedMessageSchema = z
+  .object({
+    type: z.literal("task_confirmed"),
+    data: z
+      .object({
+        task_id: z.string(),
+        message: z.string().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+// ============================================================================
+// AGENT DETAILS SCHEMAS
+// ============================================================================
+
+// Get agent details request (client → server)
+export const GetAgentDetailsMessageSchema = z
+  .object({
+    type: z.literal("get_agent_details"),
+    agent_id: z.string()
+  })
+  .passthrough();
+
+// Agent details response (server → client)
+export const AgentDetailsResponseSchema = z
+  .object({
+    type: z.literal("agent_details_response"),
+    data: z
+      .object({
+        agent: AgentRoomInfoSchema
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+// ============================================================================
+// RATE LIMIT NOTIFICATION SCHEMA
+// ============================================================================
+
+export const RateLimitNotificationDataSchema = z
+  .object({
+    title: z.string(), // Main heading
+    message: z.string(), // Supporting message
+    cta_text: z.string().optional(), // Button text
+    cta_link: z.string().optional(), // Button link URL
+    message_type: z.string().optional(), // "warning", "info", "error"
+    limit_type: z.string().optional(), // "messages", "requests", "daily", etc.
+    reset_at: z.string().optional() // ISO 8601 timestamp when limit resets
+  })
+  .passthrough();
+
+export const RateLimitNotificationMessageSchema = z
+  .object({
+    type: z.literal("rate_limit_notification"),
+    data: RateLimitNotificationDataSchema
+  })
+  .passthrough();
+
+// ============================================================================
+// ADMIN SCHEMAS
+// ============================================================================
+
+// Admin agent info (includes verification, ban status, etc.)
+export const AdminAgentInfoSchema = z
+  .object({
+    agent_id: z.string(),
+    agent_name: z.string(),
+    creator: z.string(),
+    creator_name: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    image_url: z.string().optional().nullable(),
+    is_online: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    is_verified: z.boolean().optional(),
+    is_public: z.boolean().optional(),
+    is_banned: z.boolean().optional(),
+    created_at: z.string().optional().nullable()
+  })
+  .passthrough();
+
+// List all agents request (client → server, admin only)
+export const ListAllAgentsMessageSchema = z
+  .object({
+    type: z.literal("list_all_agents"),
+    filter: z.string().optional(), // Filter string
+    offset: z.number().optional(),
+    limit: z.number().optional()
+  })
+  .passthrough();
+
+// All agents response (server → client, admin only)
+export const AllAgentsResponseSchema = z
+  .object({
+    type: z.literal("all_agents_response"),
+    data: z
+      .object({
+        agents: z.array(AdminAgentInfoSchema),
+        total: z.number(),
+        offset: z.number(),
+        limit: z.number(),
+        has_more: z.boolean(),
+        filter: z.string().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+// User count data (admin only)
+export const UserCountDataSchema = z
+  .object({
+    count: z.number(),
+    timestamp: z.string()
+  })
+  .passthrough();
+
+// User count message (server → client, admin only)
+export const UserCountMessageSchema = z
+  .object({
+    type: z.literal("user_count"),
+    data: UserCountDataSchema
+  })
+  .passthrough();
+
+// ============================================================================
+// USER PRESENCE SCHEMA
+// ============================================================================
+
+// User authenticated broadcast (server → all clients)
+export const UserAuthenticatedDataSchema = z
+  .object({
+    wallet: z.string()
+  })
+  .passthrough();
+
+export const UserAuthenticatedMessageSchema = z
+  .object({
+    type: z.literal("user_authenticated"),
+    data: UserAuthenticatedDataSchema
+  })
+  .passthrough();
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -699,7 +936,24 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentStatusUpdateMessageSchema,
 
   // Room Ping System (v2.0.0)
-  RoomPongResponseSchema
+  RoomPongResponseSchema,
+
+  // X402 Payment Flow
+  TaskQuoteMessageSchema,
+  TaskConfirmedMessageSchema,
+
+  // Agent Details
+  AgentDetailsResponseSchema,
+
+  // Rate Limiting
+  RateLimitNotificationMessageSchema,
+
+  // Admin Features
+  AllAgentsResponseSchema,
+  UserCountMessageSchema,
+
+  // User Presence
+  UserAuthenticatedMessageSchema
 ]);
 
 // Type inference from schemas
@@ -766,6 +1020,34 @@ export type AgentStatusUpdateMessage = z.infer<typeof AgentStatusUpdateMessageSc
 // Room Ping Types (v2.0.0)
 export type RoomPingMessage = z.infer<typeof RoomPingMessageSchema>;
 export type RoomPongResponse = z.infer<typeof RoomPongResponseSchema>;
+
+// X402 Payment Types
+export type PricingInfo = z.infer<typeof PricingInfoSchema>;
+export type TaskQuoteData = z.infer<typeof TaskQuoteDataSchema>;
+export type RequestTaskMessage = z.infer<typeof RequestTaskMessageSchema>;
+export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
+export type ConfirmTaskData = z.infer<typeof ConfirmTaskDataSchema>;
+export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
+export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
+
+// Agent Details Types
+export type GetAgentDetailsMessage = z.infer<typeof GetAgentDetailsMessageSchema>;
+export type AgentDetailsResponse = z.infer<typeof AgentDetailsResponseSchema>;
+
+// Rate Limit Types
+export type RateLimitNotificationData = z.infer<typeof RateLimitNotificationDataSchema>;
+export type RateLimitNotificationMessage = z.infer<typeof RateLimitNotificationMessageSchema>;
+
+// Admin Types
+export type AdminAgentInfo = z.infer<typeof AdminAgentInfoSchema>;
+export type ListAllAgentsMessage = z.infer<typeof ListAllAgentsMessageSchema>;
+export type AllAgentsResponse = z.infer<typeof AllAgentsResponseSchema>;
+export type UserCountData = z.infer<typeof UserCountDataSchema>;
+export type UserCountMessage = z.infer<typeof UserCountMessageSchema>;
+
+// User Presence Types
+export type UserAuthenticatedData = z.infer<typeof UserAuthenticatedDataSchema>;
+export type UserAuthenticatedMessage = z.infer<typeof UserAuthenticatedMessageSchema>;
 
 export type AnyMessage = z.infer<typeof AnyMessageSchema>;
 
