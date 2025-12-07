@@ -338,6 +338,42 @@ export interface SDKEvents {
   "webhook:error": (error: Error, url: string) => void;
   "webhook:retry": (attempt: number, url: string) => void;
 
+  // Rate Limit events
+  "rate_limit": (notification: {
+    title: string;
+    message: string;
+    ctaText?: string;
+    ctaLink?: string;
+    messageType?: string;
+    limitType?: string;
+    resetAt?: string;
+  }) => void;
+
+  // X402 Payment events
+  "payment:quote": (quote: {
+    task_id: string;
+    agent_id: string;
+    agent_name: string;
+    agent_wallet: string;
+    command?: string;
+    pricing?: {
+      price_per_unit: number;
+      price_type: string;
+      task_unit?: string;
+      time_unit?: string;
+    };
+    expires_at: string;
+  }) => void;
+  "payment:confirmed": (taskId: string) => void;
+  "payment:error": (error: { taskId?: string; message: string; code?: string }) => void;
+
+  // Admin events
+  "admin:user_count": (data: { count: number; timestamp?: string }) => void;
+  "admin:status_changed": (isAdmin: boolean) => void;
+
+  // User Presence events
+  "user:authenticated": (data: { wallet: string }) => void;
+
   // Error events
   error: (error: SDKError) => void;
   warning: (warning: string) => void;
