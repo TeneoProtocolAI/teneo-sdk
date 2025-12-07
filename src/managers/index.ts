@@ -9,3 +9,15 @@ export { RoomManagementManager } from "./room-management-manager";
 export { AgentRoomManager, type AgentRoomInfo } from "./agent-room-manager";
 export { AgentRegistry } from "./agent-registry";
 export { MessageRouter, type SendMessageOptions, type AgentCommand } from "./message-router";
+export {
+  PaymentManager,
+  type PaymentManagerEvents,
+  type RequestQuoteOptions,
+  type ConfirmTaskOptions
+} from "./payment-manager";
+export {
+  AdminManager,
+  type AdminManagerEvents,
+  type ListAllAgentsOptions,
+  type AllAgentsResult
+} from "./admin-manager";
