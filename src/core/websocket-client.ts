@@ -58,6 +58,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private roomManager?: any; // Reference to RoomManager for handler context
   private roomManagementManager?: any; // Reference to RoomManagementManager for handler context (v2.0.0)
   private agentRoomManager?: any; // Reference to AgentRoomManager for handler context (v2.0.0)
+  private paymentManager?: any; // Reference to PaymentManager for payment handlers
+  private adminManager?: any; // Reference to AdminManager for admin handlers
+  private agentRegistry?: any; // Reference to AgentRegistry for agent details handler
   private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
 
   private connectionState: ConnectionState = {
@@ -227,6 +230,30 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    */
   public setAgentRoomManager(agentRoomManager: any): void {
     this.agentRoomManager = agentRoomManager;
+  }
+
+  /**
+   * Sets the payment manager for X402 payment flow
+   * @internal
+   */
+  public setPaymentManager(paymentManager: any): void {
+    this.paymentManager = paymentManager;
+  }
+
+  /**
+   * Sets the admin manager for admin-only features
+   * @internal
+   */
+  public setAdminManager(adminManager: any): void {
+    this.adminManager = adminManager;
+  }
+
+  /**
+   * Sets the agent registry for agent details lookups
+   * @internal
+   */
+  public setAgentRegistry(agentRegistry: any): void {
+    this.agentRegistry = agentRegistry;
   }
 
   /**
@@ -677,6 +704,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       roomManager: this.roomManager,
       roomManagementManager: this.roomManagementManager,
       agentRoomManager: this.agentRoomManager,
+      paymentManager: this.paymentManager,
+      adminManager: this.adminManager,
+      agentRegistry: this.agentRegistry,
       account: this.account,
       sendMessage: (message: BaseMessage) => this.sendMessage(message)
     };
