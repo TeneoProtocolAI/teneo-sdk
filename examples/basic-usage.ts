@@ -41,8 +41,8 @@ async function main() {
   setupEventListeners(sdk);
 
   try {
-    // Connect to Teneo network
-    console.log("\n→ Connecting to Teneo network...");
+    // Connect to Teneo Protocol
+    console.log("\n→ Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✓ SDK is connected and authenticated!");
 

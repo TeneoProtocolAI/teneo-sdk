@@ -714,7 +714,7 @@ Monitor rate limit status via `/metrics` endpoint.
 
 - **Problem**: "Authentication Pending" never completes
 - **Solution**: Verify `PRIVATE_KEY` and `WALLET_ADDRESS` are correct
-- **Check**: Ensure wallet has access to the Teneo network
+- **Check**: Ensure wallet has access to the Teneo Protocol
 
 ### Webhook Not Receiving
 

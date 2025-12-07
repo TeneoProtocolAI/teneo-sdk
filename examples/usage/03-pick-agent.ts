@@ -52,7 +52,7 @@ async function main() {
 
   try {
     // Connect
-    console.log("🔌 Connecting to Teneo network...");
+    console.log("🔌 Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✅ Connected!\n");
 

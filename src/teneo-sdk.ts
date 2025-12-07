@@ -205,7 +205,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Establishes a connection to the Teneo network via WebSocket.
+   * Establishes a connection to the Teneo Protocol via WebSocket.
    * Handles authentication automatically and joins any configured auto-join rooms.
    * Emits 'connection:open', 'auth:success', and 'ready' events on successful connection.
    *
@@ -218,7 +218,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```typescript
    * const sdk = new TeneoSDK({ wsUrl: 'wss://example.com', privateKey: '0x...' });
    * await sdk.connect();
-   * console.log('Connected to Teneo network');
+   * console.log('Connected to Teneo Protocol');
    * ```
    */
   public async connect(): Promise<void> {
@@ -227,7 +227,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     }
 
     try {
-      this.logger.info("Connecting to Teneo network");
+      this.logger.info("Connecting to Teneo Protocol");
       await this.connection.connect();
 
       // Auto-join rooms if configured
@@ -237,26 +237,26 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         }
       }
 
-      this.logger.info("Successfully connected to Teneo network");
+      this.logger.info("Successfully connected to Teneo Protocol");
     } catch (error) {
-      this.logger.error("Failed to connect to Teneo network", error);
+      this.logger.error("Failed to connect to Teneo Protocol", error);
       throw error;
     }
   }
 
   /**
-   * Disconnects from the Teneo network and cleans up all active connections.
+   * Disconnects from the Teneo Protocol and cleans up all active connections.
    * Clears all timers, pending messages, and stops automatic reconnection attempts.
    * Emits 'disconnect' event after disconnection is complete.
    *
    * @example
    * ```typescript
    * sdk.disconnect();
-   * console.log('Disconnected from Teneo network');
+   * console.log('Disconnected from Teneo Protocol');
    * ```
    */
   public disconnect(): void {
-    this.logger.info("Disconnecting from Teneo network");
+    this.logger.info("Disconnecting from Teneo Protocol");
     this.connection.disconnect();
   }
 
@@ -328,7 +328,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Subscribes to a specified room in the Teneo network.
+   * Subscribes to a specified room in the Teneo Protocol.
    * Agents in the room will be able to see and respond to your messages.
    * Emits 'room:subscribed' event when successfully subscribed.
    *
@@ -348,7 +348,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a specified room in the Teneo network.
+   * Unsubscribes from a specified room in the Teneo Protocol.
    * You will no longer receive messages from agents in this room.
    * Emits 'room:unsubscribed' event when successfully unsubscribed.
    *
@@ -406,7 +406,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Gets a list of all available agents in the Teneo network.
+   * Gets a list of all available agents in the Teneo Protocol.
    * The list is automatically updated when new agents join or leave.
    * Returns a read-only array to prevent external modification.
    *
@@ -669,7 +669,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Gets a list of all available rooms in the Teneo network.
+   * Gets a list of all available rooms in the Teneo Protocol.
    * Includes rooms you have access to based on your authentication.
    * Returns a read-only array to prevent external modification.
    *
@@ -1176,7 +1176,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * This is a convenience getter that returns only the connection status.
    * For detailed state information, use getConnectionState().
    *
-   * @returns True if connected to the Teneo network, false otherwise
+   * @returns True if connected to the Teneo Protocol, false otherwise
    *
    * @example
    * ```typescript
@@ -1197,7 +1197,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * This is a convenience getter that returns only the authentication status.
    * For detailed auth information, use getAuthState().
    *
-   * @returns True if authenticated with the Teneo network, false otherwise
+   * @returns True if authenticated with the Teneo Protocol, false otherwise
    *
    * @example
    * ```typescript

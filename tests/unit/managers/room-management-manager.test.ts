@@ -76,7 +76,7 @@ describe("RoomManagementManager", () => {
 
       await expect(
         manager.createRoom({ name: "Test Room" })
-      ).rejects.toThrow("Not connected to Teneo network");
+      ).rejects.toThrow("Not connected to Teneo Protocol");
     });
 
     it("should validate room name", async () => {

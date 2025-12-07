@@ -170,7 +170,7 @@ async function main() {
   console.log('🤖 Claude Agent + Teneo SDK - X Timeline Follower\n');
 
   // Connect to Teneo
-  console.log('📡 Connecting to Teneo network...');
+  console.log('📡 Connecting to Teneo Protocol...');
   await teneoSDK.connect();
   console.log('✅ Connected to Teneo\n');
 

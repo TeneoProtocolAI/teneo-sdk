@@ -336,7 +336,7 @@ async function main() {
   // ============================================================================
 
   try {
-    console.log("📡 Connecting to Teneo network...\n");
+    console.log("📡 Connecting to Teneo Protocol...\n");
     console.log("=".repeat(80));
     console.log("Listening to all events... (will run for 30 seconds)");
     console.log("=".repeat(80) + "\n");

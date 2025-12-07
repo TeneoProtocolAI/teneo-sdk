@@ -1,6 +1,6 @@
 # Teneo Protocol SDK
 
-**Connect your app to the Teneo AI Agent Network**
+## **Connect your app to the Teneo AI Agent Network**
 
 [![npm version](https://img.shields.io/badge/version-2.1.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
@@ -64,20 +64,24 @@ await sdk.sendMessage("What's the weather in NYC?", { room: myRoom.id });
 ## What's New in v2.1
 
 ### X402 Payment Flow
+
 - Request quotes from agents before executing paid tasks
 - Confirm tasks with payment payloads
 - Full payment lifecycle events
 
 ### Agent Details API
+
 - Fetch comprehensive agent information
 - View capabilities, commands, pricing, and status
 
 ### Admin Features
+
 - List all agents in the network (admin only)
 - Real-time user count updates
 - Admin status tracking
 
 ### Rate Limit Notifications
+
 - Proactive rate limit warnings
 - Customizable handling for limit events
 
@@ -87,7 +91,7 @@ await sdk.sendMessage("What's the weather in NYC?", { room: myRoom.id });
 
 ### Agent Network Architecture
 
-```
+```plaintext
 Your App
     |
 Teneo SDK (This library)
@@ -108,7 +112,7 @@ Unlike traditional APIs with API keys, Teneo uses **Ethereum wallet signatures**
 
 ```typescript
 // Challenge-response authentication flow:
-// 1. SDK connects to Teneo network
+// 1. SDK connects to Teneo Protocol
 // 2. Server sends random challenge string
 // 3. SDK signs: "Teneo authentication challenge: {challenge}"
 // 4. Server verifies signature against your wallet address
@@ -185,7 +189,7 @@ console.log(`Created room: ${room.id}`);
 
 // Add specific agents to the room
 const available = await sdk.listAvailableAgents(room.id);
-const cryptoAgent = available.find(a => a.agent_name?.includes("Crypto"));
+const cryptoAgent = available.find((a) => a.agent_name?.includes("Crypto"));
 if (cryptoAgent) {
   await sdk.addAgentToRoom(room.id, cryptoAgent.agent_id);
 }
@@ -253,7 +257,7 @@ if (sdk.admin?.isAdmin) {
   const result = await sdk.admin.listAllAgents({ limit: 50 });
   console.log(`Total agents: ${result.total}`);
 
-  result.agents.forEach(agent => {
+  result.agents.forEach((agent) => {
     console.log(`- ${agent.agent_name}`);
     console.log(`  Verified: ${agent.is_verified}`);
     console.log(`  Banned: ${agent.is_banned}`);
@@ -288,14 +292,14 @@ console.log(`Description: ${details.description}`);
 
 if (details.capabilities) {
   console.log("Capabilities:");
-  details.capabilities.forEach(cap => {
+  details.capabilities.forEach((cap) => {
     console.log(`  - ${cap.name}: ${cap.description}`);
   });
 }
 
 if (details.commands) {
   console.log("Commands:");
-  details.commands.forEach(cmd => {
+  details.commands.forEach((cmd) => {
     console.log(`  - ${cmd.name}: ${cmd.description}`);
   });
 }
@@ -550,7 +554,7 @@ if (sdk.admin?.isAdmin) {
   console.log(`Total: ${result.total}`);
   console.log(`Has more: ${result.hasMore}`);
 
-  result.agents.forEach(agent => {
+  result.agents.forEach((agent) => {
     console.log(`${agent.agent_name} - Verified: ${agent.is_verified}`);
   });
 
@@ -821,6 +825,7 @@ pnpm example:dashboard
 ```
 
 Demonstrates:
+
 - Full WebSocket Integration
 - Room Management
 - Agent-Room Management
@@ -849,16 +854,18 @@ await sdk.sendMessage("Hello", { room: roomId });
 
 ### Authentication Failed
 
-**Problem:** Can't authenticate with Teneo network.
+**Problem:** Can't authenticate with Teneo Protocol.
 
 **Solutions:**
 
 1. Check private key format (with 0x prefix):
+
    ```typescript
    privateKey: "0xdafe885a..."; // 66 characters total
    ```
 
 2. Enable debug logging:
+
    ```typescript
    const sdk = new TeneoSDK({
      wsUrl: "...",
@@ -867,15 +874,16 @@ await sdk.sendMessage("Hello", { room: roomId });
    });
    ```
 
-### Rate Limiting
+### Rate Limitings
 
 **Problem:** `RateLimitError: Rate limit exceeded`
 
 **Solution:** Add delays between requests:
+
 ```typescript
 for (const message of messages) {
   await sdk.sendMessage(message, { room: roomId });
-  await new Promise(r => setTimeout(r, 200)); // 200ms delay
+  await new Promise((r) => setTimeout(r, 200)); // 200ms delay
 }
 ```
 
@@ -912,8 +920,4 @@ We welcome contributions!
 
 AGPL-3.0 License
 
-<div align="center">
-
 **Built with love by the [Teneo Team](https://teneo.pro)**
-
-</div>

@@ -29,7 +29,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Subscribes to a public room in the Teneo network.
+   * Subscribes to a public room in the Teneo Protocol.
    * Validates room ID and sends subscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:subscribed event.
    *
@@ -46,7 +46,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public async subscribeToRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate room ID
@@ -59,7 +59,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a room in the Teneo network.
+   * Unsubscribes from a room in the Teneo Protocol.
    * Validates room ID and sends unsubscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:unsubscribed event.
    *
@@ -76,7 +76,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate room ID
@@ -185,7 +185,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public async listRooms(): Promise<RoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     this.logger.info("RoomManager: Listing rooms");

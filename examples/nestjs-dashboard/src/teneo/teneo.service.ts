@@ -85,7 +85,7 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
 
       this.setupEventListeners();
 
-      this.logger.log("Connecting to Teneo network...");
+      this.logger.log("Connecting to Teneo Protocol...");
       await this.sdk.connect();
       this.logger.log("Successfully connected and authenticated!");
     } catch (error) {

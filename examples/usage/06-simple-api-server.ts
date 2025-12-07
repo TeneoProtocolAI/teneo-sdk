@@ -78,7 +78,7 @@ sdk.on("error", (error) => {
 });
 
 // Connect to Teneo
-console.log("🔌 Connecting to Teneo network...");
+console.log("🔌 Connecting to Teneo Protocol...");
 await sdk.connect();
 console.log("✅ Connected!\n");
 

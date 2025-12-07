@@ -117,7 +117,7 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
    */
   public async listAllAgents(options: ListAllAgentsOptions = {}): Promise<AllAgentsResult> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     if (!this._isAdmin) {

@@ -70,7 +70,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public async addAgentToRoom(roomId: string, agentId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate inputs
@@ -152,7 +152,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public async removeAgentFromRoom(roomId: string, agentId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate inputs
@@ -235,7 +235,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     useCache: boolean = true
   ): Promise<AgentRoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate input
@@ -315,7 +315,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     useCache: boolean = true
   ): Promise<AgentRoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate input

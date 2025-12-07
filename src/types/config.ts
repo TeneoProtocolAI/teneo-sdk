@@ -308,7 +308,7 @@ export class SDKConfigBuilder {
   private config: PartialSDKConfig = { ...DEFAULT_CONFIG };
 
   /**
-   * Sets the WebSocket URL for connecting to the Teneo network.
+   * Sets the WebSocket URL for connecting to the Teneo Protocol.
    * URL must start with 'ws://' or 'wss://'. HTTPS (wss://) is recommended for production.
    *
    * @param url - WebSocket URL (e.g., 'wss://teneo.example.com')

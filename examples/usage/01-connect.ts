@@ -80,8 +80,8 @@ async function main() {
   console.log("✅ Event listeners configured\n");
 
   try {
-    // Step 4: Connect to Teneo network
-    console.log("⚙️  Step 4: Connecting to Teneo network...");
+    // Step 4: Connect to Teneo Protocol
+    console.log("⚙️  Step 4: Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✅ Connected and authenticated!\n");
 

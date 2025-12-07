@@ -288,7 +288,7 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
    */
   public async getAgentDetails(agentId: string): Promise<AgentRoomInfo> {
     if (!this.wsClient || !this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate agent ID

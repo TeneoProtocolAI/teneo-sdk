@@ -97,7 +97,7 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
    */
   public async requestQuote(options: RequestQuoteOptions): Promise<TaskQuoteData> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     const { content, room } = options;
@@ -148,7 +148,7 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
    */
   public async confirm(options: ConfirmTaskOptions): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     const { taskId, paymentPayload } = options;

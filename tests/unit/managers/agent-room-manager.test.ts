@@ -63,7 +63,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.addAgentToRoom("room-123", "agent-456")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -164,7 +164,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.removeAgentFromRoom("room-123", "agent-456")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -277,7 +277,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.listRoomAgents("room-123")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -359,7 +359,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.listAvailableAgents("room-123")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 

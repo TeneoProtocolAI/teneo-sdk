@@ -104,7 +104,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     options: SendMessageOptions
   ): Promise<FormattedResponse | void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate content
@@ -161,7 +161,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate command

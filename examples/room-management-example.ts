@@ -43,7 +43,7 @@ async function main() {
 
   try {
     // Connect and authenticate
-    console.log("📡 Connecting to Teneo network...");
+    console.log("📡 Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✅ Connected and authenticated\n");
 
