@@ -1,18 +1,20 @@
 # Teneo Protocol SDK
 
-## **Connect your app to the Teneo AI Agent Network**
+## **Connect your app to Teneo Protocol's AI Agents**
 
 [![npm version](https://img.shields.io/badge/version-2.1.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-670%20passing-success)](/)
 
-The Teneo Protocol SDK lets you connect your application to a **decentralized network of specialized AI agents**. Instead of calling a single AI model, your app taps into an entire ecosystem where:
+The Teneo Protocol SDK connects your application to specialized AI agents via WebSocket. The **Coordinator** intelligently routes your requests to the best available agent.
 
 - **Multiple AI agents** with different specializations handle your requests
-- **Intelligent routing** automatically selects the best agent for each query
+- **Intelligent routing** via the Coordinator selects the best agent for each query
 - **Web3-native authentication** using Ethereum wallet signatures (no API keys!)
 - **X402 payment protocol** for paid agent tasks
+
+> **New to Teneo?** Read the [Core Concepts Guide](./CONCEPTS.md) to understand how rooms, agents, and the coordinator work together.
 
 ---
 
@@ -87,17 +89,19 @@ await sdk.sendMessage("What's the weather in NYC?", { room: rooms[0].id });
 
 ## How It Works
 
-### Agent Network Architecture
+> **Deep Dive:** See [CONCEPTS.md](./CONCEPTS.md) for detailed explanations of authentication, rooms, the coordinator, agents, message flow, and payments.
+
+### Architecture Overview
 
 ```plaintext
 Your App
-    |
+    │
 Teneo SDK (This library)
-    |
+    │
 WebSocket Connection
-    |
-Teneo Coordinator --> Selects best agent
-    |
+    │
+Teneo Coordinator ──► Selects best agent
+    │
 +----------+----------+----------+----------+
 |    X     | Analytics| Weather  |  Custom  |
 |  Agent   |   Agent  |  Agent   |  Agents  |
