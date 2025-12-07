@@ -74,6 +74,7 @@ export const MessageTypeSchema = z.enum([
   "subscribe",
   "unsubscribe",
   "list_rooms",
+  "room_list_response",
 
   // === NEW IN v2.0.0 ===
 
@@ -454,7 +455,7 @@ export const UnsubscribeResponseSchema = BaseMessageSchema.extend({
 });
 
 export const ListRoomsResponseSchema = BaseMessageSchema.extend({
-  type: z.literal("list_rooms"),
+  type: z.literal("room_list_response"),
   data: z.object({
     rooms: z.array(RoomInfoSchema)
   })

@@ -1,5 +1,5 @@
 /**
- * Handler for list_rooms response messages
+ * Handler for room_list_response messages
  * Processes room list from server
  */
 
@@ -8,11 +8,11 @@ import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
 export class ListRoomsResponseHandler extends BaseMessageHandler<ListRoomsResponse> {
-  readonly type = "list_rooms" as const;
+  readonly type = "room_list_response" as const;
   readonly schema = ListRoomsResponseSchema;
 
   protected handleValidated(message: ListRoomsResponse, context: HandlerContext): void {
-    context.logger.debug("Handling list_rooms response", {
+    context.logger.debug("Handling room_list_response", {
       roomCount: message.data.rooms.length
     });
 
