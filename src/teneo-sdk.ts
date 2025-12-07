@@ -17,6 +17,8 @@ import {
   validateConfig,
   DEFAULT_CONFIG,
   ResponseFormatSchema,
+  AgentRoomInfo,
+  TaskQuoteData,
   type HealthStatus
 } from "./types";
 import { SDKEvents, SDKError } from "./types/events";
@@ -36,13 +38,26 @@ import {
   AgentRegistry,
   MessageRouter,
   SendMessageOptions,
-  AgentCommand
+  AgentCommand,
+  PaymentManager,
+  AdminManager,
+  ListAllAgentsOptions,
+  AllAgentsResult,
+  RequestQuoteOptions,
+  ConfirmTaskOptions
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
 
 // Re-export types for external use
-export type { SendMessageOptions, AgentCommand };
+export type {
+  SendMessageOptions,
+  AgentCommand,
+  ListAllAgentsOptions,
+  AllAgentsResult,
+  RequestQuoteOptions,
+  ConfirmTaskOptions
+};
 
 // Zod schemas for SDK-specific interfaces
 export const SendMessageOptionsSchema = z.object({
@@ -76,6 +91,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   private readonly agentRoom: AgentRoomManager;
   private readonly agents: AgentRegistry;
   private readonly messages: MessageRouter;
+  private readonly _payments: PaymentManager;
+  private readonly _admin: AdminManager;
 
   /**
    * Creates a new instance of the Teneo Protocol SDK.
@@ -158,6 +175,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.wsClient.setRoomManagementManager(this.roomManagement); // Enable room CRUD in handlers (v2.0.0)
       this.wsClient.setAgentRoomManager(this.agentRoom); // Enable agent-room operations in handlers (v2.0.0)
       this.agents = new AgentRegistry(this.logger);
+      this.agents.setWebSocketClient(this.wsClient); // Enable getAgentDetails requests
+      this._payments = new PaymentManager(this.wsClient, this.logger);
+      this._admin = new AdminManager(this.wsClient, this.logger);
+      this.wsClient.setPaymentManager(this._payments); // Enable payment handlers
+      this.wsClient.setAdminManager(this._admin); // Enable admin handlers
+      this.wsClient.setAgentRegistry(this.agents); // Enable agent details handler
       this.messages = new MessageRouter(
         this.wsClient,
         this.webhookHandler,
@@ -490,6 +513,159 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   public findAgentsByStatus(status: string): ReadonlyArray<Agent> {
     return this.agents.findByStatus(status);
+  }
+
+  /**
+   * Fetches detailed information about a specific agent from the server.
+   * Makes a request to the server for full agent details including capabilities,
+   * commands, pricing, and more.
+   *
+   * @param agentId - The unique identifier of the agent
+   * @returns Promise that resolves with full agent details
+   * @throws {SDKError} If not connected or request times out
+   * @throws {ValidationError} If agentId is invalid
+   *
+   * @example
+   * ```typescript
+   * const details = await sdk.getAgentDetails('weather-agent-001');
+   * console.log(`Agent: ${details.agent_name}`);
+   * console.log(`Capabilities: ${details.capabilities?.length}`);
+   * console.log(`Status: ${details.status}`);
+   * ```
+   */
+  public async getAgentDetails(agentId: string): Promise<AgentRoomInfo> {
+    return this.agents.getAgentDetails(agentId);
+  }
+
+  // ============================================================================
+  // PAYMENT API (X402 Payment Flow)
+  // ============================================================================
+
+  /**
+   * Gets the payment manager for X402 payment flow.
+   * Use this to request quotes and confirm tasks with payments.
+   *
+   * @returns The PaymentManager instance
+   *
+   * @example
+   * ```typescript
+   * // Request a quote for a task
+   * const quote = await sdk.payments.requestQuote({
+   *   content: "What's the weather in NYC?",
+   *   room: "my-room-id"
+   * });
+   *
+   * console.log(`Agent: ${quote.agent_name}`);
+   * console.log(`Price: $${quote.pricing?.price_per_unit}`);
+   *
+   * // Confirm the task with payment
+   * await sdk.payments.confirm({
+   *   taskId: quote.task_id,
+   *   paymentPayload: "base64-encoded-x402-payment"
+   * });
+   *
+   * // Listen for payment events
+   * sdk.on('payment:quote', (quote) => console.log('Quote received:', quote));
+   * sdk.on('payment:confirmed', (taskId) => console.log('Task confirmed:', taskId));
+   * ```
+   */
+  public get payments(): PaymentManager {
+    return this._payments;
+  }
+
+  /**
+   * Requests a task quote from the server (convenience method).
+   * This initiates the payment flow by asking the server for pricing information.
+   *
+   * @param options - The quote request options
+   * @returns Promise that resolves with the task quote
+   * @throws {SDKError} If not connected to the network
+   *
+   * @example
+   * ```typescript
+   * const quote = await sdk.requestQuote({
+   *   content: "Analyze this data",
+   *   room: "my-room"
+   * });
+   * ```
+   */
+  public async requestQuote(options: RequestQuoteOptions): Promise<TaskQuoteData> {
+    return this._payments.requestQuote(options);
+  }
+
+  /**
+   * Confirms a task with payment (convenience method).
+   * Call this after receiving a quote to execute the task with payment.
+   *
+   * @param options - The confirmation options including task ID and payment
+   * @returns Promise that resolves when the task is confirmed
+   * @throws {SDKError} If not connected or quote not found
+   *
+   * @example
+   * ```typescript
+   * await sdk.confirmTask({
+   *   taskId: quote.task_id,
+   *   paymentPayload: "base64-encoded-x402-payment"
+   * });
+   * ```
+   */
+  public async confirmTask(options: ConfirmTaskOptions): Promise<void> {
+    return this._payments.confirm(options);
+  }
+
+  // ============================================================================
+  // ADMIN API (Admin-Only Features)
+  // ============================================================================
+
+  /**
+   * Gets the admin manager for admin-only features.
+   * Returns undefined if the current user is not an admin.
+   * Use this to access admin APIs like listing all agents, user counts, etc.
+   *
+   * @returns The AdminManager instance if user is admin, undefined otherwise
+   *
+   * @example
+   * ```typescript
+   * if (sdk.admin?.isAdmin) {
+   *   // List all agents in the network
+   *   const result = await sdk.admin.listAllAgents({ limit: 20 });
+   *   console.log(`Found ${result.total} agents`);
+   *
+   *   result.agents.forEach(agent => {
+   *     console.log(`${agent.agent_name}: verified=${agent.is_verified}, banned=${agent.is_banned}`);
+   *   });
+   *
+   *   // Get user count
+   *   const userCount = sdk.admin.getLastUserCount();
+   *   console.log(`Online users: ${userCount?.count}`);
+   *
+   *   // Listen for user count updates
+   *   sdk.admin.on('user_count', (data) => {
+   *     console.log(`User count updated: ${data.count}`);
+   *   });
+   * }
+   * ```
+   */
+  public get admin(): AdminManager | undefined {
+    return this._admin.isAdmin ? this._admin : undefined;
+  }
+
+  /**
+   * Lists all agents in the network (admin only, convenience method).
+   * Returns paginated list of agents with full admin information.
+   *
+   * @param options - Pagination and filter options
+   * @returns Promise that resolves with agents list
+   * @throws {SDKError} If not connected or not an admin
+   *
+   * @example
+   * ```typescript
+   * const result = await sdk.listAllAgents({ limit: 50, filter: 'weather' });
+   * console.log(`Found ${result.total} agents matching 'weather'`);
+   * ```
+   */
+  public async listAllAgents(options: ListAllAgentsOptions = {}): Promise<AllAgentsResult> {
+    return this._admin.listAllAgents(options);
   }
 
   /**
@@ -1306,6 +1482,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.rooms.destroy();
     this.agents.destroy();
     this.messages.destroy();
+    this._payments.destroy();
+    this._admin.destroy();
 
     // Destroy other components
     this.webhookHandler.destroy();
@@ -1492,6 +1670,35 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.agentRoom.emit("agent_room:list_available_error", error);
       // Emit on SDK for external listeners
       this.emit("agent_room:list_available_error", error);
+    });
+
+    // Forward payment events from PaymentManager
+    this._payments.on("quote:received", (quote) => {
+      this.emit("payment:quote", quote);
+    });
+    this._payments.on("task:confirmed", (taskId) => {
+      this.emit("payment:confirmed", taskId);
+    });
+    this._payments.on("payment:error", (error) => {
+      this.emit("payment:error", error);
+    });
+
+    // Forward admin events from AdminManager
+    this._admin.on("user_count", (data) => {
+      this.emit("admin:user_count", data);
+    });
+    this._admin.on("status_changed", (isAdmin) => {
+      this.emit("admin:status_changed", isAdmin);
+    });
+
+    // Forward rate limit notifications from WebSocketClient (emitted by handlers)
+    this.wsClient.on("rate_limit", (notification) => {
+      this.emit("rate_limit", notification);
+    });
+
+    // Forward user authenticated events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("user:authenticated", (data) => {
+      this.emit("user:authenticated", data);
     });
 
     // Forward webhook events from WebhookHandler
