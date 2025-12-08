@@ -276,8 +276,8 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
    * Handles incoming task_quote message from server.
    * @internal
    */
-  public handleTaskQuote(data: TaskQuoteData): void {
-    this.logger.debug("PaymentManager: Received task quote", { taskId: data.task_id });
+  public handleTaskQuote(data: TaskQuoteData, requestId?: string): void {
+    this.logger.debug("PaymentManager: Received task quote", { taskId: data.task_id, requestId });
 
     // Cache the quote
     this.quotes.set(data.task_id, data);
@@ -285,13 +285,23 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
     // Emit event
     this.emit("quote:received", data);
 
-    // Resolve any pending quote request
-    // Note: We match by the first pending request since request_id might not be in response
-    const pendingEntries = Array.from(this.pendingQuotes.entries());
-    if (pendingEntries.length > 0) {
-      const [requestId, pending] = pendingEntries[0];
+    // Resolve pending quote request - prefer matching by request_id if available
+    if (requestId && this.pendingQuotes.has(requestId)) {
+      // Exact match by request_id (preferred)
+      const pending = this.pendingQuotes.get(requestId)!;
       clearTimeout(pending.timeout);
       this.pendingQuotes.delete(requestId);
+      pending.resolve(data);
+    } else if (this.pendingQuotes.size > 0) {
+      // Fallback to FIFO for backwards compatibility (when server doesn't echo request_id)
+      const pendingEntries = Array.from(this.pendingQuotes.entries());
+      const [fallbackRequestId, pending] = pendingEntries[0];
+      this.logger.warn("PaymentManager: Using FIFO fallback for quote correlation", {
+        taskId: data.task_id,
+        pendingCount: pendingEntries.length
+      });
+      clearTimeout(pending.timeout);
+      this.pendingQuotes.delete(fallbackRequestId);
       pending.resolve(data);
     }
   }

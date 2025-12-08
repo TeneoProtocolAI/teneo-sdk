@@ -24,7 +24,7 @@ export class AllAgentsResponseHandler extends BaseMessageHandler<AllAgentsRespon
     // Delegate to admin manager if available
     const adminManager = context.adminManager;
     if (adminManager && typeof adminManager.handleAllAgentsResponse === "function") {
-      adminManager.handleAllAgentsResponse(message.data);
+      adminManager.handleAllAgentsResponse(message.data, message.request_id);
     }
 
     context.logger.info("All agents response received", {

@@ -730,7 +730,8 @@ export const RequestTaskMessageSchema = z
 export const TaskQuoteMessageSchema = z
   .object({
     type: z.literal("task_quote"),
-    data: TaskQuoteDataSchema
+    data: TaskQuoteDataSchema,
+    request_id: z.string().optional() // Echo back for request correlation
   })
   .passthrough();
 
@@ -846,6 +847,7 @@ export const ListAllAgentsMessageSchema = z
 export const AllAgentsResponseSchema = z
   .object({
     type: z.literal("all_agents_response"),
+    request_id: z.string().optional(), // Echo back for request correlation
     data: z
       .object({
         agents: z.array(AdminAgentInfoSchema),

@@ -25,7 +25,7 @@ export class TaskQuoteHandler extends BaseMessageHandler<TaskQuoteMessage> {
     // Delegate to payment manager if available
     const paymentManager = context.paymentManager;
     if (paymentManager && typeof paymentManager.handleTaskQuote === "function") {
-      paymentManager.handleTaskQuote(message.data);
+      paymentManager.handleTaskQuote(message.data, message.request_id);
     }
 
     context.logger.info("Task quote received", {

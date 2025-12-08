@@ -166,17 +166,21 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
    * Handles incoming all_agents_response message from server.
    * @internal
    */
-  public handleAllAgentsResponse(data: {
-    agents: AdminAgentInfo[];
-    total: number;
-    offset: number;
-    limit: number;
-    has_more: boolean;
-    filter?: string;
-  }): void {
+  public handleAllAgentsResponse(
+    data: {
+      agents: AdminAgentInfo[];
+      total: number;
+      offset: number;
+      limit: number;
+      has_more: boolean;
+      filter?: string;
+    },
+    requestId?: string
+  ): void {
     this.logger.debug("AdminManager: Received agents list", {
       count: data.agents.length,
-      total: data.total
+      total: data.total,
+      requestId
     });
 
     const result: AllAgentsResult = {
@@ -188,12 +192,22 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
       filter: data.filter
     };
 
-    // Resolve the first pending request
-    const pendingEntries = Array.from(this.pendingListRequests.entries());
-    if (pendingEntries.length > 0) {
-      const [requestId, pending] = pendingEntries[0];
+    // Resolve pending request - prefer matching by request_id if available
+    if (requestId && this.pendingListRequests.has(requestId)) {
+      // Exact match by request_id (preferred)
+      const pending = this.pendingListRequests.get(requestId)!;
       clearTimeout(pending.timeout);
       this.pendingListRequests.delete(requestId);
+      pending.resolve(result);
+    } else if (this.pendingListRequests.size > 0) {
+      // Fallback to FIFO for backwards compatibility (when server doesn't echo request_id)
+      const pendingEntries = Array.from(this.pendingListRequests.entries());
+      const [fallbackRequestId, pending] = pendingEntries[0];
+      this.logger.warn("AdminManager: Using FIFO fallback for list agents correlation", {
+        pendingCount: pendingEntries.length
+      });
+      clearTimeout(pending.timeout);
+      this.pendingListRequests.delete(fallbackRequestId);
       pending.resolve(result);
     }
   }
