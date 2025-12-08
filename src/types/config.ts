@@ -118,7 +118,17 @@ export const SDKConfigSchema = z.object({
   // Message deduplication (CB-4)
   enableMessageDeduplication: z.boolean().optional(),
   messageDedupeTtl: z.number().min(1000).max(3600000).optional(), // 1s to 1 hour
-  messageDedupMaxSize: z.number().min(1).max(100000).optional()
+  messageDedupMaxSize: z.number().min(1).max(100000).optional(),
+
+  // Payment configuration (x402)
+  enablePayments: z.boolean().optional(), // Auto-enable if privateKey is set
+  paymentConfig: z
+    .object({
+      chain: z.enum(["peaq"]).optional(), // Supported chains
+      rpcUrl: z.string().url().optional(), // Custom RPC URL
+      payToAddress: z.string().optional() // Override default backend address
+    })
+    .optional()
 });
 
 // Partial config for constructor
