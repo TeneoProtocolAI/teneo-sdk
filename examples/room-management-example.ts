@@ -48,7 +48,7 @@ async function main() {
     console.log("✅ Connected and authenticated\n");
 
     // Wait a moment for initial room data to load
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Step 1: Check current room status
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -63,7 +63,7 @@ async function main() {
     const newRooms = await createSampleRooms(sdk);
 
     // Wait for room creation events to process
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Step 3: Display updated room status
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -103,7 +103,7 @@ async function main() {
     await deleteRooms(sdk, newRooms);
 
     // Wait for deletion events to process
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Step 7: Final room status
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -112,7 +112,6 @@ async function main() {
     await displayRoomStatus(sdk);
 
     console.log("\n✅ Room management example completed!");
-
   } catch (error: any) {
     console.error("\n❌ Error:", error.message);
     console.error(error.stack);
@@ -228,7 +227,6 @@ async function createSampleRooms(sdk: TeneoSDK) {
       });
       newRooms.push(researchRoom);
     }
-
   } catch (error: any) {
     console.error(`Failed to create room: ${error.message}`);
   }
@@ -255,7 +253,6 @@ async function updateRoomExample(sdk: TeneoSDK, roomId: string) {
 
     console.log(`\nNew room name: "${updatedRoom.name}"`);
     console.log(`New description: "${updatedRoom.description}"`);
-
   } catch (error: any) {
     console.error(`Failed to update room: ${error.message}`);
   }
@@ -274,7 +271,7 @@ async function deleteRooms(sdk: TeneoSDK, rooms: any[]) {
       console.log(`Deleting "${room.name}" (${room.id})...`);
       await sdk.deleteRoom(room.id);
       // Wait a bit between deletions
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error: any) {
       console.error(`Failed to delete room ${room.id}: ${error.message}`);
     }
