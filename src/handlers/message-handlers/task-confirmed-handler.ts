@@ -20,7 +20,7 @@ export class TaskConfirmedHandler extends BaseMessageHandler<TaskConfirmedMessag
     });
 
     // Delegate to payment manager if available
-    const paymentManager = (context as any).paymentManager;
+    const paymentManager = context.paymentManager;
     if (paymentManager && typeof paymentManager.handleTaskConfirmed === "function") {
       paymentManager.handleTaskConfirmed(task_id);
     }

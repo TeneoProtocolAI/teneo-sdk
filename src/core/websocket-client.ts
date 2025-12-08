@@ -55,12 +55,12 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private signatureVerifier?: SignatureVerifier;
   private deduplicationCache?: DeduplicationCache;
   private reconnectPolicy: RetryPolicy;
-  private roomManager?: any; // Reference to RoomManager for handler context
-  private roomManagementManager?: any; // Reference to RoomManagementManager for handler context (v2.0.0)
-  private agentRoomManager?: any; // Reference to AgentRoomManager for handler context (v2.0.0)
-  private paymentManager?: any; // Reference to PaymentManager for payment handlers
-  private adminManager?: any; // Reference to AdminManager for admin handlers
-  private agentRegistry?: any; // Reference to AgentRegistry for agent details handler
+  private roomManager?: import("../managers/room-manager").RoomManager; // Reference to RoomManager for handler context
+  private roomManagementManager?: import("../managers/room-management-manager").RoomManagementManager; // Reference to RoomManagementManager for handler context (v2.0.0)
+  private agentRoomManager?: import("../managers/agent-room-manager").AgentRoomManager; // Reference to AgentRoomManager for handler context (v2.0.0)
+  private paymentManager?: import("../managers/payment-manager").PaymentManager; // Reference to PaymentManager for payment handlers
+  private adminManager?: import("../managers/admin-manager").AdminManager; // Reference to AdminManager for admin handlers
+  private agentRegistry?: import("../managers/agent-registry").AgentRegistry; // Reference to AgentRegistry for agent details handler
   private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
 
   private connectionState: ConnectionState = {
@@ -78,6 +78,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private pendingMessages = new Map<
     string,
     {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resolve: (value: any) => void;
       reject: (error: Error) => void;
       timeout: NodeJS.Timeout;
@@ -164,6 +165,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     // Initialize signature verifier if configured (SEC-2)
     if (this.config.validateSignatures) {
       this.signatureVerifier = new SignatureVerifier({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         trustedAddresses: this.config.trustedAgentAddresses as any[],
         requireSignaturesFor: this.config.requireSignaturesFor,
         strictMode: this.config.strictSignatureValidation
@@ -212,7 +214,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Set the RoomManager instance for handler context
    * Called by TeneoSDK after initialization
    */
-  public setRoomManager(roomManager: any): void {
+  public setRoomManager(roomManager: import("../managers/room-manager").RoomManager): void {
     this.roomManager = roomManager;
   }
 
@@ -220,7 +222,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Sets the room management manager for room CRUD operations (v2.0.0)
    * @internal
    */
-  public setRoomManagementManager(roomManagementManager: any): void {
+  public setRoomManagementManager(
+    roomManagementManager: import("../managers/room-management-manager").RoomManagementManager
+  ): void {
     this.roomManagementManager = roomManagementManager;
   }
 
@@ -228,7 +232,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Sets the agent room manager for agent-room operations (v2.0.0)
    * @internal
    */
-  public setAgentRoomManager(agentRoomManager: any): void {
+  public setAgentRoomManager(
+    agentRoomManager: import("../managers/agent-room-manager").AgentRoomManager
+  ): void {
     this.agentRoomManager = agentRoomManager;
   }
 
@@ -236,7 +242,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Sets the payment manager for X402 payment flow
    * @internal
    */
-  public setPaymentManager(paymentManager: any): void {
+  public setPaymentManager(
+    paymentManager: import("../managers/payment-manager").PaymentManager
+  ): void {
     this.paymentManager = paymentManager;
   }
 
@@ -244,7 +252,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Sets the admin manager for admin-only features
    * @internal
    */
-  public setAdminManager(adminManager: any): void {
+  public setAdminManager(adminManager: import("../managers/admin-manager").AdminManager): void {
     this.adminManager = adminManager;
   }
 
@@ -252,7 +260,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Sets the agent registry for agent details lookups
    * @internal
    */
-  public setAgentRegistry(agentRegistry: any): void {
+  public setAgentRegistry(agentRegistry: import("../managers/agent-registry").AgentRegistry): void {
     this.agentRegistry = agentRegistry;
   }
 
@@ -571,6 +579,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * console.log('Response received:', response);
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async sendMessageWithResponse<T = any>(
     message: BaseMessage,
     timeout?: number
@@ -690,6 +699,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    */
   private createHandlerContext(): HandlerContext {
     return {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       emit: (event: string, ...args: any[]) => this.emit(event as any, ...args),
       sendWebhook: async () => {
         // Webhooks are handled by WebhookHandler in TeneoSDK
@@ -699,7 +709,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       logger: this.logger,
       getConnectionState: () => this.getConnectionState(),
       getAuthState: () => this.getAuthState(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateConnectionState: (update: any) => this.updateConnectionState(update),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateAuthState: (update: any) => this.updateAuthState(update),
       roomManager: this.roomManager,
       roomManagementManager: this.roomManagementManager,

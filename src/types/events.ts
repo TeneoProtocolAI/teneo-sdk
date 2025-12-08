@@ -9,7 +9,8 @@ import {
   AgentSchema,
   RoomInfoSchema,
   TaskResponseMessageSchema,
-  CapabilitySchema
+  CapabilitySchema,
+  AgentRoomInfoSchema
 } from "./messages";
 import { ConnectionStateSchema, AuthenticationStateSchema } from "./config";
 import { ErrorCode } from "./error-codes";
@@ -119,10 +120,10 @@ export type EventMetadata = z.infer<typeof EventMetadataSchema>;
 // Error classes that extend Error and implement Zod validation
 export class SDKError extends Error {
   public code: string;
-  public details?: any;
+  public details?: unknown;
   public recoverable: boolean;
 
-  constructor(message: string, code: ErrorCode, details?: any, recoverable: boolean = false) {
+  constructor(message: string, code: ErrorCode, details?: unknown, recoverable: boolean = false) {
     super(message);
     this.name = "SDKError";
     this.code = code;
@@ -151,42 +152,42 @@ export class SDKError extends Error {
 }
 
 export class ConnectionError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.CONNECTION_ERROR, details, true);
     this.name = "ConnectionError";
   }
 }
 
 export class AuthenticationError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.AUTH_ERROR, details, false);
     this.name = "AuthenticationError";
   }
 }
 
 export class MessageError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.MESSAGE_ERROR, details, false);
     this.name = "MessageError";
   }
 }
 
 export class WebhookError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.WEBHOOK_ERROR, details, true);
     this.name = "WebhookError";
   }
 }
 
 export class ValidationError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.VALIDATION_ERROR, details, false);
     this.name = "ValidationError";
   }
 }
 
 export class TimeoutError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.TIMEOUT_ERROR, details, true);
     this.name = "TimeoutError";
   }
@@ -256,7 +257,7 @@ export class SignatureVerificationError extends SDKError {
  * ```
  */
 export class ConfigurationError extends SDKError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, ErrorCode.CONFIG_ERROR, details, false);
     this.name = "ConfigurationError";
   }
@@ -314,13 +315,16 @@ export interface SDKEvents {
   // Agent Room Management events (v2.0.0)
   "agent_room:agent_added": (roomId: string, agentId: string) => void;
   "agent_room:agent_removed": (roomId: string, agentId: string) => void;
-  "agent_room:agents_listed": (roomId: string, agents: any[]) => void;
-  "agent_room:available_agents_listed": (agents: any[]) => void;
+  "agent_room:agents_listed": (
+    roomId: string,
+    agents: z.infer<typeof AgentRoomInfoSchema>[]
+  ) => void;
+  "agent_room:available_agents_listed": (agents: z.infer<typeof AgentRoomInfoSchema>[]) => void;
   "agent_room:status_update": (data: {
     roomId: string;
     agentId: string;
     status: string;
-    agent?: any;
+    agent?: z.infer<typeof AgentRoomInfoSchema>;
   }) => void;
   "agent_room:add_error": (error: Error, roomId?: string) => void;
   "agent_room:remove_error": (error: Error, roomId?: string) => void;
@@ -333,8 +337,8 @@ export interface SDKEvents {
   "coordinator:error": (error: string) => void;
 
   // Webhook events
-  "webhook:sent": (payload: any, url: string) => void;
-  "webhook:success": (response: any, url: string) => void;
+  "webhook:sent": (payload: unknown, url: string) => void;
+  "webhook:success": (response: unknown, url: string) => void;
   "webhook:error": (error: Error, url: string) => void;
   "webhook:retry": (attempt: number, url: string) => void;
 

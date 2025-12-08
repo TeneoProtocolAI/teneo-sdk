@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import { TeneoSDK } from "../../src";
 import { SDKConfigBuilder } from "../../src/types";
 import { privateKeyToAccount } from "viem/accounts";
@@ -470,9 +470,11 @@ describe.skip("Room Management Integration Tests", () => {
 
   describe("Multiple Rooms", () => {
     it("should handle creating multiple rooms", async () => {
+      /* eslint-disable @typescript-eslint/no-unused-vars */
       const room1 = await sdk.createRoom({ name: "Room 1" });
       const room2 = await sdk.createRoom({ name: "Room 2" });
       const room3 = await sdk.createRoom({ name: "Room 3" });
+      /* eslint-enable @typescript-eslint/no-unused-vars */
 
       expect(sdk.getOwnedRoomCount()).toBe(3);
 

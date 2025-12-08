@@ -40,7 +40,7 @@ export class ListRoomAgentsHandler extends BaseMessageHandler<RoomAgentsResponse
     });
 
     // Cache via agent room manager if available
-    const agentRoomManager = (context as any).agentRoomManager;
+    const agentRoomManager = context.agentRoomManager;
     if (agentRoomManager && typeof agentRoomManager.cacheRoomAgents === "function") {
       agentRoomManager.cacheRoomAgents(room_id, agentList);
     }

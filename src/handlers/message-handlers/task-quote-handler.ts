@@ -23,7 +23,7 @@ export class TaskQuoteHandler extends BaseMessageHandler<TaskQuoteMessage> {
     });
 
     // Delegate to payment manager if available
-    const paymentManager = (context as any).paymentManager;
+    const paymentManager = context.paymentManager;
     if (paymentManager && typeof paymentManager.handleTaskQuote === "function") {
       paymentManager.handleTaskQuote(message.data);
     }

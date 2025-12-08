@@ -970,6 +970,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listRoomAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
     return this.agentRoom.listRoomAgents(roomId, useCache);
   }
@@ -991,6 +992,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * console.log(`${available.length} agents available to add`);
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
     return this.agentRoom.listAvailableAgents(roomId, useCache);
   }
@@ -1012,6 +1014,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getRoomAgents(roomId: string): any[] | undefined {
     return this.agentRoom.getRoomAgents(roomId);
   }
@@ -1031,6 +1034,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getAvailableAgents(roomId: string): any[] | undefined {
     return this.agentRoom.getAvailableAgents(roomId);
   }
@@ -1728,7 +1732,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.emit("error", error);
       // Fire and forget - don't block event emission
       this.webhookHandler
-        .sendWebhook("error", error, { code: error.code })
+        .sendWebhook("error", error.toJSON(), { code: error.code })
         .catch((webhookError) => {
           this.logger.error("Failed to send webhook for error event", webhookError);
         });

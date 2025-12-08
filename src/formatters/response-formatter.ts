@@ -296,7 +296,7 @@ export class ResponseFormatter {
   /**
    * Format raw message (no transformation)
    */
-  private formatRaw(message: BaseMessage): any {
+  private formatRaw(message: BaseMessage): BaseMessage {
     return message;
   }
 
@@ -467,7 +467,7 @@ export class ResponseFormatter {
   /**
    * Format JSON object for display
    */
-  private formatJSON(obj: any, indent = 0): string {
+  private formatJSON(obj: unknown, indent = 0): string {
     if (obj === null || obj === undefined) {
       return "null";
     }
@@ -497,7 +497,7 @@ export class ResponseFormatter {
   /**
    * Format array for display
    */
-  private formatArray(arr: any[], indent = 0): string {
+  private formatArray(arr: unknown[], indent = 0): string {
     if (arr.length === 0) {
       return "[]";
     }

@@ -3,7 +3,7 @@
  * Processes messages from agents (when they send 'message' instead of 'task_response')
  */
 
-import { UserMessage, UserMessageSchema } from "../../types";
+import { UserMessage, UserMessageSchema, TaskResponseMessage } from "../../types";
 import { AgentResponse } from "../../types/events";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
@@ -54,7 +54,8 @@ export class RegularMessageHandler extends BaseMessageHandler<UserMessage> {
         contentType: message.content_type || "text/plain",
         success: true,
         timestamp: new Date(),
-        raw: message as any, // Include raw message for request correlation
+        // Cast to TaskResponseMessage for request correlation (message format is compatible)
+        raw: message as unknown as TaskResponseMessage,
         humanized:
           typeof message.content === "string" ? message.content : JSON.stringify(message.content)
       };

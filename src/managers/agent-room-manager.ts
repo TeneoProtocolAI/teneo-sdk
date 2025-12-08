@@ -601,6 +601,6 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     const ownedRooms = this.roomManagementManager.getOwnedRooms?.();
     if (!ownedRooms) return true; // Skip check if method not available
 
-    return ownedRooms.some((room: any) => room.id === roomId);
+    return ownedRooms.some((room) => room.id === roomId);
   }
 }

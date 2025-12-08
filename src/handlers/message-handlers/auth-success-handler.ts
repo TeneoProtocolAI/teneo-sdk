@@ -49,7 +49,7 @@ export class AuthSuccessHandler extends BaseMessageHandler<AuthSuccessMessage> {
     const authState = context.getAuthState();
 
     // Initialize room management manager with room data (v2.0.0)
-    const roomMgmt = (context as any).roomManagementManager;
+    const roomMgmt = context.roomManagementManager;
     if (roomMgmt) {
       // Set room limit
       if (message.data.max_private_rooms) {

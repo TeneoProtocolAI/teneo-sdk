@@ -22,7 +22,7 @@ export class AgentStatusUpdateHandler extends BaseMessageHandler<AgentStatusUpda
     });
 
     // Invalidate cache for this room via agent room manager
-    const agentRoomManager = (context as any).agentRoomManager;
+    const agentRoomManager = context.agentRoomManager;
     if (agentRoomManager && typeof agentRoomManager.handleStatusUpdate === "function") {
       agentRoomManager.handleStatusUpdate(room_id, agent_id, status);
     }

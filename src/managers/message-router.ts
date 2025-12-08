@@ -245,7 +245,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         // Try to match by client_request_id if server echoes it back
         const responseRequestId =
           r.raw?.data && "client_request_id" in r.raw.data
-            ? (r.raw.data as any).client_request_id
+            ? (r.raw.data as Record<string, unknown>).client_request_id
             : undefined;
 
         if (responseRequestId === requestId) {

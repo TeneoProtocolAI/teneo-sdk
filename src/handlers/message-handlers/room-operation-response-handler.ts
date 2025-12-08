@@ -59,7 +59,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
       // For now, handlers will emit both and listeners filter by room_id
 
       // Update cache via room management manager if available
-      const roomManager = (context as any).roomManagementManager;
+      const roomManager = context.roomManagementManager;
       if (roomManager && typeof roomManager.upsertRoom === "function") {
         roomManager.upsertRoom(room);
       }
@@ -80,7 +80,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
       context.logger.info("Room deleted", { roomId: room_id });
 
       // Remove from cache
-      const roomManager = (context as any).roomManagementManager;
+      const roomManager = context.roomManagementManager;
       if (roomManager && typeof roomManager.removeRoom === "function") {
         roomManager.removeRoom(room_id);
       }

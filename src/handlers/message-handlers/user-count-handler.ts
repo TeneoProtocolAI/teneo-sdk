@@ -20,7 +20,7 @@ export class UserCountHandler extends BaseMessageHandler<UserCountMessage> {
     });
 
     // Delegate to admin manager if available
-    const adminManager = (context as any).adminManager;
+    const adminManager = context.adminManager;
     if (adminManager && typeof adminManager.handleUserCount === "function") {
       adminManager.handleUserCount(message.data);
     }

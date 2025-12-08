@@ -7,6 +7,25 @@ import { z } from "zod";
 import { BaseMessage, MessageType, Logger, WebhookEventType } from "../../types";
 import { FormattedResponse } from "../../formatters/response-formatter";
 import { PrivateKeyAccount } from "viem/accounts";
+import type { RoomManager } from "../../managers/room-manager";
+import type { RoomManagementManager } from "../../managers/room-management-manager";
+import type { AgentRoomManager } from "../../managers/agent-room-manager";
+import type { PaymentManager } from "../../managers/payment-manager";
+import type { AdminManager } from "../../managers/admin-manager";
+import type { AgentRegistry } from "../../managers/agent-registry";
+
+// Re-export connection and auth state types from main config
+// These types define the shape of state used by handlers
+import type {
+  ConnectionState as ConfigConnectionState,
+  AuthenticationState as ConfigAuthenticationState
+} from "../../types/config";
+
+/** Connection state for the WebSocket client (re-exported from config) */
+export type ConnectionState = ConfigConnectionState;
+
+/** Authentication state (re-exported from config) */
+export type AuthState = ConfigAuthenticationState;
 
 /**
  * Context provided to message handlers
@@ -14,10 +33,14 @@ import { PrivateKeyAccount } from "viem/accounts";
  */
 export interface HandlerContext {
   // Event emission
-  emit: (event: string, ...args: any[]) => void;
+  emit: (event: string, ...args: unknown[]) => void;
 
   // Webhook delivery
-  sendWebhook: (type: WebhookEventType, data: any, metadata?: any) => Promise<void>;
+  sendWebhook: (
+    type: WebhookEventType,
+    data: Record<string, unknown>,
+    metadata?: Record<string, unknown>
+  ) => Promise<void>;
 
   // Response formatting (optional)
   formatResponse?: (message: BaseMessage) => FormattedResponse;
@@ -26,28 +49,28 @@ export interface HandlerContext {
   logger: Logger;
 
   // State access
-  getConnectionState: () => any;
-  getAuthState: () => any;
-  updateConnectionState: (update: any) => void;
-  updateAuthState: (update: any) => void;
+  getConnectionState: () => ConnectionState;
+  getAuthState: () => AuthState;
+  updateConnectionState: (update: Partial<ConnectionState>) => void;
+  updateAuthState: (update: Partial<AuthState>) => void;
 
   // Room manager for subscription updates (optional)
-  roomManager?: any;
+  roomManager?: RoomManager;
 
   // Room management manager for CRUD operations (v2.0.0, optional)
-  roomManagementManager?: any;
+  roomManagementManager?: RoomManagementManager;
 
   // Agent room manager for agent-room operations (v2.0.0, optional)
-  agentRoomManager?: any;
+  agentRoomManager?: AgentRoomManager;
 
   // Payment manager for X402 payment flow (optional)
-  paymentManager?: any;
+  paymentManager?: PaymentManager;
 
   // Admin manager for admin-only features (optional)
-  adminManager?: any;
+  adminManager?: AdminManager;
 
   // Agent registry for agent details lookups (optional)
-  agentRegistry?: any;
+  agentRegistry?: AgentRegistry;
 
   // Account for signing (optional, for auth handlers)
   account?: PrivateKeyAccount;

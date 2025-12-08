@@ -123,7 +123,7 @@ describe("waitForEvent", () => {
     it("should timeout if no matching event arrives", async () => {
       const promise = waitForEvent(emitter, "filtered:event", {
         timeout: 1000,
-        filter: (data: any) => data.id === 999
+        filter: (data: { id: number }) => data.id === 999
       });
 
       // Emit non-matching events

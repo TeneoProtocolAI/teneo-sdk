@@ -2,7 +2,7 @@
  * Tests for Token Bucket Rate Limiter
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { TokenBucketRateLimiter, RateLimitError } from "./rate-limiter";
 
 describe("TokenBucketRateLimiter", () => {

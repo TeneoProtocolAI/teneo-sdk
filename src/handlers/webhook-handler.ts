@@ -166,7 +166,11 @@ export class WebhookHandler extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public async sendWebhook(eventType: WebhookEventType, data: any, metadata?: any): Promise<void> {
+  public async sendWebhook(
+    eventType: WebhookEventType,
+    data: Record<string, unknown>,
+    metadata?: Record<string, unknown>
+  ): Promise<void> {
     if (!this.webhookConfig || this.isDestroyed) {
       return;
     }
@@ -388,7 +392,7 @@ export class WebhookHandler extends EventEmitter<SDKEvents> {
           ...this.webhookConfig.headers
         },
         body: JSON.stringify(item.payload),
-        signal: controller.signal as any
+        signal: controller.signal as AbortSignal
       };
 
       const response = await fetch(this.webhookConfig.url, options);
@@ -408,13 +412,14 @@ export class WebhookHandler extends EventEmitter<SDKEvents> {
 
       this.emit("webhook:sent", item.payload, this.webhookConfig.url);
       this.emit("webhook:success", responseData, this.webhookConfig.url);
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      const err = error as Error;
+      if (err.name === "AbortError") {
         throw new WebhookError("Webhook timeout", {
           timeout: this.webhookConfig.timeout
         });
       }
-      throw new WebhookError(`Webhook delivery failed: ${error.message}`, error);
+      throw new WebhookError(`Webhook delivery failed: ${err.message}`, error);
     } finally {
       clearTimeout(timeout);
     }
@@ -434,8 +439,9 @@ export class WebhookHandler extends EventEmitter<SDKEvents> {
       // Use comprehensive SSRF validator
       // allowInsecureWebhooks controls whether localhost/HTTP is allowed
       validateSSRF(url, this.config.allowInsecureWebhooks ?? false);
-    } catch (error: any) {
-      throw new WebhookError(`Webhook URL validation failed: ${error.message}`, { url });
+    } catch (error: unknown) {
+      const err = error as Error;
+      throw new WebhookError(`Webhook URL validation failed: ${err.message}`, { url });
     }
   }
 

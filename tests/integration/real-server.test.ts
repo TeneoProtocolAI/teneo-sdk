@@ -49,6 +49,7 @@ const hasCredentials = !!(
 describe.skipIf(!hasCredentials)("Real Teneo Server Integration Test", () => {
   let sdk: TeneoSDK;
   let authState: AuthenticationState;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let receivedAgents: Agent[] = [];
   let privateRoomId: string = "";
 
@@ -143,6 +144,7 @@ describe.skipIf(!hasCredentials)("Real Teneo Server Integration Test", () => {
 
       let challengeReceived = false;
       let authSuccessReceived = false;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       let usedCachedAuth = false;
 
       const challengePromise = new Promise<string | null>((resolve) => {

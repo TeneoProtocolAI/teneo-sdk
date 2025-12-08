@@ -55,30 +55,30 @@ export function createPinoLogger(level: LogLevel, name?: string): Logger {
 
   // Adapt pino's API to match our Logger interface
   return {
-    debug: (message: string, data?: any) => {
+    debug: (message: string, data?: unknown) => {
       if (data !== undefined) {
-        pinoLogger.debug(data, message);
+        pinoLogger.debug(data as object, message);
       } else {
         pinoLogger.debug(message);
       }
     },
-    info: (message: string, data?: any) => {
+    info: (message: string, data?: unknown) => {
       if (data !== undefined) {
-        pinoLogger.info(data, message);
+        pinoLogger.info(data as object, message);
       } else {
         pinoLogger.info(message);
       }
     },
-    warn: (message: string, data?: any) => {
+    warn: (message: string, data?: unknown) => {
       if (data !== undefined) {
-        pinoLogger.warn(data, message);
+        pinoLogger.warn(data as object, message);
       } else {
         pinoLogger.warn(message);
       }
     },
-    error: (message: string, data?: any) => {
+    error: (message: string, data?: unknown) => {
       if (data !== undefined) {
-        pinoLogger.error(data, message);
+        pinoLogger.error(data as object, message);
       } else {
         pinoLogger.error(message);
       }

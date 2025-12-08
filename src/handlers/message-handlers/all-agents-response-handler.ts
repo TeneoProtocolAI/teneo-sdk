@@ -22,7 +22,7 @@ export class AllAgentsResponseHandler extends BaseMessageHandler<AllAgentsRespon
     });
 
     // Delegate to admin manager if available
-    const adminManager = (context as any).adminManager;
+    const adminManager = context.adminManager;
     if (adminManager && typeof adminManager.handleAllAgentsResponse === "function") {
       adminManager.handleAllAgentsResponse(message.data);
     }

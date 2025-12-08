@@ -8,6 +8,7 @@ import { AgentRoomManager, AgentRoomInfo } from "../../../src/managers/agent-roo
 import { RoomManagementManager } from "../../../src/managers/room-management-manager";
 import { WebSocketClient } from "../../../src/core/websocket-client";
 import { Logger, RoomInfo } from "../../../src/types";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ErrorCode } from "../../../src/types/error-codes";
 
 describe("AgentRoomManager", () => {

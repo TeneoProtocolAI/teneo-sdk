@@ -29,6 +29,7 @@ describe("ResponseFormatter", () => {
     });
 
     it("should validate format option", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(() => new ResponseFormatter({ format: "invalid" as any })).toThrow();
     });
   });
@@ -303,6 +304,7 @@ describe("ResponseFormatter", () => {
 
     it("should handle unknown message types", () => {
       const unknown: BaseMessage = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         type: "unknown" as any,
         content: "Unknown content",
         data: { key: "value" }

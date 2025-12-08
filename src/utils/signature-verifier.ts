@@ -198,10 +198,11 @@ export class SignatureVerifier {
    * @returns Object containing signable fields
    */
   public getSignableContent(message: BaseMessage): object {
-    const { signature, publicKey, id, ...signableContent } = message;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { signature: _signature, publicKey: _publicKey, id: _id, ...signableContent } = message;
 
     // Include only defined fields for consistent hashing
-    const filtered: Record<string, any> = {};
+    const filtered: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(signableContent)) {
       if (value !== undefined) {
         filtered[key] = value;

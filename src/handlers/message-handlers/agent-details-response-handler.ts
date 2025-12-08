@@ -20,7 +20,7 @@ export class AgentDetailsResponseHandler extends BaseMessageHandler<AgentDetails
     });
 
     // Delegate to agent registry if available
-    const agentRegistry = (context as any).agentRegistry;
+    const agentRegistry = context.agentRegistry;
     if (agentRegistry && typeof agentRegistry.handleAgentDetails === "function") {
       agentRegistry.handleAgentDetails(agent);
     }
