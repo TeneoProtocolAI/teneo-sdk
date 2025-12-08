@@ -8,6 +8,7 @@ import { WebSocketClient } from "../core/websocket-client";
 import { Logger, TaskQuoteData } from "../types";
 import { SDKError } from "../types/events";
 import { ErrorCode } from "../types/error-codes";
+import { PaymentSigner, buildX402ResourceUrl } from "../payments";
 
 /**
  * Events emitted by the PaymentManager
@@ -71,10 +72,38 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
   /** Default timeout for task confirmations (60 seconds) */
   private readonly confirmTimeout = 60000;
 
+  /** Optional payment signer for auto-generating payment headers */
+  private paymentSigner: PaymentSigner | null = null;
+  /** x402 resource URL derived from WebSocket URL */
+  private x402ResourceUrl: string | null = null;
+
   constructor(wsClient: WebSocketClient, logger: Logger) {
     super();
     this.wsClient = wsClient;
     this.logger = logger;
+  }
+
+  /**
+   * Sets the payment signer for auto-generating payment headers.
+   * When set, confirm() can automatically generate payment headers from quotes.
+   *
+   * @param signer - The PaymentSigner instance
+   * @param wsUrl - The WebSocket URL (used to derive x402 resource URL)
+   */
+  public setPaymentSigner(signer: PaymentSigner, wsUrl: string): void {
+    this.paymentSigner = signer;
+    this.x402ResourceUrl = buildX402ResourceUrl(wsUrl);
+    this.logger.info("PaymentManager: Payment signer configured", {
+      signerAddress: signer.getAddress(),
+      x402ResourceUrl: this.x402ResourceUrl
+    });
+  }
+
+  /**
+   * Returns whether auto-payment is enabled (payment signer is configured)
+   */
+  public get isAutoPaymentEnabled(): boolean {
+    return this.paymentSigner !== null;
   }
 
   /**
@@ -132,18 +161,23 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
    * Confirms a task with payment.
    * Call this after receiving a quote to execute the task with payment.
    *
-   * @param options - The confirmation options including task ID and payment
+   * If a PaymentSigner is configured and no paymentPayload is provided,
+   * the payment header will be automatically generated from the quote.
+   *
+   * @param options - The confirmation options including task ID and optional payment
    * @returns Promise that resolves when the task is confirmed
-   * @throws {SDKError} If not connected or quote not found
+   * @throws {SDKError} If not connected, quote not found, or payment generation fails
    *
    * @example
    * ```typescript
-   * // After receiving a quote
+   * // With auto-payment (if PaymentSigner is configured)
+   * await paymentManager.confirm({ taskId: quote.task_id });
+   *
+   * // With manual payment payload
    * await paymentManager.confirm({
    *   taskId: quote.task_id,
    *   paymentPayload: "base64-encoded-x402-payment"
    * });
-   * // Now listen for agent:response events for the result
    * ```
    */
   public async confirm(options: ConfirmTaskOptions): Promise<void> {
@@ -151,9 +185,53 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
-    const { taskId, paymentPayload } = options;
+    const { taskId } = options;
+    let { paymentPayload } = options;
 
     this.logger.info("PaymentManager: Confirming task", { taskId });
+
+    // Auto-generate payment if signer is available and no manual payload provided
+    if (!paymentPayload && this.paymentSigner && this.x402ResourceUrl) {
+      const quote = this.quotes.get(taskId);
+
+      if (!quote) {
+        throw new SDKError(
+          `Quote not found for task ${taskId}. Request a quote first.`,
+          ErrorCode.INVALID_MESSAGE
+        );
+      }
+
+      if (quote.pricing) {
+        this.logger.debug("PaymentManager: Auto-generating payment header", {
+          taskId,
+          amountUsdc: quote.pricing.price_per_unit
+        });
+
+        try {
+          paymentPayload = await this.paymentSigner.createPaymentHeader({
+            amountUsdc: quote.pricing.price_per_unit,
+            resourceUrl: this.x402ResourceUrl
+          });
+
+          this.logger.debug("PaymentManager: Payment header generated", {
+            taskId,
+            payloadLength: paymentPayload.length
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          this.logger.error("PaymentManager: Failed to generate payment header", {
+            taskId,
+            error: errorMessage
+          });
+          throw new SDKError(
+            `Failed to generate payment: ${errorMessage}`,
+            ErrorCode.MESSAGE_ERROR
+          );
+        }
+      } else {
+        this.logger.debug("PaymentManager: No pricing in quote, skipping payment", { taskId });
+      }
+    }
 
     // Send confirm_task message
     const message = {
