@@ -48,6 +48,8 @@ import {
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
+import { PaymentSigner, type PaymentSignerConfig } from "./payments";
+import type { SecurePrivateKey } from "./utils/secure-private-key";
 
 // Re-export types for external use
 export type {
@@ -191,6 +193,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           responseFormat: this.config.responseFormat
         }
       );
+
+      // Initialize PaymentSigner if privateKey is available and payments not disabled
+      this.initializePaymentSigner();
 
       // Set up event forwarding
       this.setupEventForwarding();
@@ -1739,6 +1744,57 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   private createDefaultLogger(): Logger {
     return createPinoLogger(this.config.logLevel ?? "info", "TeneoSDK");
+  }
+
+  /**
+   * Initialize PaymentSigner if privateKey is available and payments not explicitly disabled.
+   * Uses the same privateKey as auth by default for simpler setup.
+   */
+  private initializePaymentSigner(): void {
+    // Check if payments are explicitly disabled
+    if (this.config.enablePayments === false) {
+      this.logger.debug("Payments disabled by configuration");
+      return;
+    }
+
+    // Get the private key - either from paymentConfig or reuse auth privateKey
+    const privateKey = this.config.privateKey;
+    if (!privateKey) {
+      this.logger.debug("No privateKey configured, payment auto-signing disabled");
+      return;
+    }
+
+    // Get the actual key string (handle SecurePrivateKey if used)
+    let keyString: string;
+    if (typeof privateKey === "string") {
+      keyString = privateKey;
+    } else {
+      // SecurePrivateKey - use it temporarily to get the key
+      keyString = (privateKey as SecurePrivateKey).use((key) => key);
+    }
+
+    try {
+      // Build PaymentSigner config
+      const signerConfig: PaymentSignerConfig = {
+        privateKey: keyString,
+        chain: this.config.paymentConfig?.chain,
+        rpcUrl: this.config.paymentConfig?.rpcUrl,
+        payToAddress: this.config.paymentConfig?.payToAddress
+      };
+
+      const signer = new PaymentSigner(signerConfig);
+
+      // Set the signer on the PaymentManager
+      this._payments.setPaymentSigner(signer, this.config.wsUrl);
+
+      this.logger.info("PaymentSigner initialized for auto-payments", {
+        signerAddress: signer.getAddress()
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      this.logger.warn("Failed to initialize PaymentSigner", { error: errorMessage });
+      // Don't throw - payments will work in manual mode
+    }
   }
 
   /**
