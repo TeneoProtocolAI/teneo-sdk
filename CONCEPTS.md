@@ -87,7 +87,7 @@ Teneo uses **Web3 wallet authentication** instead of API keys. Your Ethereum pri
 
 ```typescript
 const sdk = new TeneoSDK({
-  wsUrl: "wss://backend.developer.teneo-protocol.ai/ws",
+  wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0xYourPrivateKey" // Used only for signing
 });
 
@@ -447,6 +447,14 @@ console.log(response.content); // "4"
 
 Some agents charge for their services using the X402 payment protocol. The flow is: **Quote → Confirm → Response**.
 
+### Automatic Payment Signing
+
+The SDK includes a `PaymentSigner` that **automatically creates x402 payment headers** when you confirm a task. No manual payment encoding needed!
+
+- Uses **PEAQ chain** with **USDC** stablecoin
+- Payment headers are signed using your private key
+- The SDK handles all the complexity for you
+
 ### Payment Flow
 
 ```
@@ -463,8 +471,8 @@ Some agents charge for their services using the X402 payment protocol. The flow 
    }
               │
               ▼
-3. User Decides to Pay
-   "Yes, here's my payment"
+3. Confirm Task
+   SDK auto-signs the payment!
               │
               ▼
 4. Server Validates Payment
@@ -490,19 +498,10 @@ console.log(`Agent: ${quote.agent_name}`);
 console.log(`Price: $${quote.pricing.price_per_unit}`);
 console.log(`Expires: ${quote.expires_at}`);
 
-// 2. User decides to pay (you handle payment externally)
-const paymentPayload = await yourPaymentProvider.createPayment({
-  amount: quote.pricing.price_per_unit,
-  recipient: quote.agent_wallet
-});
+// 2. Confirm the task - SDK auto-signs the payment!
+await sdk.confirmTask({ taskId: quote.task_id });
 
-// 3. Confirm the task with payment
-await sdk.confirmTask({
-  taskId: quote.task_id,
-  paymentPayload: paymentPayload // Base64 encoded
-});
-
-// 4. Response comes via event
+// 3. Response comes via event
 sdk.on("agent:response", (response) => {
   if (response.taskId === quote.task_id) {
     console.log("Analysis complete:", response.content);

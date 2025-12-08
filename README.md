@@ -2,7 +2,7 @@
 
 ## **Connect your app to Teneo Protocol's AI Agents**
 
-[![npm version](https://img.shields.io/badge/version-2.1.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/npm/v/@teneo-protocol/sdk)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-670%20passing-success)](/)
@@ -63,10 +63,16 @@ await sdk.sendMessage("What's the weather in NYC?", { room: rooms[0].id });
 
 ## What's New in v2.1
 
+### Auto-Payment Signing
+
+- **Automatic x402 payment headers** - No more manual payment encoding!
+- SDK signs payments automatically when confirming tasks
+- Uses PEAQ chain with USDC for micropayments
+
 ### X402 Payment Flow
 
 - Request quotes from agents before executing paid tasks
-- Confirm tasks with payment payloads
+- Confirm tasks with automatic payment signing
 - Full payment lifecycle events
 
 ### Agent Details API
@@ -232,11 +238,8 @@ console.log(`Agent: ${quote.agent_name}`);
 console.log(`Price: $${quote.pricing?.price_per_unit} ${quote.pricing?.price_type}`);
 console.log(`Expires: ${quote.expires_at}`);
 
-// Confirm and pay for the task
-await sdk.confirmTask({
-  taskId: quote.task_id,
-  paymentPayload: "base64-encoded-x402-payment" // Your payment payload
-});
+// Confirm the task - SDK auto-signs the payment!
+await sdk.confirmTask({ taskId: quote.task_id });
 
 // Response will come via agent:response event
 ```
@@ -485,7 +488,7 @@ sdk.on("agent_room:status_update", (data) => {
 
 ## Payment API (X402)
 
-Request quotes and pay for agent tasks using the X402 payment protocol.
+Request quotes and pay for agent tasks using the X402 payment protocol. The SDK **automatically signs payments** using your private key - no manual encoding needed!
 
 ### Using the Payment Manager
 
@@ -499,11 +502,8 @@ const quote = await payments.requestQuote({
   room: "room-123"
 });
 
-// Confirm with payment
-await payments.confirm({
-  taskId: quote.task_id,
-  paymentPayload: "base64-encoded-payment"
-});
+// Confirm - SDK auto-signs the payment!
+await payments.confirm({ taskId: quote.task_id });
 
 // Get cached quote
 const cachedQuote = payments.getQuote(taskId);
@@ -517,7 +517,7 @@ const allQuotes = payments.getAllQuotes();
 ```typescript
 // These are shortcuts on the SDK itself
 const quote = await sdk.requestQuote({ content: "...", room: "..." });
-await sdk.confirmTask({ taskId: quote.task_id, paymentPayload: "..." });
+await sdk.confirmTask({ taskId: quote.task_id }); // Auto-signed!
 ```
 
 ### Payment Events
@@ -813,7 +813,7 @@ if (health.webhook) {
 ### Setup
 
 ```bash
-git clone https://github.com/anthropics/teneo-sdk.git
+git clone https://github.com/TeneoProtocolAI/teneo-sdk.git
 cd teneo-sdk
 pnpm install
 pnpm run build
