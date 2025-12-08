@@ -70,16 +70,16 @@ export type SupportedChain = "peaq";
  * Builds the x402 resource URL from a WebSocket URL
  * Converts ws:// to http:// (or wss:// to https://) and replaces /ws with /x402
  *
- * @param wsUrl - The WebSocket URL (e.g., "wss://coordinator.teneo.pro/ws")
- * @returns The x402 resource URL (e.g., "https://coordinator.teneo.pro/x402")
+ * @param wsUrl - The WebSocket URL (e.g., "wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+ * @returns The x402 resource URL (e.g., "https://backend.developer.chatroom.teneo-protocol.ai/x402")
  *
  * @example
  * ```typescript
  * buildX402ResourceUrl("ws://localhost:8080/ws");
  * // Returns: "http://localhost:8080/x402"
  *
- * buildX402ResourceUrl("wss://coordinator.teneo.pro/ws");
- * // Returns: "https://coordinator.teneo.pro/x402"
+ * buildX402ResourceUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws");
+ * // Returns: "https://backend.developer.chatroom.teneo-protocol.ai/x402"
  * ```
  */
 export function buildX402ResourceUrl(wsUrl: string): string {

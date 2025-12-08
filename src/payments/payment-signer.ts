@@ -45,7 +45,7 @@ export interface PaymentSignerConfig {
 export interface CreatePaymentHeaderOptions {
   /** Amount in USDC (e.g., 0.001 for $0.001) */
   amountUsdc: number;
-  /** x402 resource URL (e.g., "https://coordinator.teneo.pro/x402") */
+  /** x402 resource URL (e.g., "https://backend.developer.chatroom.teneo-protocol.ai/x402") */
   resourceUrl: string;
   /** Override the default pay-to address */
   payTo?: string;
@@ -79,7 +79,7 @@ const USDC_ABI = [
  *
  * const paymentHeader = await signer.createPaymentHeader({
  *   amountUsdc: 0.001,
- *   resourceUrl: "https://coordinator.teneo.pro/x402"
+ *   resourceUrl: "https://backend.developer.chatroom.teneo-protocol.ai/x402"
  * });
  * ```
  */
@@ -151,7 +151,7 @@ export class PaymentSigner {
    * ```typescript
    * const header = await signer.createPaymentHeader({
    *   amountUsdc: 0.001,
-   *   resourceUrl: "https://coordinator.teneo.pro/x402"
+   *   resourceUrl: "https://backend.developer.chatroom.teneo-protocol.ai/x402"
    * });
    * // Returns: "eyJ0eXBlIjoiZXhhY3QiLC..." (base64 encoded)
    * ```
