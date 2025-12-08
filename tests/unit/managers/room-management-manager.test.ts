@@ -74,17 +74,17 @@ describe("RoomManagementManager", () => {
     it("should reject if not connected", async () => {
       mockWsClient.isConnected = false;
 
-      await expect(
-        manager.createRoom({ name: "Test Room" })
-      ).rejects.toThrow("Not connected to Teneo Protocol");
+      await expect(manager.createRoom({ name: "Test Room" })).rejects.toThrow(
+        "Not connected to Teneo Protocol"
+      );
     });
 
     it("should validate room name", async () => {
       await expect(manager.createRoom({ name: "" })).rejects.toThrow("Room name cannot be empty");
 
-      await expect(
-        manager.createRoom({ name: "a".repeat(101) })
-      ).rejects.toThrow("Room name too long");
+      await expect(manager.createRoom({ name: "a".repeat(101) })).rejects.toThrow(
+        "Room name too long"
+      );
     });
 
     it("should validate room description", async () => {
@@ -106,9 +106,7 @@ describe("RoomManagementManager", () => {
         } as RoomInfo
       ]);
 
-      await expect(
-        manager.createRoom({ name: "New Room" })
-      ).rejects.toThrow("Room limit reached");
+      await expect(manager.createRoom({ name: "New Room" })).rejects.toThrow("Room limit reached");
     });
 
     it("should timeout if no response", async () => {
@@ -178,21 +176,19 @@ describe("RoomManagementManager", () => {
     });
 
     it("should reject if user doesn't own room", async () => {
-      await expect(
-        manager.updateRoom("room-999", { name: "New Name" })
-      ).rejects.toThrow("don't own this room");
-    });
-
-    it("should require at least one field", async () => {
-      await expect(manager.updateRoom("room-123", {})).rejects.toThrow(
-        "At least one field"
+      await expect(manager.updateRoom("room-999", { name: "New Name" })).rejects.toThrow(
+        "don't own this room"
       );
     });
 
+    it("should require at least one field", async () => {
+      await expect(manager.updateRoom("room-123", {})).rejects.toThrow("At least one field");
+    });
+
     it("should validate updated name", async () => {
-      await expect(
-        manager.updateRoom("room-123", { name: "" })
-      ).rejects.toThrow("Room name cannot be empty");
+      await expect(manager.updateRoom("room-123", { name: "" })).rejects.toThrow(
+        "Room name cannot be empty"
+      );
     });
 
     it("should validate updated description", async () => {
@@ -273,9 +269,7 @@ describe("RoomManagementManager", () => {
     });
 
     it("should get room by ID from owned rooms", () => {
-      manager.setOwnedRooms([
-        { id: "room-1", name: "Owned Room", is_owner: true } as RoomInfo
-      ]);
+      manager.setOwnedRooms([{ id: "room-1", name: "Owned Room", is_owner: true } as RoomInfo]);
 
       const result = manager.getRoomById("room-1");
       expect(result).toBeDefined();
@@ -283,9 +277,7 @@ describe("RoomManagementManager", () => {
     });
 
     it("should get room by ID from shared rooms", () => {
-      manager.setSharedRooms([
-        { id: "room-2", name: "Shared Room", is_owner: false } as RoomInfo
-      ]);
+      manager.setSharedRooms([{ id: "room-2", name: "Shared Room", is_owner: false } as RoomInfo]);
 
       const result = manager.getRoomById("room-2");
       expect(result).toBeDefined();
@@ -382,9 +374,7 @@ describe("RoomManagementManager", () => {
     });
 
     it("should remove room from cache", () => {
-      manager.setOwnedRooms([
-        { id: "room-1", name: "Room 1", is_owner: true } as RoomInfo
-      ]);
+      manager.setOwnedRooms([{ id: "room-1", name: "Room 1", is_owner: true } as RoomInfo]);
 
       expect(manager.getRoomById("room-1")).toBeDefined();
 
@@ -396,12 +386,8 @@ describe("RoomManagementManager", () => {
 
     it("should clear all caches", () => {
       manager.setRoomLimit(5);
-      manager.setOwnedRooms([
-        { id: "room-1", name: "Room 1", is_owner: true } as RoomInfo
-      ]);
-      manager.setSharedRooms([
-        { id: "room-2", name: "Room 2", is_owner: false } as RoomInfo
-      ]);
+      manager.setOwnedRooms([{ id: "room-1", name: "Room 1", is_owner: true } as RoomInfo]);
+      manager.setSharedRooms([{ id: "room-2", name: "Room 2", is_owner: false } as RoomInfo]);
 
       manager.clearCaches();
 
@@ -413,9 +399,7 @@ describe("RoomManagementManager", () => {
 
   describe("Return Value Immutability", () => {
     it("should return defensive copies from getOwnedRooms", () => {
-      manager.setOwnedRooms([
-        { id: "room-1", name: "Room 1", is_owner: true } as RoomInfo
-      ]);
+      manager.setOwnedRooms([{ id: "room-1", name: "Room 1", is_owner: true } as RoomInfo]);
 
       const rooms1 = manager.getOwnedRooms();
       const rooms2 = manager.getOwnedRooms();
@@ -425,9 +409,7 @@ describe("RoomManagementManager", () => {
     });
 
     it("should return defensive copy from getRoomById", () => {
-      manager.setOwnedRooms([
-        { id: "room-1", name: "Room 1", is_owner: true } as RoomInfo
-      ]);
+      manager.setOwnedRooms([{ id: "room-1", name: "Room 1", is_owner: true } as RoomInfo]);
 
       const room1 = manager.getRoomById("room-1");
       const room2 = manager.getRoomById("room-1");

@@ -135,7 +135,11 @@ describe("AgentRoomOperationResponseHandler", () => {
       expect(mockLogger.warn).toHaveBeenCalledWith(
         "Agent room operation succeeded but missing room_id or agent_id"
       );
-      expect(emitSpy).not.toHaveBeenCalledWith("agent_room:agent_added", expect.anything(), expect.anything());
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        "agent_room:agent_added",
+        expect.anything(),
+        expect.anything()
+      );
     });
 
     it("should handle success without room_id", async () => {
@@ -153,7 +157,11 @@ describe("AgentRoomOperationResponseHandler", () => {
       expect(mockLogger.warn).toHaveBeenCalledWith(
         "Agent room operation succeeded but missing room_id or agent_id"
       );
-      expect(emitSpy).not.toHaveBeenCalledWith("agent_room:agent_added", expect.anything(), expect.anything());
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        "agent_room:agent_added",
+        expect.anything(),
+        expect.anything()
+      );
     });
   });
 
@@ -176,21 +184,11 @@ describe("AgentRoomOperationResponseHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should emit both add and remove error events
-      expect(emitSpy).toHaveBeenCalledWith(
-        "agent_room:add_error",
-        expect.any(SDKError),
-        roomId
-      );
-      expect(emitSpy).toHaveBeenCalledWith(
-        "agent_room:remove_error",
-        expect.any(SDKError),
-        roomId
-      );
+      expect(emitSpy).toHaveBeenCalledWith("agent_room:add_error", expect.any(SDKError), roomId);
+      expect(emitSpy).toHaveBeenCalledWith("agent_room:remove_error", expect.any(SDKError), roomId);
 
       // Verify error details
-      const addErrorCall = emitSpy.mock.calls.find(
-        (call) => call[0] === "agent_room:add_error"
-      );
+      const addErrorCall = emitSpy.mock.calls.find((call) => call[0] === "agent_room:add_error");
       const error = addErrorCall[1] as SDKError;
       expect(error.message).toBe(errorMessage);
       expect(error.code).toBe(ErrorCode.OPERATION_FAILED);
@@ -230,9 +228,7 @@ describe("AgentRoomOperationResponseHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should use default error message
-      const addErrorCall = emitSpy.mock.calls.find(
-        (call) => call[0] === "agent_room:add_error"
-      );
+      const addErrorCall = emitSpy.mock.calls.find((call) => call[0] === "agent_room:add_error");
       const error = addErrorCall[1] as SDKError;
       expect(error.message).toBe("Agent room operation failed");
     });
@@ -250,11 +246,7 @@ describe("AgentRoomOperationResponseHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should emit error events with undefined room_id
-      expect(emitSpy).toHaveBeenCalledWith(
-        "agent_room:add_error",
-        expect.any(SDKError),
-        undefined
-      );
+      expect(emitSpy).toHaveBeenCalledWith("agent_room:add_error", expect.any(SDKError), undefined);
       expect(emitSpy).toHaveBeenCalledWith(
         "agent_room:remove_error",
         expect.any(SDKError),
@@ -308,7 +300,7 @@ describe("AgentRoomOperationResponseHandler", () => {
   describe("Message Validation", () => {
     it("should handle invalid message structure", async () => {
       const invalidMessage = {
-        type: "agent_room_operation_response",
+        type: "agent_room_operation_response"
         // Missing data field
       } as any;
 
@@ -321,11 +313,7 @@ describe("AgentRoomOperationResponseHandler", () => {
       );
 
       // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith(
-        "message:error",
-        expect.any(Error),
-        invalidMessage
-      );
+      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
     });
 
     it("should accept valid message with extra fields", async () => {

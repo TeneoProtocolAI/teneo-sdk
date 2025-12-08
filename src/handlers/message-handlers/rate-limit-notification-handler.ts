@@ -11,12 +11,16 @@ export class RateLimitNotificationHandler extends BaseMessageHandler<RateLimitNo
   readonly type = "rate_limit_notification" as const;
   readonly schema = RateLimitNotificationMessageSchema;
 
-  protected handleValidated(
-    message: RateLimitNotificationMessage,
-    context: HandlerContext
-  ): void {
-    const { title, message: msg, cta_text, cta_link, message_type, limit_type, reset_at } =
-      message.data;
+  protected handleValidated(message: RateLimitNotificationMessage, context: HandlerContext): void {
+    const {
+      title,
+      message: msg,
+      cta_text,
+      cta_link,
+      message_type,
+      limit_type,
+      reset_at
+    } = message.data;
 
     context.logger.warn("Rate limit notification received", {
       title,

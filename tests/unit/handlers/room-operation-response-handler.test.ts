@@ -240,25 +240,12 @@ describe("RoomOperationResponseHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should emit all error events (since we can't determine operation type)
-      expect(emitSpy).toHaveBeenCalledWith(
-        "room:create_error",
-        expect.any(SDKError)
-      );
-      expect(emitSpy).toHaveBeenCalledWith(
-        "room:update_error",
-        expect.any(SDKError),
-        roomId
-      );
-      expect(emitSpy).toHaveBeenCalledWith(
-        "room:delete_error",
-        expect.any(SDKError),
-        roomId
-      );
+      expect(emitSpy).toHaveBeenCalledWith("room:create_error", expect.any(SDKError));
+      expect(emitSpy).toHaveBeenCalledWith("room:update_error", expect.any(SDKError), roomId);
+      expect(emitSpy).toHaveBeenCalledWith("room:delete_error", expect.any(SDKError), roomId);
 
       // Verify error details
-      const createErrorCall = emitSpy.mock.calls.find(
-        (call) => call[0] === "room:create_error"
-      );
+      const createErrorCall = emitSpy.mock.calls.find((call) => call[0] === "room:create_error");
       const error = createErrorCall[1] as SDKError;
       expect(error.message).toBe(errorMessage);
       expect(error.code).toBe(ErrorCode.OPERATION_FAILED);
@@ -290,9 +277,7 @@ describe("RoomOperationResponseHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should use default error message
-      const createErrorCall = emitSpy.mock.calls.find(
-        (call) => call[0] === "room:create_error"
-      );
+      const createErrorCall = emitSpy.mock.calls.find((call) => call[0] === "room:create_error");
       const error = createErrorCall[1] as SDKError;
       expect(error.message).toBe("Room operation failed");
     });
@@ -310,16 +295,8 @@ describe("RoomOperationResponseHandler", () => {
 
       // Should still emit error events
       expect(emitSpy).toHaveBeenCalledWith("room:create_error", expect.any(SDKError));
-      expect(emitSpy).toHaveBeenCalledWith(
-        "room:update_error",
-        expect.any(SDKError),
-        undefined
-      );
-      expect(emitSpy).toHaveBeenCalledWith(
-        "room:delete_error",
-        expect.any(SDKError),
-        undefined
-      );
+      expect(emitSpy).toHaveBeenCalledWith("room:update_error", expect.any(SDKError), undefined);
+      expect(emitSpy).toHaveBeenCalledWith("room:delete_error", expect.any(SDKError), undefined);
     });
   });
 
@@ -431,7 +408,7 @@ describe("RoomOperationResponseHandler", () => {
   describe("Message Validation", () => {
     it("should handle invalid message structure", async () => {
       const invalidMessage = {
-        type: "room_operation_response",
+        type: "room_operation_response"
         // Missing data field
       } as any;
 
@@ -444,11 +421,7 @@ describe("RoomOperationResponseHandler", () => {
       );
 
       // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith(
-        "message:error",
-        expect.any(Error),
-        invalidMessage
-      );
+      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
     });
 
     it("should accept valid message with extra fields", async () => {

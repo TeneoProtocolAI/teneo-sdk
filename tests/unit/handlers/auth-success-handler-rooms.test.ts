@@ -542,9 +542,7 @@ describe("AuthSuccessHandler - Room Management", () => {
           id: "client-123",
           type: "user",
           address: "0xabc...",
-          rooms: [
-            { id: "room-1", name: "Room", is_owner: true } as RoomInfo
-          ],
+          rooms: [{ id: "room-1", name: "Room", is_owner: true } as RoomInfo],
           max_private_rooms: 3
         }
       } as AuthSuccessMessage;

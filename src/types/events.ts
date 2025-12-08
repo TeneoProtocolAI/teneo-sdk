@@ -339,7 +339,7 @@ export interface SDKEvents {
   "webhook:retry": (attempt: number, url: string) => void;
 
   // Rate Limit events
-  "rate_limit": (notification: {
+  rate_limit: (notification: {
     title: string;
     message: string;
     ctaText?: string;

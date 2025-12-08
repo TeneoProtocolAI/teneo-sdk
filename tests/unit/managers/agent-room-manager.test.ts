@@ -122,9 +122,7 @@ describe("AgentRoomManager", () => {
 
     it("should invalidate cache after adding agent", async () => {
       // Pre-populate cache
-      const cachedAgents: AgentRoomInfo[] = [
-        { agent_id: "agent-1", agent_name: "Agent 1" }
-      ];
+      const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
       expect(manager.getRoomAgents("room-123")).toHaveLength(1);
@@ -203,9 +201,7 @@ describe("AgentRoomManager", () => {
 
     it("should invalidate cache after removing agent", async () => {
       // Pre-populate cache
-      const cachedAgents: AgentRoomInfo[] = [
-        { agent_id: "agent-456", agent_name: "Agent 456" }
-      ];
+      const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-456", agent_name: "Agent 456" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
       expect(manager.getRoomAgents("room-123")).toHaveLength(1);
@@ -425,9 +421,7 @@ describe("AgentRoomManager", () => {
   });
 
   describe("Cache Management", () => {
-    const mockAgents: AgentRoomInfo[] = [
-      { agent_id: "agent-1", agent_name: "Agent 1" }
-    ];
+    const mockAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
 
     it("should cache room agents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
@@ -497,9 +491,7 @@ describe("AgentRoomManager", () => {
   });
 
   describe("Return Value Immutability", () => {
-    const mockAgents: AgentRoomInfo[] = [
-      { agent_id: "agent-1", agent_name: "Agent 1" }
-    ];
+    const mockAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
 
     it("should return defensive copies from getRoomAgents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);

@@ -505,10 +505,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
       throw new SDKError("Room name cannot be empty", ErrorCode.VALIDATION_ERROR);
     }
     if (name.length > 100) {
-      throw new SDKError(
-        "Room name too long (max 100 characters)",
-        ErrorCode.VALIDATION_ERROR
-      );
+      throw new SDKError("Room name too long (max 100 characters)", ErrorCode.VALIDATION_ERROR);
     }
   }
 

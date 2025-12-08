@@ -15,9 +15,9 @@ import { ErrorCode } from "../types/error-codes";
  */
 export interface AdminManagerEvents {
   /** Emitted when user count is updated (broadcast to admins) */
-  "user_count": (data: UserCountData) => void;
+  user_count: (data: UserCountData) => void;
   /** Emitted when admin status changes */
-  "status_changed": (isAdmin: boolean) => void;
+  status_changed: (isAdmin: boolean) => void;
 }
 
 /**

@@ -13,10 +13,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
   readonly type = "room_operation_response" as const;
   readonly schema = RoomOperationResponseSchema;
 
-  protected handleValidated(
-    message: RoomOperationResponse,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: RoomOperationResponse, context: HandlerContext): void {
     const { success, message: errorMessage, room_id, room } = message.data;
 
     context.logger.debug("Handling room_operation_response", {

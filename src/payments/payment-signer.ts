@@ -14,7 +14,6 @@ import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { createPaymentHeader } from "x402/client";
 import type { PaymentRequirements, Signer } from "x402/types";
 
-
 import {
   PEAQ_CHAIN,
   USDC_CONTRACT,

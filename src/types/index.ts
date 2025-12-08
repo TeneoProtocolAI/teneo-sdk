@@ -203,7 +203,6 @@ export {
   // User Presence types
   type UserAuthenticatedData,
   type UserAuthenticatedMessage,
-
   type AnyMessage,
 
   // Type guards

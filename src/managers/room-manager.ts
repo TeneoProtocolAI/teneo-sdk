@@ -5,13 +5,7 @@
 
 import { EventEmitter } from "eventemitter3";
 import { WebSocketClient } from "../core/websocket-client";
-import {
-  createSubscribe,
-  createUnsubscribe,
-  createListRooms,
-  Logger,
-  RoomInfo
-} from "../types";
+import { createSubscribe, createUnsubscribe, createListRooms, Logger, RoomInfo } from "../types";
 import { SDKEvents, SDKError } from "../types/events";
 import { ErrorCode } from "../types/error-codes";
 import { RoomIdSchema } from "../types/validation";

@@ -3,10 +3,7 @@
  * Processes responses from agent-room operations (add, remove)
  */
 
-import {
-  AgentRoomOperationResponse,
-  AgentRoomOperationResponseSchema
-} from "../../types";
+import { AgentRoomOperationResponse, AgentRoomOperationResponseSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 import { SDKError } from "../../types/events";
@@ -16,10 +13,7 @@ export class AgentRoomOperationResponseHandler extends BaseMessageHandler<AgentR
   readonly type = "agent_room_operation_response" as const;
   readonly schema = AgentRoomOperationResponseSchema;
 
-  protected handleValidated(
-    message: AgentRoomOperationResponse,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: AgentRoomOperationResponse, context: HandlerContext): void {
     const { success, message: errorMessage, room_id, agent_id } = message.data;
 
     context.logger.debug("Handling agent_room_operation_response", {

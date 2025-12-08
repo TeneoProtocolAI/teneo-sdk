@@ -230,10 +230,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * const freshAgents = await sdk.listRoomAgents('room-123', false);
    * ```
    */
-  public async listRoomAgents(
-    roomId: string,
-    useCache: boolean = true
-  ): Promise<AgentRoomInfo[]> {
+  public async listRoomAgents(roomId: string, useCache: boolean = true): Promise<AgentRoomInfo[]> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }

@@ -247,7 +247,7 @@ describe("AgentStatusUpdateHandler", () => {
   describe("Message Validation", () => {
     it("should handle invalid message structure", async () => {
       const invalidMessage = {
-        type: "agent_status_update",
+        type: "agent_status_update"
         // Missing data field
       } as any;
 
@@ -260,11 +260,7 @@ describe("AgentStatusUpdateHandler", () => {
       );
 
       // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith(
-        "message:error",
-        expect.any(Error),
-        invalidMessage
-      );
+      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
     });
 
     it("should accept valid message with extra fields", async () => {
