@@ -41,8 +41,9 @@ export const DEFAULT_RPC_URL = "https://peaq.api.onfinality.io/public";
 export const USDC_CONTRACT = "0xbbA60da06c2c5424f03f7434542280FCAd453d10" as const;
 
 /**
- * Default backend payment address for centralized settlement
- * The backend handles distribution to agents
+ * Default fallback payment address (backend settlement)
+ * Used when sending payments without a quote (e.g., direct message payments).
+ * For quote-confirm flow, payments go directly to agent wallets via quote.agent_wallet.
  */
 export const DEFAULT_PAY_TO_ADDRESS = "0xd409943eD69aDe02d0B25D0cbc47dc43b7391c34" as const;
 

@@ -202,15 +202,26 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
       }
 
       if (quote.pricing) {
+        // Payment goes to agent's wallet, not a centralized address
+        const payTo = quote.agent_wallet;
+        if (!payTo) {
+          throw new SDKError(
+            `Quote missing agent_wallet for task ${taskId}`,
+            ErrorCode.INVALID_MESSAGE
+          );
+        }
+
         this.logger.debug("PaymentManager: Auto-generating payment header", {
           taskId,
-          amountUsdc: quote.pricing.price_per_unit
+          amountUsdc: quote.pricing.price_per_unit,
+          payTo
         });
 
         try {
           paymentPayload = await this.paymentSigner.createPaymentHeader({
             amountUsdc: quote.pricing.price_per_unit,
-            resourceUrl: this.x402ResourceUrl
+            resourceUrl: this.x402ResourceUrl,
+            payTo
           });
 
           this.logger.debug("PaymentManager: Payment header generated", {
