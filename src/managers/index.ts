@@ -13,7 +13,8 @@ export {
   PaymentManager,
   type PaymentManagerEvents,
   type RequestQuoteOptions,
-  type ConfirmTaskOptions
+  type ConfirmTaskOptions,
+  type SendWithPaymentOptions
 } from "./payment-manager";
 export {
   AdminManager,

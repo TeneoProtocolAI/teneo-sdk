@@ -43,6 +43,20 @@ export interface ConfirmTaskOptions {
 }
 
 /**
+ * Options for sending a message with direct payment (no quote flow)
+ */
+export interface SendWithPaymentOptions {
+  /** The message content to send */
+  content: string;
+  /** The room to send the message to */
+  room: string;
+  /** Amount in USDC (default: 0.0001) */
+  amountUsdc?: number;
+  /** Custom payment payload (if you want to generate it yourself) */
+  paymentPayload?: string;
+}
+
+/**
  * Pending quote waiting for response
  */
 interface PendingQuote {
@@ -262,6 +276,85 @@ export class PaymentManager extends EventEmitter<PaymentManagerEvents> {
 
       this.pendingConfirmations.set(taskId, { resolve, reject, timeout });
     });
+  }
+
+  /**
+   * Sends a message with direct payment attached (no quote flow).
+   * Payment goes to the backend settlement address which routes it appropriately.
+   * This is simpler than the quote-confirm flow but doesn't let you see pricing upfront.
+   *
+   * @param options - The message and payment options
+   * @returns Promise that resolves when the message is sent
+   * @throws {SDKError} If not connected or payment generation fails
+   *
+   * @example
+   * ```typescript
+   * // Send with default payment amount (0.0001 USDC)
+   * await sdk.payment.sendWithPayment({
+   *   content: "What's the weather in NYC?",
+   *   room: "my-room-id"
+   * });
+   *
+   * // Send with custom payment amount
+   * await sdk.payment.sendWithPayment({
+   *   content: "Analyze this data",
+   *   room: "my-room-id",
+   *   amountUsdc: 0.001
+   * });
+   * ```
+   */
+  public async sendWithPayment(options: SendWithPaymentOptions): Promise<void> {
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const { content, room, amountUsdc = 0.0001 } = options;
+    let { paymentPayload } = options;
+
+    // Auto-generate payment if signer is available and no manual payload provided
+    if (!paymentPayload) {
+      if (!this.paymentSigner || !this.x402ResourceUrl) {
+        throw new SDKError(
+          "PaymentSigner not configured. Initialize SDK with payment.privateKey or provide paymentPayload.",
+          ErrorCode.NOT_CONNECTED
+        );
+      }
+
+      this.logger.debug("PaymentManager: Generating direct payment header", {
+        room,
+        amountUsdc
+      });
+
+      try {
+        // For direct payments, use the default backend address (no payTo override)
+        paymentPayload = await this.paymentSigner.createPaymentHeader({
+          amountUsdc,
+          resourceUrl: this.x402ResourceUrl
+        });
+
+        this.logger.debug("PaymentManager: Direct payment header generated", {
+          payloadLength: paymentPayload.length
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        this.logger.error("PaymentManager: Failed to generate direct payment header", {
+          error: errorMessage
+        });
+        throw new SDKError(`Failed to generate payment: ${errorMessage}`, ErrorCode.MESSAGE_ERROR);
+      }
+    }
+
+    // Send message with payment attached
+    const message = {
+      type: "message" as const,
+      content,
+      room,
+      payment: paymentPayload
+    };
+
+    this.logger.info("PaymentManager: Sending message with direct payment", { room, amountUsdc });
+
+    await this.wsClient.sendMessage(message);
   }
 
   /**
