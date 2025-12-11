@@ -48,6 +48,11 @@ export class AuthSuccessHandler extends BaseMessageHandler<AuthSuccessMessage> {
     // Get updated auth state
     const authState = context.getAuthState();
 
+    // Update admin manager with admin status
+    if (context.adminManager) {
+      context.adminManager.setAdminStatus(message.data.is_admin_whitelisted ?? false);
+    }
+
     // Initialize room management manager with room data (v2.0.0)
     const roomMgmt = context.roomManagementManager;
     if (roomMgmt) {
