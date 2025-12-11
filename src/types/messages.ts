@@ -457,7 +457,10 @@ export const UnsubscribeResponseSchema = BaseMessageSchema.extend({
 export const ListRoomsResponseSchema = BaseMessageSchema.extend({
   type: z.literal("room_list_response"),
   data: z.object({
-    rooms: z.array(RoomInfoSchema)
+    rooms: z
+      .array(RoomInfoSchema)
+      .nullable()
+      .transform((rooms) => rooms ?? [])
   })
 });
 

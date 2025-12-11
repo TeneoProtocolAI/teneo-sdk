@@ -43,7 +43,9 @@
   },
   "homepage": "https://github.com/TeneoProtocolAI/teneo-sdk#readme",
   "dependencies": {
+    "@hono/node-server": "^1.19.6",
     "eventemitter3": "^5.0.1",
+    "hono": "^4.10.4",
     "node-fetch": "^3.3.2",
     "pino": "^8.17.2",
     "uuid": "^9.0.1",
