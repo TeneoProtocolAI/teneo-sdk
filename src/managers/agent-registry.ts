@@ -11,9 +11,10 @@ import { AgentIdSchema, SearchQuerySchema } from "../types/validation";
 import { WebSocketClient } from "../core/websocket-client";
 
 /**
- * Pending request for agent details
+ * Pending request for agent details with promise sharing for concurrent requests
  */
 interface PendingDetailsRequest {
+  promise: Promise<AgentRoomInfo>;
   resolve: (agent: AgentRoomInfo) => void;
   reject: (error: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
@@ -273,6 +274,9 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
    * Makes a request to the server for full agent details including capabilities,
    * commands, pricing, and more.
    *
+   * Multiple concurrent calls for the same agent will share the same request,
+   * avoiding redundant server calls and preventing race conditions.
+   *
    * @param agentId - The unique identifier of the agent
    * @returns Promise that resolves with full agent details
    * @throws {SDKError} If not connected or request times out
@@ -294,6 +298,15 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
     // Validate agent ID
     const validatedAgentId = AgentIdSchema.parse(agentId);
 
+    // Check if there's already a pending request for this agent - reuse it
+    const existingRequest = this.pendingDetailsRequests.get(validatedAgentId);
+    if (existingRequest) {
+      this.logger.debug("AgentRegistry: Reusing pending request for agent details", {
+        agentId: validatedAgentId
+      });
+      return existingRequest.promise;
+    }
+
     this.logger.info("AgentRegistry: Requesting agent details", { agentId: validatedAgentId });
 
     // Send get_agent_details message
@@ -304,15 +317,28 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
 
     await this.wsClient.sendMessage(message);
 
-    // Wait for response
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingDetailsRequests.delete(validatedAgentId);
-        reject(new SDKError("Agent details request timed out", ErrorCode.TIMEOUT_ERROR));
-      }, this.detailsTimeout);
+    // Create promise with stored resolve/reject for later resolution
+    let resolvePromise: (agent: AgentRoomInfo) => void;
+    let rejectPromise: (error: Error) => void;
 
-      this.pendingDetailsRequests.set(validatedAgentId, { resolve, reject, timeout });
+    const promise = new Promise<AgentRoomInfo>((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
     });
+
+    const timeout = setTimeout(() => {
+      this.pendingDetailsRequests.delete(validatedAgentId);
+      rejectPromise!(new SDKError("Agent details request timed out", ErrorCode.TIMEOUT_ERROR));
+    }, this.detailsTimeout);
+
+    this.pendingDetailsRequests.set(validatedAgentId, {
+      promise,
+      resolve: resolvePromise!,
+      reject: rejectPromise!,
+      timeout
+    });
+
+    return promise;
   }
 
   /**
