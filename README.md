@@ -739,6 +739,11 @@ const sdk = new TeneoSDK(config);
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 PRIVATE_KEY=0xYourPrivateKeyHere
 LOG_LEVEL=info
+
+# Payment Configuration (optional)
+MAX_PRICE_PER_REQUEST=1000000    # Max quote price in USDC e6 units
+AUTO_APPROVE_QUOTES=true         # Auto-confirm quotes (default: true)
+PAYMENT_NETWORK=eip155:3338      # PEAQ network
 ```
 
 ```typescript
@@ -748,13 +753,174 @@ dotenv.config();
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  logLevel: (process.env.LOG_LEVEL as any) || "info"
+  walletAddress: process.env.WALLET_ADDRESS,
+  defaultRoom: process.env.DEFAULT_ROOM,
+  logLevel: (process.env.LOG_LEVEL as any) || "info",
+  maxPricePerRequest: process.env.MAX_PRICE_PER_REQUEST
+    ? parseInt(process.env.MAX_PRICE_PER_REQUEST)
+    : undefined,
+  autoApproveQuotes: process.env.AUTO_APPROVE_QUOTES !== "false",
+  paymentNetwork: process.env.PAYMENT_NETWORK
 });
 ```
 
 ---
 
-## Production Features
+## 💳 Payment Integration (v2.2.0)
+
+The SDK uses a **quote-approve** payment flow. When you send a message, the server returns a quote with pricing info. The SDK auto-approves by default (using your private key to sign the x402 payment), or you can handle quotes manually for more control.
+
+### How It Works
+
+```
+Your Message → Server Quote → Auto-Approve → Payment Signed → Task Executed
+```
+
+1. You send a message (e.g., `@twitter-agent posts elonmusk 10`)
+2. Server responds with a quote: agent, price, wallet address, expiration
+3. SDK auto-approves and attaches x402 payment header
+4. Agent executes the task
+
+### Configuration
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `maxPricePerRequest` | `number` | Maximum price in USDC e6 units. Quotes above this are rejected. |
+| `autoApproveQuotes` | `boolean` | Auto-confirm quotes (default: `true`). Set `false` for manual control. |
+| `quoteTimeout` | `number` | How long to wait for quote response in ms (default: `30000`) |
+| `paymentNetwork` | `string` | CAIP-2 network ID (default: `eip155:3338` for PEAQ) |
+| `paymentAsset` | `string` | Token contract address (default: USDC on PEAQ) |
+
+### Price Units
+
+All prices are in **USDC e6 units**:
+- `1000000` = 1 USDC
+- `100000` = 0.1 USDC
+- `1000` = 0.001 USDC ($0.001)
+
+### Basic Usage (Auto-Approve)
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: process.env.TENEO_WS_URL!,
+  privateKey: process.env.PRIVATE_KEY!,
+  maxPricePerRequest: 100000 // Reject quotes above 0.1 USDC
+});
+
+await sdk.connect();
+
+// Quote-approve happens automatically
+await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "general" });
+
+// Or direct command
+await sdk.sendDirectCommand({
+  agent: "twitter-agent",
+  command: "posts elonmusk 10",
+  room: "general"
+});
+```
+
+### Manual Quote Flow
+
+For more control, disable auto-approve and handle quotes yourself:
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: process.env.TENEO_WS_URL!,
+  privateKey: process.env.PRIVATE_KEY!,
+  autoApproveQuotes: false // Manual mode
+});
+
+await sdk.connect();
+
+// Step 1: Request a quote
+const quote = await sdk.requestQuote("Analyze BTC trends", "crypto-room");
+
+console.log(`Agent: ${quote.agentName}`);
+console.log(`Price: $${quote.pricing.pricePerUnit}`);
+console.log(`Expires: ${quote.expiresAt}`);
+
+// Step 2: Decide whether to confirm
+if (quote.pricing.pricePerUnit <= 0.01) {
+  const response = await sdk.confirmQuote(quote.taskId, {
+    waitForResponse: true,
+    timeout: 30000
+  });
+  console.log(response.humanized);
+}
+
+// You can also check pending quotes
+const pending = sdk.getPendingQuote(quote.taskId);
+```
+
+### Quote Result Object
+
+```typescript
+interface QuoteResult {
+  taskId: string;        // Unique task identifier
+  agentId: string;       // Selected agent ID
+  agentName?: string;    // Agent display name
+  agentWallet: string;   // Where payment goes
+  command?: string;      // Matched command
+  pricing: {
+    pricePerUnit: number;  // Price in USDC (e.g., 0.001)
+    priceType: string;     // "per-query", "per-item", etc.
+  };
+  expiresAt: Date;       // Quote expiration time
+}
+```
+
+### Payment Events
+
+```typescript
+sdk.on("payment:attached", (data) => {
+  console.log(`Payment: ${data.amount} for ${data.agentId}`);
+  if (data.command) console.log(`Command: ${data.command}`);
+});
+
+sdk.on("payment:error", (error) => {
+  console.error("Payment failed:", error.message);
+});
+```
+
+### Price Limit Protection
+
+The `maxPricePerRequest` option protects against unexpectedly high quotes:
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: process.env.TENEO_WS_URL!,
+  privateKey: process.env.PRIVATE_KEY!,
+  maxPricePerRequest: 10000 // Max $0.01 per request
+});
+
+// If an agent quotes $0.05, the SDK throws PaymentError
+// with code PRICE_LIMIT_EXCEEDED instead of confirming
+```
+
+### Builder Pattern
+
+```typescript
+const config = new SDKConfigBuilder()
+  .withWebSocketUrl("wss://backend.chatroom.teneo-protocol.ai/ws")
+  .withAuthentication(process.env.PRIVATE_KEY!)
+  .withPayments({
+    maxPricePerRequest: 500000,  // 0.5 USDC max
+    network: "eip155:3338",
+    asset: "0xbbA60da06c2c5424f03f7434542280FCAd453d10"
+  })
+  .withQuoteApproval({
+    autoApprove: true,  // default
+    timeout: 30000
+  })
+  .build();
+
+const sdk = new TeneoSDK(config);
+```
+
+---
+
+## 🛡️ Production Features
 
 ### Secure Private Key Management
 

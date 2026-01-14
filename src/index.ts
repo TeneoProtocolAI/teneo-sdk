@@ -202,6 +202,7 @@ export {
   RateLimitError,
   SignatureVerificationError,
   ConfigurationError,
+  PaymentError,
 
   // Validation helpers
   validateEventData,

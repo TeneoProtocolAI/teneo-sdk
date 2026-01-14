@@ -63,6 +63,11 @@ export const MessageTypeSchema = z.enum([
   "task_response",
   "agent_selected",
 
+  // Quote-Approve Flow (v2.2.0)
+  "request_task",
+  "task_quote",
+  "confirm_task",
+
   // System
   "agents",
   "error",
@@ -153,18 +158,37 @@ export const CapabilitySchema = z.object({
   description: z.string().optional()
 });
 
+export const CommandPricingSchema = z.object({
+  pricePerUnit: z.number().optional(),
+  priceType: z.enum(["free", "per-query", "per-item", "time-based-task"]).optional(),
+  taskUnit: z.string().optional(),
+  timeUnit: z.enum(["hour", "day"]).optional()
+});
+
+export const CommandParameterSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  required: z.boolean().optional(),
+  variadic: z.boolean().optional(),
+  description: z.string().optional(),
+  default: z.any().optional(),
+  isBillingCount: z.boolean().optional() // This param's value determines item count for per-item billing
+}).passthrough();
+
 export const CommandSchema = z
   .object({
     trigger: z.string(),
     argument: z.string().optional(),
     description: z.string().optional(),
-    parameters: z.any().optional(), // json.RawMessage - structured parameter array
+    parameters: z.array(CommandParameterSchema).optional(),
+    pricing: CommandPricingSchema.optional(),
+    // Command validation fields (from dev)
     strictArg: z.boolean().optional(),
     minArgs: z.number().optional(),
     maxArgs: z.number().optional(),
     hasVariants: z.boolean().optional(),
     variants: z.any().optional(), // json.RawMessage - command variants array
-    // Pricing fields (inline, not nested) - camelCase
+    // Inline pricing fields (alternative to nested pricing object)
     pricePerUnit: z.number().optional(), // Amount in USDC (e.g., 0.001 = $0.001)
     priceType: z.string().optional(), // "task-transaction" or "time-based-task"
     taskUnit: z.string().optional(), // For task-transaction: "per-query" or "per-item"
@@ -371,6 +395,52 @@ export const TaskResponseMessageSchema = BaseMessageSchema.extend({
     agent_name: z.string().optional(),
     success: stringToBoolean.optional(),
     error: z.string().optional()
+  })
+});
+
+// Quote-Approve Flow Schemas (v2.2.0)
+/**
+ * Pricing information for agent tasks.
+ *
+ * @property pricePerUnit - Price in whole USDC units (e.g., 0.001 = $0.001 USD).
+ *                          The SDK converts this to e6 micro-units (multiplies by 1,000,000)
+ *                          for on-chain payment processing.
+ * @property priceType - Pricing model: "free", "per-query", "per-item", or "time-based-task"
+ * @property taskUnit - Optional unit description for per-item pricing (e.g., "tweet", "image")
+ * @property timeUnit - Optional time unit for time-based pricing: "hour" or "day"
+ */
+export const PricingInfoSchema = z.object({
+  /** Price in whole USDC units (e.g., 0.001 = $0.001). Converted to e6 micro-units for payments. */
+  pricePerUnit: z.number(),
+  priceType: z.enum(["free", "per-query", "per-item", "time-based-task"]),
+  taskUnit: z.string().optional(),
+  timeUnit: z.enum(["hour", "day"]).optional()
+});
+
+export const RequestTaskMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("request_task"),
+  content: z.string(),
+  room: z.string()
+});
+
+export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("task_quote"),
+  data: z.object({
+    task_id: z.string(),
+    agent_id: z.string(),
+    agent_name: z.string().optional(),
+    agent_wallet: z.string(),
+    command: z.string().optional(),
+    pricing: PricingInfoSchema,
+    expires_at: z.string(),
+    client_request_id: z.string().optional() // Echoed back from request for correlation
+  })
+});
+
+export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("confirm_task"),
+  data: z.object({
+    task_id: z.string()
   })
 });
 
@@ -693,79 +763,6 @@ export const RoomPongResponseSchema = z
   })
   .passthrough();
 
-// ============================================================================
-// X402 PAYMENT SCHEMAS
-// ============================================================================
-
-// Pricing information for commands
-export const PricingInfoSchema = z
-  .object({
-    price_per_unit: z.number(), // Amount in USDC (e.g., 0.001 = $0.001)
-    price_type: z.string(), // "task-transaction" or "time-based-task"
-    task_unit: z.string().optional(), // For task-transaction: "per-query" or "per-item"
-    time_unit: z.string().optional() // For time-based-task: "second", "minute", or "hour"
-  })
-  .passthrough();
-
-// Task quote data returned by server
-export const TaskQuoteDataSchema = z
-  .object({
-    task_id: z.string(),
-    agent_id: z.string(),
-    agent_name: z.string(),
-    agent_wallet: z.string(), // Agent owner's wallet for payment
-    command: z.string().optional(), // Detected command trigger
-    pricing: PricingInfoSchema.optional(), // Pricing for this command
-    expires_at: z.string() // ISO timestamp for quote expiry
-  })
-  .passthrough();
-
-// Request task message (client → server)
-export const RequestTaskMessageSchema = z
-  .object({
-    type: z.literal("request_task"),
-    content: z.string(),
-    room: z.string()
-  })
-  .passthrough();
-
-// Task quote response (server → client)
-export const TaskQuoteMessageSchema = z
-  .object({
-    type: z.literal("task_quote"),
-    data: TaskQuoteDataSchema,
-    request_id: z.string().optional() // Echo back for request correlation
-  })
-  .passthrough();
-
-// Confirm task data
-export const ConfirmTaskDataSchema = z
-  .object({
-    task_id: z.string()
-  })
-  .passthrough();
-
-// Confirm task message (client → server)
-export const ConfirmTaskMessageSchema = z
-  .object({
-    type: z.literal("confirm_task"),
-    data: ConfirmTaskDataSchema,
-    payment: z.string().optional() // x402 payment payload (base64-encoded)
-  })
-  .passthrough();
-
-// Task confirmed response (server → client)
-export const TaskConfirmedMessageSchema = z
-  .object({
-    type: z.literal("task_confirmed"),
-    data: z
-      .object({
-        task_id: z.string(),
-        message: z.string().optional()
-      })
-      .passthrough()
-  })
-  .passthrough();
 
 // ============================================================================
 // AGENT DETAILS SCHEMAS
@@ -920,6 +917,9 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentSelectedMessageSchema,
   AgentsListMessageSchema,
 
+  // Quote-Approve Flow (v2.2.0)
+  TaskQuoteMessageSchema,
+
   // System
   ErrorMessageSchema,
   PingMessageSchema,
@@ -944,10 +944,6 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   // Room Ping System (v2.0.0)
   RoomPongResponseSchema,
 
-  // X402 Payment Flow
-  TaskQuoteMessageSchema,
-  TaskConfirmedMessageSchema,
-
   // Agent Details
   AgentDetailsResponseSchema,
 
@@ -970,6 +966,8 @@ export type AgentType = z.infer<typeof AgentTypeSchema>;
 export type AgentStatus = z.infer<typeof AgentStatusSchema>;
 
 export type Capability = z.infer<typeof CapabilitySchema>;
+export type CommandParameter = z.infer<typeof CommandParameterSchema>;
+export type CommandPricing = z.infer<typeof CommandPricingSchema>;
 export type Command = z.infer<typeof CommandSchema>;
 export type Room = z.infer<typeof RoomSchema>;
 export type Agent = z.infer<typeof AgentSchema>;
@@ -987,6 +985,10 @@ export type RegistrationSuccessMessage = z.infer<typeof RegistrationSuccessMessa
 export type UserMessage = z.infer<typeof UserMessageSchema>;
 export type TaskMessage = z.infer<typeof TaskMessageSchema>;
 export type TaskResponseMessage = z.infer<typeof TaskResponseMessageSchema>;
+export type PricingInfo = z.infer<typeof PricingInfoSchema>;
+export type RequestTaskMessage = z.infer<typeof RequestTaskMessageSchema>;
+export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
+export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
 export type AgentSelectedMessage = z.infer<typeof AgentSelectedMessageSchema>;
 export type AgentsListMessage = z.infer<typeof AgentsListMessageSchema>;
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
@@ -1027,14 +1029,6 @@ export type AgentStatusUpdateMessage = z.infer<typeof AgentStatusUpdateMessageSc
 export type RoomPingMessage = z.infer<typeof RoomPingMessageSchema>;
 export type RoomPongResponse = z.infer<typeof RoomPongResponseSchema>;
 
-// X402 Payment Types
-export type PricingInfo = z.infer<typeof PricingInfoSchema>;
-export type TaskQuoteData = z.infer<typeof TaskQuoteDataSchema>;
-export type RequestTaskMessage = z.infer<typeof RequestTaskMessageSchema>;
-export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
-export type ConfirmTaskData = z.infer<typeof ConfirmTaskDataSchema>;
-export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
-export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
 
 // Agent Details Types
 export type GetAgentDetailsMessage = z.infer<typeof GetAgentDetailsMessageSchema>;
@@ -1088,6 +1082,10 @@ export function isError(msg: unknown): msg is ErrorMessage {
 
 export function isAgentsList(msg: unknown): msg is AgentsListMessage {
   return AgentsListMessageSchema.safeParse(msg).success;
+}
+
+export function isTaskQuote(msg: unknown): msg is TaskQuoteMessage {
+  return TaskQuoteMessageSchema.safeParse(msg).success;
 }
 
 // Message factory functions with validation
@@ -1160,6 +1158,26 @@ export function createUnsubscribe(roomId: string): UnsubscribeMessage {
 export function createListRooms(): ListRoomsMessage {
   return ListRoomsMessageSchema.parse({
     type: "list_rooms"
+  });
+}
+
+export function createRequestTask(
+  content: string,
+  room: string,
+  clientRequestId?: string
+): RequestTaskMessage {
+  return RequestTaskMessageSchema.parse({
+    type: "request_task",
+    content,
+    room,
+    ...(clientRequestId && { data: { client_request_id: clientRequestId } })
+  });
+}
+
+export function createConfirmTask(taskId: string): ConfirmTaskMessage {
+  return ConfirmTaskMessageSchema.parse({
+    type: "confirm_task",
+    data: { task_id: taskId }
   });
 }
 

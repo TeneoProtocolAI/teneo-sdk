@@ -3,13 +3,15 @@
  * Processes room list from server
  */
 
+import { z } from "zod";
 import { ListRoomsResponse, ListRoomsResponseSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
 export class ListRoomsResponseHandler extends BaseMessageHandler<ListRoomsResponse> {
   readonly type = "room_list_response" as const;
-  readonly schema = ListRoomsResponseSchema;
+  // Cast needed due to Zod transform creating input/output type mismatch
+  readonly schema = ListRoomsResponseSchema as z.ZodType<ListRoomsResponse>;
 
   protected handleValidated(message: ListRoomsResponse, context: HandlerContext): void {
     context.logger.debug("Handling room_list_response", {

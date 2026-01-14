@@ -58,7 +58,6 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   private roomManager?: import("../managers/room-manager").RoomManager; // Reference to RoomManager for handler context
   private roomManagementManager?: import("../managers/room-management-manager").RoomManagementManager; // Reference to RoomManagementManager for handler context (v2.0.0)
   private agentRoomManager?: import("../managers/agent-room-manager").AgentRoomManager; // Reference to AgentRoomManager for handler context (v2.0.0)
-  private paymentManager?: import("../managers/payment-manager").PaymentManager; // Reference to PaymentManager for payment handlers
   private adminManager?: import("../managers/admin-manager").AdminManager; // Reference to AdminManager for admin handlers
   private agentRegistry?: import("../managers/agent-registry").AgentRegistry; // Reference to AgentRegistry for agent details handler
   private intentionalDisconnect: boolean = false; // Track intentional disconnect to prevent reconnection
@@ -236,16 +235,6 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     agentRoomManager: import("../managers/agent-room-manager").AgentRoomManager
   ): void {
     this.agentRoomManager = agentRoomManager;
-  }
-
-  /**
-   * Sets the payment manager for X402 payment flow
-   * @internal
-   */
-  public setPaymentManager(
-    paymentManager: import("../managers/payment-manager").PaymentManager
-  ): void {
-    this.paymentManager = paymentManager;
   }
 
   /**
@@ -716,7 +705,6 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       roomManager: this.roomManager,
       roomManagementManager: this.roomManagementManager,
       agentRoomManager: this.agentRoomManager,
-      paymentManager: this.paymentManager,
       adminManager: this.adminManager,
       agentRegistry: this.agentRegistry,
       account: this.account,

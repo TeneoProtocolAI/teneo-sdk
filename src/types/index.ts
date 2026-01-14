@@ -14,6 +14,8 @@ export {
 
   // Supporting schemas
   CapabilitySchema,
+  CommandParameterSchema,
+  CommandPricingSchema,
   CommandSchema,
   RoomSchema,
   AgentSchema,
@@ -39,6 +41,12 @@ export {
   TaskMessageSchema,
   TaskResponseMessageSchema,
   AgentSelectedMessageSchema,
+
+  // Quote-Approve schemas (v2.2.0)
+  PricingInfoSchema,
+  RequestTaskMessageSchema,
+  TaskQuoteMessageSchema,
+  ConfirmTaskMessageSchema,
 
   // System message schemas
   AgentsListMessageSchema,
@@ -82,15 +90,6 @@ export {
   RoomPingMessageSchema,
   RoomPongResponseSchema,
 
-  // X402 Payment schemas
-  PricingInfoSchema,
-  TaskQuoteDataSchema,
-  RequestTaskMessageSchema,
-  TaskQuoteMessageSchema,
-  ConfirmTaskDataSchema,
-  ConfirmTaskMessageSchema,
-  TaskConfirmedMessageSchema,
-
   // Agent Details schemas
   GetAgentDetailsMessageSchema,
   AgentDetailsResponseSchema,
@@ -120,6 +119,8 @@ export {
   type AgentType,
   type AgentStatus,
   type Capability,
+  type CommandParameter,
+  type CommandPricing,
   type Command,
   type Room,
   type Agent,
@@ -137,6 +138,13 @@ export {
   type TaskMessage,
   type TaskResponseMessage,
   type AgentSelectedMessage,
+
+  // Quote-Approve types (v2.2.0)
+  type PricingInfo,
+  type RequestTaskMessage,
+  type TaskQuoteMessage,
+  type ConfirmTaskMessage,
+
   type AgentsListMessage,
   type ErrorMessage,
   type PingMessage,
@@ -176,15 +184,6 @@ export {
   type RoomPingMessage,
   type RoomPongResponse,
 
-  // X402 Payment types
-  type PricingInfo,
-  type TaskQuoteData,
-  type RequestTaskMessage,
-  type TaskQuoteMessage,
-  type ConfirmTaskData,
-  type ConfirmTaskMessage,
-  type TaskConfirmedMessage,
-
   // Agent Details types
   type GetAgentDetailsMessage,
   type AgentDetailsResponse,
@@ -214,6 +213,7 @@ export {
   isTaskResponse,
   isError,
   isAgentsList,
+  isTaskQuote,
 
   // Factory functions
   createRequestChallenge,
@@ -224,6 +224,8 @@ export {
   createSubscribe,
   createUnsubscribe,
   createListRooms,
+  createRequestTask,
+  createConfirmTask,
 
   // Validation helpers
   validateMessage,
@@ -296,6 +298,7 @@ export {
   ValidationError,
   TimeoutError,
   RateLimitError,
+  PaymentError,
 
   // Validation helpers
   validateEventData,

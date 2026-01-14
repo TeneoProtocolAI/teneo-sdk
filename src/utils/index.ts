@@ -72,3 +72,17 @@ export {
   type RetryStrategy,
   type RetryStrategyType
 } from "./retry-policy";
+
+export {
+  resolveAgentPricing,
+  parseCommandForPricing,
+  type ResolvedPricing,
+  type PriceResolutionOptions
+} from "./pricing-resolver";
+
+export {
+  PaymentClient,
+  type PaymentConfig,
+  type PaymentRequirements,
+  type X402PaymentHeader
+} from "./payment-client";

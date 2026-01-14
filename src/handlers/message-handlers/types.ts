@@ -10,7 +10,6 @@ import { PrivateKeyAccount } from "viem/accounts";
 import type { RoomManager } from "../../managers/room-manager";
 import type { RoomManagementManager } from "../../managers/room-management-manager";
 import type { AgentRoomManager } from "../../managers/agent-room-manager";
-import type { PaymentManager } from "../../managers/payment-manager";
 import type { AdminManager } from "../../managers/admin-manager";
 import type { AgentRegistry } from "../../managers/agent-registry";
 
@@ -63,8 +62,6 @@ export interface HandlerContext {
   // Agent room manager for agent-room operations (v2.0.0, optional)
   agentRoomManager?: AgentRoomManager;
 
-  // Payment manager for X402 payment flow (optional)
-  paymentManager?: PaymentManager;
 
   // Admin manager for admin-only features (optional)
   adminManager?: AdminManager;

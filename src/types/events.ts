@@ -9,6 +9,7 @@ import {
   AgentSchema,
   RoomInfoSchema,
   TaskResponseMessageSchema,
+  TaskQuoteMessageSchema,
   CapabilitySchema,
   AgentRoomInfoSchema
 } from "./messages";
@@ -81,6 +82,21 @@ export const RateLimitErrorSchema = SDKErrorSchema.extend({
   details: z
     .object({
       retryAfter: z.number().optional()
+    })
+    .optional()
+});
+
+export const PaymentErrorSchema = SDKErrorSchema.extend({
+  name: z.literal("PaymentError"),
+  details: z
+    .object({
+      agentPrice: z.number().optional(),
+      maxPrice: z.number().optional(),
+      agentId: z.string().optional(),
+      command: z.string().optional(),
+      taskId: z.string().optional(),
+      network: z.string().optional(),
+      quoteExpiresAt: z.date().optional()
     })
     .optional()
 });
@@ -197,6 +213,25 @@ export class RateLimitError extends SDKError {
   constructor(message: string, retryAfter?: number) {
     super(message, ErrorCode.RATE_LIMIT, { retryAfter }, true);
     this.name = "RateLimitError";
+  }
+}
+
+export class PaymentError extends SDKError {
+  constructor(
+    message: string,
+    code: ErrorCode = ErrorCode.PAYMENT_REQUIRED,
+    details?: {
+      agentPrice?: number;
+      maxPrice?: number;
+      agentId?: string;
+      command?: string;
+      taskId?: string;
+      network?: string;
+      quoteExpiresAt?: Date;
+    }
+  ) {
+    super(message, code, details, false);
+    this.name = "PaymentError";
   }
 }
 
@@ -336,6 +371,19 @@ export interface SDKEvents {
   "coordinator:selected": (agentId: string, reasoning: string) => void;
   "coordinator:error": (error: string) => void;
 
+  // Quote events (v2.2.0)
+  "quote:received": (quote: z.infer<typeof TaskQuoteMessageSchema>) => void;
+
+  // Payment events (v2.1.0)
+  "payment:blocked": (data: {
+    agentId: string;
+    agentPrice: number;
+    maxPrice: number;
+    command?: string;
+  }) => void;
+  "payment:attached": (data: { agentId: string; amount: number; command?: string }) => void;
+  "payment:error": (error: Error) => void;
+
   // Webhook events
   "webhook:sent": (payload: unknown, url: string) => void;
   "webhook:success": (response: unknown, url: string) => void;
@@ -352,24 +400,6 @@ export interface SDKEvents {
     limitType?: string;
     resetAt?: string;
   }) => void;
-
-  // X402 Payment events
-  "payment:quote": (quote: {
-    task_id: string;
-    agent_id: string;
-    agent_name: string;
-    agent_wallet: string;
-    command?: string;
-    pricing?: {
-      price_per_unit: number;
-      price_type: string;
-      task_unit?: string;
-      time_unit?: string;
-    };
-    expires_at: string;
-  }) => void;
-  "payment:confirmed": (taskId: string) => void;
-  "payment:error": (error: { taskId?: string; message: string; code?: string }) => void;
 
   // Admin events
   "admin:user_count": (data: { count: number; timestamp?: string }) => void;

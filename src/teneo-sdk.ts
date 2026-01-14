@@ -18,7 +18,6 @@ import {
   DEFAULT_CONFIG,
   ResponseFormatSchema,
   AgentRoomInfo,
-  TaskQuoteData,
   type HealthStatus
 } from "./types";
 import { SDKEvents, SDKError } from "./types/events";
@@ -39,26 +38,22 @@ import {
   MessageRouter,
   SendMessageOptions,
   AgentCommand,
-  PaymentManager,
+  QuoteResult,
   AdminManager,
   ListAllAgentsOptions,
-  AllAgentsResult,
-  RequestQuoteOptions,
-  ConfirmTaskOptions
+  AllAgentsResult
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
+import { SecurePrivateKey } from "./utils/secure-private-key";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
-import { PaymentSigner, type PaymentSignerConfig } from "./payments";
-import type { SecurePrivateKey } from "./utils/secure-private-key";
 
 // Re-export types for external use
 export type {
   SendMessageOptions,
   AgentCommand,
+  QuoteResult,
   ListAllAgentsOptions,
-  AllAgentsResult,
-  RequestQuoteOptions,
-  ConfirmTaskOptions
+  AllAgentsResult
 };
 
 // Zod schemas for SDK-specific interfaces
@@ -80,6 +75,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   private config: SDKConfig;
   private readonly logger: Logger;
   private isDestroyed = false;
+  private secureKey?: SecurePrivateKey;
 
   // Core components
   private readonly wsClient: WebSocketClient;
@@ -93,7 +89,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   private readonly agentRoom: AgentRoomManager;
   private readonly agents: AgentRegistry;
   private readonly messages: MessageRouter;
-  private readonly _payments: PaymentManager;
   private readonly _admin: AdminManager;
 
   /**
@@ -160,6 +155,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Initialize logger
       this.logger = this.config.logger ?? this.createDefaultLogger();
 
+      // Store secure key for payment client
+      if (config.privateKey) {
+        if (typeof config.privateKey === "object" && "use" in config.privateKey) {
+          this.secureKey = config.privateKey;
+        } else {
+          this.secureKey = new SecurePrivateKey(config.privateKey as string);
+        }
+      }
+
       // Initialize core components
       this.wsClient = new WebSocketClient(this.config);
       this.webhookHandler = new WebhookHandler(this.config, this.logger);
@@ -178,9 +182,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.wsClient.setAgentRoomManager(this.agentRoom); // Enable agent-room operations in handlers (v2.0.0)
       this.agents = new AgentRegistry(this.logger);
       this.agents.setWebSocketClient(this.wsClient); // Enable getAgentDetails requests
-      this._payments = new PaymentManager(this.wsClient, this.logger);
       this._admin = new AdminManager(this.wsClient, this.logger);
-      this.wsClient.setPaymentManager(this._payments); // Enable payment handlers
       this.wsClient.setAdminManager(this._admin); // Enable admin handlers
       this.wsClient.setAgentRegistry(this.agents); // Enable agent details handler
       this.messages = new MessageRouter(
@@ -190,12 +192,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         this.logger,
         {
           messageTimeout: this.config.messageTimeout,
-          responseFormat: this.config.responseFormat
+          responseFormat: this.config.responseFormat,
+          maxPricePerRequest: this.config.maxPricePerRequest,
+          paymentNetwork: this.config.paymentNetwork,
+          paymentAsset: this.config.paymentAsset,
+          autoApproveQuotes: this.config.autoApproveQuotes,
+          quoteTimeout: this.config.quoteTimeout,
+          wsUrl: this.config.wsUrl
         }
       );
-
-      // Initialize PaymentSigner if privateKey is available and payments not disabled
-      this.initializePaymentSigner();
 
       // Set up event forwarding
       this.setupEventForwarding();
@@ -330,6 +335,33 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     return this.messages.sendDirectCommand(command, waitForResponse);
+  }
+
+  /**
+   * Requests a quote for a task from the coordinator.
+   * The quote includes agent selection, pricing, and expiration.
+   * Does NOT auto-approve - use confirmQuote() to execute.
+   */
+  public async requestQuote(content: string, room: string): Promise<QuoteResult> {
+    return this.messages.requestQuote(content, room);
+  }
+
+  /**
+   * Confirms a pending quote and executes the task with payment.
+   * Attaches x402 payment header if payment client is configured.
+   */
+  public async confirmQuote(
+    taskId: string,
+    options?: { waitForResponse?: boolean; timeout?: number }
+  ): Promise<FormattedResponse | void> {
+    return this.messages.confirmQuote(taskId, options);
+  }
+
+  /**
+   * Gets a pending quote by task ID.
+   */
+  public getPendingQuote(taskId: string): QuoteResult | undefined {
+    return this.messages.getPendingQuote(taskId);
   }
 
   /**
@@ -545,82 +577,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   public async getAgentDetails(agentId: string): Promise<AgentRoomInfo> {
     return this.agents.getAgentDetails(agentId);
-  }
-
-  // ============================================================================
-  // PAYMENT API (X402 Payment Flow)
-  // ============================================================================
-
-  /**
-   * Gets the payment manager for X402 payment flow.
-   * Use this to request quotes and confirm tasks with payments.
-   *
-   * @returns The PaymentManager instance
-   *
-   * @example
-   * ```typescript
-   * // Request a quote for a task
-   * const quote = await sdk.payments.requestQuote({
-   *   content: "What's the weather in NYC?",
-   *   room: "my-room-id"
-   * });
-   *
-   * console.log(`Agent: ${quote.agent_name}`);
-   * console.log(`Price: $${quote.pricing?.price_per_unit}`);
-   *
-   * // Confirm the task with payment
-   * await sdk.payments.confirm({
-   *   taskId: quote.task_id,
-   *   paymentPayload: "base64-encoded-x402-payment"
-   * });
-   *
-   * // Listen for payment events
-   * sdk.on('payment:quote', (quote) => console.log('Quote received:', quote));
-   * sdk.on('payment:confirmed', (taskId) => console.log('Task confirmed:', taskId));
-   * ```
-   */
-  public get payments(): PaymentManager {
-    return this._payments;
-  }
-
-  /**
-   * Requests a task quote from the server (convenience method).
-   * This initiates the payment flow by asking the server for pricing information.
-   *
-   * @param options - The quote request options
-   * @returns Promise that resolves with the task quote
-   * @throws {SDKError} If not connected to the network
-   *
-   * @example
-   * ```typescript
-   * const quote = await sdk.requestQuote({
-   *   content: "Analyze this data",
-   *   room: "my-room"
-   * });
-   * ```
-   */
-  public async requestQuote(options: RequestQuoteOptions): Promise<TaskQuoteData> {
-    return this._payments.requestQuote(options);
-  }
-
-  /**
-   * Confirms a task with payment (convenience method).
-   * Call this after receiving a quote to execute the task with payment.
-   *
-   * @param options - The confirmation options including task ID and payment
-   * @returns Promise that resolves when the task is confirmed
-   * @throws {SDKError} If not connected or quote not found
-   *
-   * @example
-   * ```typescript
-   * await sdk.confirmTask({
-   *   taskId: quote.task_id,
-   *   paymentPayload: "base64-encoded-x402-payment"
-   * });
-   * ```
-   */
-  public async confirmTask(options: ConfirmTaskOptions): Promise<void> {
-    return this._payments.confirm(options);
   }
 
   // ============================================================================
@@ -1496,7 +1452,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.rooms.destroy();
     this.agents.destroy();
     this.messages.destroy();
-    this._payments.destroy();
     this._admin.destroy();
 
     // Destroy other components
@@ -1538,7 +1493,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       }
 
       // Ensure RoomManagementManager is synced with auth state
-      // This handles cases where auth handlers might have already set it, but ensures consistency
       if (state.roomObjects && state.roomObjects.length > 0) {
         const ownedRooms = state.roomObjects.filter((r) => r.is_owner);
         const sharedRooms = state.roomObjects.filter((r) => !r.is_owner);
@@ -1548,6 +1502,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         if (state.maxPrivateRooms) {
           this.roomManagement.setRoomLimit(state.maxPrivateRooms);
         }
+      }
+
+      // Set up payment client for x402 payments
+      if (this.secureKey && state.walletAddress) {
+        this.messages.setPaymentClient(this.secureKey, state.walletAddress);
       }
 
       this.emit("auth:success", state);
@@ -1565,6 +1524,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward agent events from MessageRouter
     this.messages.on("agent:selected", (data) => this.emit("agent:selected", data));
     this.messages.on("agent:response", (response) => this.emit("agent:response", response));
+
+    // Forward payment events from MessageRouter
+    this.messages.on("payment:blocked", (data) => this.emit("payment:blocked", data));
+    this.messages.on("payment:attached", (data) => this.emit("payment:attached", data));
+    this.messages.on("payment:error", (error) => this.emit("payment:error", error));
 
     // Forward coordinator events from MessageRouter
     this.messages.on("coordinator:processing", (request) =>
@@ -1686,17 +1650,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.emit("agent_room:list_available_error", error);
     });
 
-    // Forward payment events from PaymentManager
-    this._payments.on("quote:received", (quote) => {
-      this.emit("payment:quote", quote);
-    });
-    this._payments.on("task:confirmed", (taskId) => {
-      this.emit("payment:confirmed", taskId);
-    });
-    this._payments.on("payment:error", (error) => {
-      this.emit("payment:error", error);
-    });
-
     // Forward admin events from AdminManager
     this._admin.on("user_count", (data) => {
       this.emit("admin:user_count", data);
@@ -1748,57 +1701,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   private createDefaultLogger(): Logger {
     return createPinoLogger(this.config.logLevel ?? "info", "TeneoSDK");
-  }
-
-  /**
-   * Initialize PaymentSigner if privateKey is available and payments not explicitly disabled.
-   * Uses the same privateKey as auth by default for simpler setup.
-   */
-  private initializePaymentSigner(): void {
-    // Check if payments are explicitly disabled
-    if (this.config.enablePayments === false) {
-      this.logger.debug("Payments disabled by configuration");
-      return;
-    }
-
-    // Get the private key - either from paymentConfig or reuse auth privateKey
-    const privateKey = this.config.privateKey;
-    if (!privateKey) {
-      this.logger.debug("No privateKey configured, payment auto-signing disabled");
-      return;
-    }
-
-    // Get the actual key string (handle SecurePrivateKey if used)
-    let keyString: string;
-    if (typeof privateKey === "string") {
-      keyString = privateKey;
-    } else {
-      // SecurePrivateKey - use it temporarily to get the key
-      keyString = (privateKey as SecurePrivateKey).use((key) => key);
-    }
-
-    try {
-      // Build PaymentSigner config
-      const signerConfig: PaymentSignerConfig = {
-        privateKey: keyString,
-        chain: this.config.paymentConfig?.chain,
-        rpcUrl: this.config.paymentConfig?.rpcUrl,
-        payToAddress: this.config.paymentConfig?.payToAddress
-      };
-
-      const signer = new PaymentSigner(signerConfig);
-
-      // Set the signer on the PaymentManager
-      this._payments.setPaymentSigner(signer, this.config.wsUrl);
-
-      this.logger.info("PaymentSigner initialized for auto-payments", {
-        signerAddress: signer.getAddress()
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.warn("Failed to initialize PaymentSigner", { error: errorMessage });
-      // Don't throw - payments will work in manual mode
-    }
   }
 
   /**

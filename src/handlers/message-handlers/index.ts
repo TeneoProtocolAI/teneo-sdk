@@ -9,6 +9,7 @@ export * from "./base-handler";
 
 // Export all handlers
 export { TaskResponseHandler } from "./task-response-handler";
+export { TaskQuoteHandler } from "./task-quote-handler";
 export { AgentSelectedHandler } from "./agent-selected-handler";
 export { ChallengeHandler } from "./challenge-handler";
 export { AuthMessageHandler } from "./auth-message-handler";
@@ -28,9 +29,6 @@ export { ListRoomAgentsHandler } from "./list-room-agents-handler";
 export { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 export { AgentStatusUpdateHandler } from "./agent-status-update-handler";
 
-// X402 Payment handlers
-export { TaskQuoteHandler } from "./task-quote-handler";
-export { TaskConfirmedHandler } from "./task-confirmed-handler";
 
 // Agent Details handler
 export { AgentDetailsResponseHandler } from "./agent-details-response-handler";
@@ -47,6 +45,7 @@ export { UserAuthenticatedHandler } from "./user-authenticated-handler";
 
 // Import for convenience function
 import { TaskResponseHandler } from "./task-response-handler";
+import { TaskQuoteHandler } from "./task-quote-handler";
 import { AgentSelectedHandler } from "./agent-selected-handler";
 import { ChallengeHandler } from "./challenge-handler";
 import { AuthMessageHandler } from "./auth-message-handler";
@@ -65,8 +64,6 @@ import { AgentRoomOperationResponseHandler } from "./agent-room-operation-respon
 import { ListRoomAgentsHandler } from "./list-room-agents-handler";
 import { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 import { AgentStatusUpdateHandler } from "./agent-status-update-handler";
-import { TaskQuoteHandler } from "./task-quote-handler";
-import { TaskConfirmedHandler } from "./task-confirmed-handler";
 import { AgentDetailsResponseHandler } from "./agent-details-response-handler";
 import { RateLimitNotificationHandler } from "./rate-limit-notification-handler";
 import { AllAgentsResponseHandler } from "./all-agents-response-handler";
@@ -92,6 +89,7 @@ export function getDefaultHandlers(
 
     // Agent/coordinator handlers
     new TaskResponseHandler(),
+    new TaskQuoteHandler(),
     new AgentSelectedHandler(),
     new AgentsListHandler(),
 
@@ -112,10 +110,6 @@ export function getDefaultHandlers(
     new ListRoomAgentsHandler(),
     new ListAvailableAgentsHandler(),
     new AgentStatusUpdateHandler(),
-
-    // X402 Payment handlers
-    new TaskQuoteHandler(),
-    new TaskConfirmedHandler(),
 
     // Agent Details handler
     new AgentDetailsResponseHandler(),

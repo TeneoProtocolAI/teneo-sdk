@@ -1,58 +1,37 @@
 /**
  * Handler for task_quote messages (X402 Payment Flow)
- * Processes pricing quotes from the server
+ * Processes pricing quotes from the coordinator
  */
 
+import { z } from "zod";
 import { TaskQuoteMessage, TaskQuoteMessageSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
 export class TaskQuoteHandler extends BaseMessageHandler<TaskQuoteMessage> {
   readonly type = "task_quote" as const;
-  readonly schema = TaskQuoteMessageSchema;
+  readonly schema = TaskQuoteMessageSchema as z.ZodSchema<TaskQuoteMessage>;
 
   protected handleValidated(message: TaskQuoteMessage, context: HandlerContext): void {
-    const { task_id, agent_id, agent_name, agent_wallet, command, pricing, expires_at } =
-      message.data;
-
-    context.logger.debug("Handling task_quote", {
-      taskId: task_id,
-      agentId: agent_id,
-      agentName: agent_name,
-      hasPricing: !!pricing
+    context.logger.debug("Handling task_quote message", {
+      taskId: message.data.task_id,
+      agentId: message.data.agent_id,
+      price: message.data.pricing?.pricePerUnit
     });
 
     // Delegate to payment manager if available
-    const paymentManager = context.paymentManager;
+    const paymentManager = (context as any).paymentManager;
     if (paymentManager && typeof paymentManager.handleTaskQuote === "function") {
-      paymentManager.handleTaskQuote(message.data, message.request_id);
+      paymentManager.handleTaskQuote(message.data, (message as any).request_id);
     }
 
-    context.logger.info("Task quote received", {
-      taskId: task_id,
-      agentName: agent_name,
-      pricePerUnit: pricing?.price_per_unit
-    });
-
-    // Emit event with camelCase conversion
-    this.emit(context, "payment:quote", {
-      taskId: task_id,
-      agentId: agent_id,
-      agentName: agent_name,
-      agentWallet: agent_wallet,
-      command,
-      pricing: pricing
-        ? {
-            pricePerUnit: pricing.price_per_unit,
-            priceType: pricing.price_type,
-            taskUnit: pricing.task_unit,
-            timeUnit: pricing.time_unit
-          }
-        : undefined,
-      expiresAt: expires_at
-    });
+    // Emit quote:received event for the requestQuote() method to catch
+    this.emit(context, "quote:received", message);
 
     // Send webhook
-    this.sendWebhook(context, "task_quote", message.data);
+    this.sendWebhook(context, "task_quote", message.data, {
+      taskId: message.data.task_id,
+      agentId: message.data.agent_id
+    });
   }
 }

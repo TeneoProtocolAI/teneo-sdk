@@ -8,6 +8,11 @@ import { ClientTypeSchema, RoomInfoSchema, MessageTypeSchema, MessageType } from
 import { RetryStrategySchema, type RetryStrategy } from "../utils/retry-policy";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
+// CAIP-2 chain identifier format: namespace:reference (e.g., "eip155:3338")
+const CAIP2Schema = z
+  .string()
+  .regex(/^[a-z0-9-]+:\d+$/, "Must be valid CAIP-2 format (e.g., 'eip155:3338')");
+
 // Logger interface
 export interface Logger {
   debug: (message: string, data?: unknown) => void;
@@ -120,15 +125,15 @@ export const SDKConfigSchema = z.object({
   messageDedupeTtl: z.number().min(1000).max(3600000).optional(), // 1s to 1 hour
   messageDedupMaxSize: z.number().min(1).max(100000).optional(),
 
-  // Payment configuration (x402)
-  enablePayments: z.boolean().optional(), // Auto-enable if privateKey is set
-  paymentConfig: z
-    .object({
-      chain: z.enum(["peaq"]).optional(), // Supported chains
-      rpcUrl: z.string().url().optional(), // Custom RPC URL
-      payToAddress: z.string().optional() // Override default backend address
-    })
-    .optional()
+  // Payment configuration (v2.1.0)
+  maxPricePerRequest: z.number().min(0).optional(), // USDC in e6 units (1000000 = 1 USDC)
+  paymentNetwork: CAIP2Schema.optional(), // CAIP-2 format e.g. "eip155:3338"
+  paymentAsset: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Must be valid Ethereum address").optional(), // Token contract address
+  paymentFacilitatorUrl: z.string().url().optional(),
+
+  // Quote-Approve flow (v2.2.0) - payments are always enabled
+  autoApproveQuotes: z.boolean().optional(), // Auto-confirm quotes when received (default: true)
+  quoteTimeout: z.number().min(1000).max(60000).optional() // Timeout for quote responses
 });
 
 // Partial config for constructor
@@ -232,7 +237,12 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
   webhookTimeout: 10000,
   enableMessageDeduplication: true, // Enable by default to prevent duplicates
   messageDedupeTtl: 60000, // 60 seconds (1 minute)
-  messageDedupMaxSize: 10000 // 10k messages
+  messageDedupMaxSize: 10000, // 10k messages
+  maxPricePerRequest: undefined, // No limit by default
+  paymentNetwork: "eip155:3338", // PEAQ network (CAIP-2 format)
+  paymentAsset: "0xbbA60da06c2c5424f03f7434542280FCAd453d10", // USDC on PEAQ
+  autoApproveQuotes: true, // Auto-confirm quotes by default
+  quoteTimeout: 30000 // 30 seconds
 });
 
 // Configuration validation with custom refinements
@@ -785,6 +795,37 @@ export class SDKConfigBuilder {
     }
     if (maxSize !== undefined) {
       this.config.messageDedupMaxSize = z.number().min(1).max(100000).parse(maxSize);
+    }
+    return this;
+  }
+
+  withPayments(options: {
+    maxPricePerRequest?: number;
+    network?: string;
+    asset?: string;
+    facilitatorUrl?: string;
+  }): this {
+    if (options.maxPricePerRequest !== undefined) {
+      this.config.maxPricePerRequest = z.number().min(0).parse(options.maxPricePerRequest);
+    }
+    if (options.network !== undefined) {
+      this.config.paymentNetwork = z.string().parse(options.network);
+    }
+    if (options.asset !== undefined) {
+      this.config.paymentAsset = z.string().parse(options.asset);
+    }
+    if (options.facilitatorUrl !== undefined) {
+      this.config.paymentFacilitatorUrl = z.string().url().parse(options.facilitatorUrl);
+    }
+    return this;
+  }
+
+  withQuoteApproval(options: { autoApprove?: boolean; timeout?: number }): this {
+    if (options.autoApprove !== undefined) {
+      this.config.autoApproveQuotes = z.boolean().parse(options.autoApprove);
+    }
+    if (options.timeout !== undefined) {
+      this.config.quoteTimeout = z.number().min(1000).max(60000).parse(options.timeout);
     }
     return this;
   }
