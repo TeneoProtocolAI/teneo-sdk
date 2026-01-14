@@ -118,7 +118,14 @@ export const SDKConfigSchema = z.object({
   // Message deduplication (CB-4)
   enableMessageDeduplication: z.boolean().optional(),
   messageDedupeTtl: z.number().min(1000).max(3600000).optional(), // 1s to 1 hour
-  messageDedupMaxSize: z.number().min(1).max(100000).optional()
+  messageDedupMaxSize: z.number().min(1).max(100000).optional(),
+
+  // Quote-Approve Payment Flow (v2.2.0)
+  autoApproveQuotes: z.boolean().optional(),
+  maxPricePerRequest: z.number().min(0).optional(), // in micro-USDC
+  quoteTimeout: z.number().min(1000).max(120000).optional(), // 1s to 2 minutes
+  paymentNetwork: z.string().regex(/^[a-z0-9-]+:\d+$/, "Must be valid CAIP-2 format").optional(),
+  paymentAsset: z.string().optional()
 });
 
 // Partial config for constructor
@@ -222,7 +229,13 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
   webhookTimeout: 10000,
   enableMessageDeduplication: true, // Enable by default to prevent duplicates
   messageDedupeTtl: 60000, // 60 seconds (1 minute)
-  messageDedupMaxSize: 10000 // 10k messages
+  messageDedupMaxSize: 10000, // 10k messages
+
+  // Quote-Approve Payment Flow (v2.2.0)
+  autoApproveQuotes: true, // Auto-approve quotes by default
+  quoteTimeout: 30000, // 30 seconds for quote responses
+  paymentNetwork: "eip155:3338", // PEAQ mainnet
+  paymentAsset: "0xbbA60da06c2c5424f03f7434542280FCAd453d10" // USDC on PEAQ
 });
 
 // Configuration validation with custom refinements
@@ -775,6 +788,55 @@ export class SDKConfigBuilder {
     }
     if (maxSize !== undefined) {
       this.config.messageDedupMaxSize = z.number().min(1).max(100000).parse(maxSize);
+    }
+    return this;
+  }
+
+  /**
+   * Configures payment settings for the quote-approve flow (v2.2.0).
+   * Controls how the SDK handles task pricing and payments.
+   *
+   * @param options - Payment configuration options
+   * @param options.autoApprove - Auto-approve and pay for quotes (default: true)
+   * @param options.maxPricePerRequest - Maximum price per request in micro-USDC (1000000 = 1 USDC)
+   * @param options.quoteTimeout - Timeout for quote responses in ms (default: 30000)
+   * @param options.network - Payment network in CAIP-2 format (default: "eip155:3338")
+   * @param options.asset - Payment asset (default: "USDC")
+   * @returns this builder for method chaining
+   *
+   * @example
+   * ```typescript
+   * // Auto-approve with price limit
+   * builder.withPayments({
+   *   autoApprove: true,
+   *   maxPricePerRequest: 1000000  // Max 1 USDC per request
+   * })
+   *
+   * // Manual approval mode
+   * builder.withPayments({ autoApprove: false })
+   * ```
+   */
+  withPayments(options: {
+    autoApprove?: boolean;
+    maxPricePerRequest?: number;
+    quoteTimeout?: number;
+    network?: string;
+    asset?: string;
+  }): this {
+    if (options.autoApprove !== undefined) {
+      this.config.autoApproveQuotes = z.boolean().parse(options.autoApprove);
+    }
+    if (options.maxPricePerRequest !== undefined) {
+      this.config.maxPricePerRequest = z.number().min(0).parse(options.maxPricePerRequest);
+    }
+    if (options.quoteTimeout !== undefined) {
+      this.config.quoteTimeout = z.number().min(1000).max(120000).parse(options.quoteTimeout);
+    }
+    if (options.network !== undefined) {
+      this.config.paymentNetwork = z.string().regex(/^[a-z0-9-]+:\d+$/).parse(options.network);
+    }
+    if (options.asset !== undefined) {
+      this.config.paymentAsset = z.string().parse(options.asset);
     }
     return this;
   }

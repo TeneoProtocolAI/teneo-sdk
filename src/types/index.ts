@@ -40,6 +40,12 @@ export {
   TaskResponseMessageSchema,
   AgentSelectedMessageSchema,
 
+  // Quote-Approve Flow schemas (v2.2.0)
+  PricingInfoSchema,
+  RequestTaskMessageSchema,
+  TaskQuoteMessageSchema,
+  ConfirmTaskMessageSchema,
+
   // System message schemas
   AgentsListMessageSchema,
   ErrorMessageSchema,
@@ -109,6 +115,13 @@ export {
   type TaskMessage,
   type TaskResponseMessage,
   type AgentSelectedMessage,
+
+  // Quote-Approve Flow types (v2.2.0)
+  type PricingInfo,
+  type RequestTaskMessage,
+  type TaskQuoteMessage,
+  type ConfirmTaskMessage,
+
   type AgentsListMessage,
   type ErrorMessage,
   type PingMessage,
@@ -169,6 +182,8 @@ export {
   createSubscribe,
   createUnsubscribe,
   createListRooms,
+  createRequestTask,
+  createConfirmTask,
 
   // Validation helpers
   validateMessage,
@@ -241,6 +256,7 @@ export {
   ValidationError,
   TimeoutError,
   RateLimitError,
+  PaymentError,
 
   // Validation helpers
   validateEventData,

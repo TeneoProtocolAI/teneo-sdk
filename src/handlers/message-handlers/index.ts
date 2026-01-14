@@ -27,6 +27,7 @@ export { AgentRoomOperationResponseHandler } from "./agent-room-operation-respon
 export { ListRoomAgentsHandler } from "./list-room-agents-handler";
 export { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 export { AgentStatusUpdateHandler } from "./agent-status-update-handler";
+export { TaskQuoteHandler } from "./task-quote-handler";
 
 // Import for convenience function
 import { TaskResponseHandler } from "./task-response-handler";
@@ -48,6 +49,7 @@ import { AgentRoomOperationResponseHandler } from "./agent-room-operation-respon
 import { ListRoomAgentsHandler } from "./list-room-agents-handler";
 import { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 import { AgentStatusUpdateHandler } from "./agent-status-update-handler";
+import { TaskQuoteHandler } from "./task-quote-handler";
 import { MessageHandler } from "./types";
 
 /**
@@ -70,6 +72,7 @@ export function getDefaultHandlers(
     new TaskResponseHandler(),
     new AgentSelectedHandler(),
     new AgentsListHandler(),
+    new TaskQuoteHandler(),
 
     // Message handlers
     new RegularMessageHandler(),

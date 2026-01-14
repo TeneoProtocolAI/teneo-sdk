@@ -262,6 +262,21 @@ export class ConfigurationError extends SDKError {
   }
 }
 
+/**
+ * Error thrown when payment operations fail (v2.2.0).
+ * Can occur when:
+ * - Payment signature creation fails
+ * - Price limit is exceeded
+ * - Insufficient balance
+ * - Invalid payment network
+ */
+export class PaymentError extends SDKError {
+  constructor(message: string, code: ErrorCode, details?: any) {
+    super(message, code, details, false);
+    this.name = "PaymentError";
+  }
+}
+
 // SDK Events interface with proper typing
 export interface SDKEvents {
   // Connection events
@@ -331,6 +346,12 @@ export interface SDKEvents {
   "coordinator:processing": (userRequest: string) => void;
   "coordinator:selected": (agentId: string, reasoning: string) => void;
   "coordinator:error": (error: string) => void;
+
+  // Quote-Approve Payment events (v2.2.0)
+  "quote:received": (quote: any) => void;
+  "quote:expired": (taskId: string) => void;
+  "payment:attached": (data: { agentId: string; amount: number; command: string }) => void;
+  "payment:error": (error: Error, agentId?: string) => void;
 
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;

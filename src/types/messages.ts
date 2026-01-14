@@ -63,6 +63,11 @@ export const MessageTypeSchema = z.enum([
   "task_response",
   "agent_selected",
 
+  // Quote-Approve Flow (v2.2.0)
+  "request_task",
+  "task_quote",
+  "confirm_task",
+
   // System
   "agents",
   "error",
@@ -352,6 +357,60 @@ export const AgentSelectedMessageSchema = BaseMessageSchema.extend({
     command: z.string().optional(),
     command_reasoning: z.string().optional()
   })
+});
+
+// ============================================================================
+// QUOTE-APPROVE FLOW SCHEMAS (v2.2.0)
+// ============================================================================
+
+// Pricing information schema (flexible to handle server variations)
+export const PricingInfoSchema = z.object({
+  pricePerUnit: z.number().optional(),
+  price_per_unit: z.number().optional(),
+  priceType: z.string().optional(),
+  price_type: z.string().optional(),
+  timeUnit: z.string().optional(),
+  time_unit: z.string().optional(),
+  currency: z.string().optional().default("USDC"),
+  network: z.string().optional()
+}).transform((data) => ({
+  // Normalize to camelCase
+  pricePerUnit: data.pricePerUnit ?? data.price_per_unit ?? 0,
+  priceType: data.priceType ?? data.price_type,
+  timeUnit: data.timeUnit ?? data.time_unit,
+  currency: data.currency,
+  network: data.network
+}));
+
+// Request task message (initiates quote-approve flow)
+export const RequestTaskMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("request_task"),
+  content: z.string(),
+  room: z.string()
+});
+
+// Task quote message (server response with pricing)
+export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("task_quote"),
+  from: z.literal("coordinator"),
+  data: z.object({
+    task_id: z.string(),
+    agent_id: z.string(),
+    agent_name: z.string(),
+    agent_wallet: z.string(),
+    command: z.string(),
+    pricing: PricingInfoSchema,
+    expires_at: z.string()
+  })
+});
+
+// Confirm task message (with payment at top level - backend expects msg.payment)
+export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("confirm_task"),
+  data: z.object({
+    task_id: z.string()
+  }),
+  payment: z.string().optional()  // x402 payment at top level (backend checks msg.Payment)
 });
 
 // System message schemas
@@ -677,6 +736,9 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentSelectedMessageSchema,
   AgentsListMessageSchema,
 
+  // Quote-Approve Flow (v2.2.0)
+  TaskQuoteMessageSchema,
+
   // System
   ErrorMessageSchema,
   PingMessageSchema,
@@ -729,6 +791,13 @@ export type TaskMessage = z.infer<typeof TaskMessageSchema>;
 export type TaskResponseMessage = z.infer<typeof TaskResponseMessageSchema>;
 export type AgentSelectedMessage = z.infer<typeof AgentSelectedMessageSchema>;
 export type AgentsListMessage = z.infer<typeof AgentsListMessageSchema>;
+
+// Quote-Approve Flow Types (v2.2.0)
+export type PricingInfo = z.infer<typeof PricingInfoSchema>;
+export type RequestTaskMessage = z.infer<typeof RequestTaskMessageSchema>;
+export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
+export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
+
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
 export type PingMessage = z.infer<typeof PingMessageSchema>;
 export type PongMessage = z.infer<typeof PongMessageSchema>;
@@ -872,6 +941,25 @@ export function createUnsubscribe(roomId: string): UnsubscribeMessage {
 export function createListRooms(): ListRoomsMessage {
   return ListRoomsMessageSchema.parse({
     type: "list_rooms"
+  });
+}
+
+// Quote-Approve Flow factory functions (v2.2.0)
+export function createRequestTask(content: string, room: string): RequestTaskMessage {
+  return RequestTaskMessageSchema.parse({
+    type: "request_task",
+    content,
+    room
+  });
+}
+
+export function createConfirmTask(taskId: string, x402Payment?: string): ConfirmTaskMessage {
+  return ConfirmTaskMessageSchema.parse({
+    type: "confirm_task",
+    data: {
+      task_id: taskId
+    },
+    ...(x402Payment && { payment: x402Payment })  // payment at top level for backend
   });
 }
 
