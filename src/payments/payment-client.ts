@@ -51,6 +51,53 @@ export interface PaymentClientConfig {
   resourceUrl?: string; // x402 resource URL
 }
 
+// x402 constants
+export const USDC_DECIMALS = 6;
+export const X402_VERSION = 2;
+export const DEFAULT_PAYMENT_TIMEOUT_SECONDS = 60;
+export const DEFAULT_PAY_TO_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const DEFAULT_RPC_URL = "https://peaq.api.onfinality.io/public";
+export type SupportedChain = "peaq";
+
+// Re-export constants for external use
+export { USDC_CONTRACT, PEAQ_NETWORK_CAIP2 as PEAQ_CHAIN_ID };
+
+/**
+ * Converts a WebSocket URL to an HTTP(S) URL for x402 resource specification.
+ * The x402 protocol requires HTTP URLs, not WebSocket URLs.
+ *
+ * @param wsUrl - WebSocket URL (wss:// or ws://)
+ * @returns HTTP URL (https:// or http://)
+ *
+ * @example
+ * buildX402ResourceUrl("wss://api.teneo.com/ws") // "https://api.teneo.com/x402"
+ */
+export function buildX402ResourceUrl(wsUrl: string): string {
+  return wsUrl
+    .replace(/^wss:\/\//, "https://")
+    .replace(/^ws:\/\//, "http://")
+    .replace(/\/ws\/?$/, "/x402")
+    .replace(/\/?$/, "/x402");
+}
+
+/**
+ * Converts USDC human-readable amount to micro-units (6 decimals).
+ * @param usdc - Amount in USDC (e.g., 1.5)
+ * @returns Amount in micro-units (e.g., 1500000)
+ */
+export function usdcToUnits(usdc: number): number {
+  return Math.round(usdc * 10 ** USDC_DECIMALS);
+}
+
+/**
+ * Converts micro-units to USDC human-readable amount.
+ * @param units - Amount in micro-units (e.g., 1500000)
+ * @returns Amount in USDC (e.g., 1.5)
+ */
+export function unitsToUsdc(units: number): number {
+  return units / 10 ** USDC_DECIMALS;
+}
+
 /**
  * Generate a random 32-byte nonce as hex string
  */

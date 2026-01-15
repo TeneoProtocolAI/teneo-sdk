@@ -29,7 +29,7 @@ import {
   AgentCommandContentSchema
 } from "../types/validation";
 import { waitForEvent } from "../utils/event-waiter";
-import { PaymentClient } from "../payments/payment-client";
+import { PaymentClient, buildX402ResourceUrl } from "../payments/payment-client";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
 export interface SendMessageOptions {
@@ -355,7 +355,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         paymentHeader = await this.paymentClient.createPaymentHeader(
           quote.pricing.pricePerUnit * 1_000_000,
           quote.agentWallet,
-          this.wsUrl
+          buildX402ResourceUrl(this.wsUrl)
         );
         this.emit("payment:attached", {
           agentId: quote.agentId,
