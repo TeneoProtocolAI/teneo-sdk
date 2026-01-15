@@ -6,6 +6,7 @@
 
 import { EventEmitter } from "eventemitter3";
 import { z } from "zod";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   SDKConfig,
   PartialSDKConfig,
@@ -44,8 +45,8 @@ import {
   AllAgentsResult
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
-import { SecurePrivateKey } from "./utils/secure-private-key";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
+import { SecurePrivateKey } from "./utils/secure-private-key";
 
 // Re-export types for external use
 export type {
@@ -193,14 +194,25 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         {
           messageTimeout: this.config.messageTimeout,
           responseFormat: this.config.responseFormat,
-          maxPricePerRequest: this.config.maxPricePerRequest,
-          paymentNetwork: this.config.paymentNetwork,
-          paymentAsset: this.config.paymentAsset,
           autoApproveQuotes: this.config.autoApproveQuotes,
+          maxPricePerRequest: this.config.maxPricePerRequest,
           quoteTimeout: this.config.quoteTimeout,
-          wsUrl: this.config.wsUrl
+          wsUrl: this.config.wsUrl,
+          paymentNetwork: this.config.paymentNetwork,
+          paymentAsset: this.config.paymentAsset
         }
       );
+
+      // Set up payment client if private key is configured (v2.2.0)
+      if (this.config.privateKey) {
+        const secureKey =
+          this.config.privateKey instanceof SecurePrivateKey
+            ? this.config.privateKey
+            : new SecurePrivateKey(this.config.privateKey);
+        const walletAddress =
+          this.config.walletAddress || this.deriveWalletAddress(this.config.privateKey);
+        this.messages.setPaymentClient(secureKey, walletAddress);
+      }
 
       // Set up event forwarding
       this.setupEventForwarding();
@@ -1525,7 +1537,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.messages.on("agent:selected", (data) => this.emit("agent:selected", data));
     this.messages.on("agent:response", (response) => this.emit("agent:response", response));
 
-    // Forward payment events from MessageRouter
+    // Forward quote and payment events from MessageRouter (v2.2.0)
+    this.messages.on("quote:received", (quote) => this.emit("quote:received", quote));
     this.messages.on("payment:blocked", (data) => this.emit("payment:blocked", data));
     this.messages.on("payment:attached", (data) => this.emit("payment:attached", data));
     this.messages.on("payment:error", (error) => this.emit("payment:error", error));
@@ -1701,6 +1714,16 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   private createDefaultLogger(): Logger {
     return createPinoLogger(this.config.logLevel ?? "info", "TeneoSDK");
+  }
+
+  /**
+   * Derive wallet address from private key
+   */
+  private deriveWalletAddress(privateKey: string | SecurePrivateKey): string {
+    if (privateKey instanceof SecurePrivateKey) {
+      return privateKey.use((key) => privateKeyToAccount(key as `0x${string}`).address);
+    }
+    return privateKeyToAccount(privateKey as `0x${string}`).address;
   }
 
   /**

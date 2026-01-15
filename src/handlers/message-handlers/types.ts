@@ -62,7 +62,6 @@ export interface HandlerContext {
   // Agent room manager for agent-room operations (v2.0.0, optional)
   agentRoomManager?: AgentRoomManager;
 
-
   // Admin manager for admin-only features (optional)
   adminManager?: AdminManager;
 

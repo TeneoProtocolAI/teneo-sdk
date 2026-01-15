@@ -1,6 +1,7 @@
 /**
  * MessageRouter - Manages message sending and routing
  * Handles user messages, direct commands, and message-response patterns
+ * Supports quote-approve payment flow (v2.2.0)
  */
 
 import { EventEmitter } from "eventemitter3";
@@ -28,8 +29,8 @@ import {
   AgentCommandContentSchema
 } from "../types/validation";
 import { waitForEvent } from "../utils/event-waiter";
-import { PaymentClient } from "../utils/payment-client";
-import { SecurePrivateKey } from "../utils/secure-private-key";
+import { PaymentClient } from "../payments/payment-client";
+import type { SecurePrivateKey } from "../utils/secure-private-key";
 
 export interface SendMessageOptions {
   room: string;
@@ -45,14 +46,28 @@ export interface AgentCommand {
   room: string;
 }
 
+/**
+ * Result of a quote request, containing pricing and agent details.
+ */
 export interface QuoteResult {
   taskId: string;
   agentId: string;
-  agentName?: string;
+  agentName: string;
   agentWallet: string;
-  command?: string;
+  command: string;
   pricing: PricingInfo;
   expiresAt: Date;
+}
+
+export interface MessageRouterConfig {
+  messageTimeout?: number;
+  responseFormat?: ResponseFormat;
+  autoApproveQuotes?: boolean;
+  maxPricePerRequest?: number;
+  quoteTimeout?: number;
+  wsUrl?: string;
+  paymentNetwork?: string;
+  paymentAsset?: string;
 }
 
 export class MessageRouter extends EventEmitter<SDKEvents> {
@@ -62,30 +77,23 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private readonly logger: Logger;
   private readonly messageTimeout: number;
   private readonly responseFormat: ResponseFormat;
-  private readonly maxPricePerRequest?: number;
-  private readonly paymentNetwork: string;
-  private readonly paymentAsset: string;
+
+  // Quote-approve flow (v2.2.0)
+  private paymentClient: PaymentClient | null = null;
+  private readonly pendingQuotes: Map<string, QuoteResult> = new Map();
   private readonly autoApproveQuotes: boolean;
+  private readonly maxPricePerRequest?: number;
   private readonly quoteTimeout: number;
   private readonly wsUrl: string;
-  private paymentClient?: PaymentClient;
-  private pendingQuotes: Map<string, QuoteResult> = new Map();
+  private readonly paymentNetwork: string;
+  private readonly paymentAsset: string;
 
   constructor(
     wsClient: WebSocketClient,
     webhookHandler: WebhookHandler,
     responseFormatter: ResponseFormatter,
     logger: Logger,
-    config: {
-      messageTimeout?: number;
-      responseFormat?: ResponseFormat;
-      maxPricePerRequest?: number;
-      paymentNetwork?: string;
-      paymentAsset?: string;
-      autoApproveQuotes?: boolean;
-      quoteTimeout?: number;
-      wsUrl?: string;
-    }
+    config: MessageRouterConfig
   ) {
     super();
     this.wsClient = wsClient;
@@ -94,16 +102,23 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.logger = logger;
     this.messageTimeout = config.messageTimeout ?? TIMEOUTS.DEFAULT_MESSAGE_TIMEOUT;
     this.responseFormat = config.responseFormat ?? "humanized";
-    this.maxPricePerRequest = config.maxPricePerRequest;
-    this.paymentNetwork = config.paymentNetwork ?? "eip155:3338";
-    this.paymentAsset = config.paymentAsset ?? "0xbbA60da06c2c5424f03f7434542280FCAd453d10";
+
+    // Quote-approve config (v2.2.0)
     this.autoApproveQuotes = config.autoApproveQuotes ?? true;
+    this.maxPricePerRequest = config.maxPricePerRequest;
     this.quoteTimeout = config.quoteTimeout ?? 30000;
-    this.wsUrl = config.wsUrl ?? "wss://teneo.protocol.ai/ws";
+    this.wsUrl = config.wsUrl ?? "";
+    this.paymentNetwork = config.paymentNetwork ?? "eip155:3338";
+    // USDC contract address on PEAQ network
+    this.paymentAsset = config.paymentAsset ?? "0xbbA60da06c2c5424f03f7434542280FCAd453d10";
 
     this.setupEventForwarding();
   }
 
+  /**
+   * Sets up the payment client for quote-approve flow.
+   * Must be called before using requestQuote/confirmQuote with paid tasks.
+   */
   public setPaymentClient(secureKey: SecurePrivateKey, walletAddress: string): void {
     this.paymentClient = new PaymentClient(secureKey, walletAddress, {
       network: this.paymentNetwork,
@@ -147,7 +162,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     options: SendMessageOptions
   ): Promise<FormattedResponse | void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
 
     const validatedContent = MessageContentSchema.parse(content);
@@ -156,9 +171,12 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       throw new ValidationError("Room parameter is required");
     }
 
-    // Use quote-approve flow with auto-approval
+    // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
-      this.logger.debug("MessageRouter: Using quote-approve flow", { content: validatedContent, room });
+      this.logger.debug("MessageRouter: Using quote-approve flow", {
+        content: validatedContent,
+        room
+      });
       const quote = await this.requestQuote(validatedContent, room);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse: options.waitForResponse,
@@ -211,7 +229,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
 
     const validatedAgent = AgentIdSchema.parse(command.agent);
@@ -224,7 +242,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     const content = `@${validatedAgent} ${validatedCommand}`;
 
-    // Use quote-approve flow with auto-approval (default)
+    // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
       this.logger.debug("MessageRouter: Using quote-approve flow", { content, room });
       const quote = await this.requestQuote(content, room);
@@ -271,49 +289,14 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
 
-    // Generate unique request ID for correlation (prevents race conditions with concurrent requests)
-    const requestId = uuidv4();
-    const message = createRequestTask(content, room, requestId);
-    this.logger.debug("MessageRouter: Requesting quote", { content, room, requestId });
+    const message = createRequestTask(content, room);
+    this.logger.debug("MessageRouter: Requesting quote", { content, room });
 
     await this.wsClient.sendMessage(message);
 
-    // Track request timestamp for fallback matching
-    const requestTimestamp = Date.now();
-    let quoteMatched = false;
-
     const quote = await waitForEvent<TaskQuoteMessage>(this.wsClient, "quote:received", {
       timeout: this.quoteTimeout,
-      filter: (q) => {
-        // Prevent double-matching
-        if (quoteMatched) return false;
-
-        // Try to match by client_request_id if server echoes it back
-        if (q.data.client_request_id === requestId) {
-          quoteMatched = true;
-          return true;
-        }
-
-        // Fallback: If server doesn't support client_request_id,
-        // match the first quote from the expected room within the timeout window
-        const timeSinceRequest = Date.now() - requestTimestamp;
-        const quoteRoom = q.room;
-        const isFromExpectedRoom = quoteRoom === room;
-        const isWithinTimeWindow = timeSinceRequest < this.quoteTimeout;
-
-        if (isFromExpectedRoom && isWithinTimeWindow && !q.data.client_request_id) {
-          this.logger.debug("Matching quote without client_request_id (server fallback)", {
-            quoteRoom,
-            expectedRoom: room,
-            timeSinceRequest
-          });
-          quoteMatched = true;
-          return true;
-        }
-
-        return false;
-      },
-      timeoutMessage: `Quote request timed out after ${this.quoteTimeout}ms (requestId: ${requestId})`
+      timeoutMessage: `Quote request timed out after ${this.quoteTimeout}ms`
     });
 
     const result: QuoteResult = {
@@ -349,48 +332,45 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     if (new Date() > quote.expiresAt) {
       this.pendingQuotes.delete(taskId);
-      throw new SDKError("Quote has expired", ErrorCode.VALIDATION_ERROR);
+      throw new SDKError("Quote has expired", ErrorCode.QUOTE_EXPIRED);
     }
 
-    // Check price limit (convert from whole USDC to e6 micro-units for comparison)
-    // pricePerUnit is in whole USDC (e.g., 0.001), multiply by 1e6 to get micro-units
+    // Check price limit
     if (this.maxPricePerRequest !== undefined) {
-      const priceInMicroUnits = quote.pricing.pricePerUnit * 1_000_000;
-      if (priceInMicroUnits > this.maxPricePerRequest) {
+      const priceInUnits = quote.pricing.pricePerUnit * 1_000_000;
+      if (priceInUnits > this.maxPricePerRequest) {
         throw new PaymentError(
-          `Quote price exceeds limit: ${priceInMicroUnits} > ${this.maxPricePerRequest}`,
+          `Quote price exceeds limit: ${priceInUnits} > ${this.maxPricePerRequest}`,
           ErrorCode.PRICE_LIMIT_EXCEEDED,
-          { agentId: quote.agentId, agentPrice: priceInMicroUnits, maxPrice: this.maxPricePerRequest }
+          { agentId: quote.agentId, agentPrice: priceInUnits, maxPrice: this.maxPricePerRequest }
         );
       }
     }
 
-    let confirmMessage = createConfirmTask(taskId);
+    let paymentHeader: string | undefined;
 
-    // Attach payment if payment client is configured
-    // Convert pricePerUnit (whole USDC) to micro-units (e6) for on-chain payment
+    // Create payment header if payment client is configured and price > 0
     if (this.paymentClient && quote.pricing.pricePerUnit > 0) {
       try {
-        const amountInMicroUnits = quote.pricing.pricePerUnit * 1_000_000;
-        const paymentHeader = await this.paymentClient.createPaymentHeader(
-          amountInMicroUnits,
+        paymentHeader = await this.paymentClient.createPaymentHeader(
+          quote.pricing.pricePerUnit * 1_000_000,
           quote.agentWallet,
           this.wsUrl
         );
-        confirmMessage = {
-          ...confirmMessage,
-          data: { ...confirmMessage.data, x402_payment: paymentHeader }
-        } as any;
         this.emit("payment:attached", {
           agentId: quote.agentId,
-          amount: amountInMicroUnits,
+          amount: quote.pricing.pricePerUnit * 1_000_000,
           command: quote.command
         });
       } catch (error) {
         this.logger.error("Failed to create payment header for quote confirmation", error);
-        throw new PaymentError("Failed to create payment", ErrorCode.PAYMENT_FAILED, { agentId: quote.agentId });
+        throw new PaymentError("Failed to create payment", ErrorCode.PAYMENT_FAILED, {
+          agentId: quote.agentId
+        });
       }
     }
+
+    const confirmMessage = createConfirmTask(taskId, paymentHeader);
 
     this.logger.debug("MessageRouter: Confirming quote", { taskId });
 
@@ -458,7 +438,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         // Try to match by client_request_id if server echoes it back
         const responseRequestId =
           r.raw?.data && "client_request_id" in r.raw.data
-            ? (r.raw.data as Record<string, unknown>).client_request_id
+            ? (r.raw.data as any).client_request_id
             : undefined;
 
         if (responseRequestId === requestId) {

@@ -14,8 +14,6 @@ export {
 
   // Supporting schemas
   CapabilitySchema,
-  CommandParameterSchema,
-  CommandPricingSchema,
   CommandSchema,
   RoomSchema,
   AgentSchema,
@@ -42,7 +40,7 @@ export {
   TaskResponseMessageSchema,
   AgentSelectedMessageSchema,
 
-  // Quote-Approve schemas (v2.2.0)
+  // Quote-Approve Flow schemas (v2.2.0)
   PricingInfoSchema,
   RequestTaskMessageSchema,
   TaskQuoteMessageSchema,
@@ -90,25 +88,6 @@ export {
   RoomPingMessageSchema,
   RoomPongResponseSchema,
 
-  // Agent Details schemas
-  GetAgentDetailsMessageSchema,
-  AgentDetailsResponseSchema,
-
-  // Rate Limit schemas
-  RateLimitNotificationDataSchema,
-  RateLimitNotificationMessageSchema,
-
-  // Admin schemas
-  AdminAgentInfoSchema,
-  ListAllAgentsMessageSchema,
-  AllAgentsResponseSchema,
-  UserCountDataSchema,
-  UserCountMessageSchema,
-
-  // User Presence schemas
-  UserAuthenticatedDataSchema,
-  UserAuthenticatedMessageSchema,
-
   // Union schema
   AnyMessageSchema,
 
@@ -119,8 +98,6 @@ export {
   type AgentType,
   type AgentStatus,
   type Capability,
-  type CommandParameter,
-  type CommandPricing,
   type Command,
   type Room,
   type Agent,
@@ -139,12 +116,11 @@ export {
   type TaskResponseMessage,
   type AgentSelectedMessage,
 
-  // Quote-Approve types (v2.2.0)
+  // Quote-Approve Flow types (v2.2.0)
   type PricingInfo,
   type RequestTaskMessage,
   type TaskQuoteMessage,
   type ConfirmTaskMessage,
-
   type AgentsListMessage,
   type ErrorMessage,
   type PingMessage,
@@ -184,24 +160,23 @@ export {
   type RoomPingMessage,
   type RoomPongResponse,
 
-  // Agent Details types
-  type GetAgentDetailsMessage,
-  type AgentDetailsResponse,
-
-  // Rate Limit types
-  type RateLimitNotificationData,
-  type RateLimitNotificationMessage,
-
   // Admin types
+  AdminAgentInfoSchema,
+  ListAllAgentsMessageSchema,
+  AllAgentsResponseSchema,
+  UserCountMessageSchema,
+  UserAuthenticatedMessageSchema,
+  RateLimitNotificationMessageSchema,
+  GetAgentDetailsMessageSchema,
+  AgentDetailsResponseMessageSchema,
   type AdminAgentInfo,
   type ListAllAgentsMessage,
   type AllAgentsResponse,
-  type UserCountData,
   type UserCountMessage,
-
-  // User Presence types
-  type UserAuthenticatedData,
   type UserAuthenticatedMessage,
+  type RateLimitNotificationMessage,
+  type GetAgentDetailsMessage,
+  type AgentDetailsResponseMessage,
   type AnyMessage,
 
   // Type guards
@@ -213,7 +188,6 @@ export {
   isTaskResponse,
   isError,
   isAgentsList,
-  isTaskQuote,
 
   // Factory functions
   createRequestChallenge,

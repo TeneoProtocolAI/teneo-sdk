@@ -9,9 +9,7 @@ import {
   AgentSchema,
   RoomInfoSchema,
   TaskResponseMessageSchema,
-  TaskQuoteMessageSchema,
-  CapabilitySchema,
-  AgentRoomInfoSchema
+  CapabilitySchema
 } from "./messages";
 import { ConnectionStateSchema, AuthenticationStateSchema } from "./config";
 import { ErrorCode } from "./error-codes";
@@ -86,21 +84,6 @@ export const RateLimitErrorSchema = SDKErrorSchema.extend({
     .optional()
 });
 
-export const PaymentErrorSchema = SDKErrorSchema.extend({
-  name: z.literal("PaymentError"),
-  details: z
-    .object({
-      agentPrice: z.number().optional(),
-      maxPrice: z.number().optional(),
-      agentId: z.string().optional(),
-      command: z.string().optional(),
-      taskId: z.string().optional(),
-      network: z.string().optional(),
-      quoteExpiresAt: z.date().optional()
-    })
-    .optional()
-});
-
 export const SignatureVerificationErrorSchema = SDKErrorSchema.extend({
   name: z.literal("SignatureVerificationError"),
   recoverable: z.literal(false),
@@ -136,10 +119,10 @@ export type EventMetadata = z.infer<typeof EventMetadataSchema>;
 // Error classes that extend Error and implement Zod validation
 export class SDKError extends Error {
   public code: string;
-  public details?: unknown;
+  public details?: any;
   public recoverable: boolean;
 
-  constructor(message: string, code: ErrorCode, details?: unknown, recoverable: boolean = false) {
+  constructor(message: string, code: ErrorCode, details?: any, recoverable: boolean = false) {
     super(message);
     this.name = "SDKError";
     this.code = code;
@@ -168,42 +151,42 @@ export class SDKError extends Error {
 }
 
 export class ConnectionError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.CONNECTION_ERROR, details, true);
     this.name = "ConnectionError";
   }
 }
 
 export class AuthenticationError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.AUTH_ERROR, details, false);
     this.name = "AuthenticationError";
   }
 }
 
 export class MessageError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.MESSAGE_ERROR, details, false);
     this.name = "MessageError";
   }
 }
 
 export class WebhookError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.WEBHOOK_ERROR, details, true);
     this.name = "WebhookError";
   }
 }
 
 export class ValidationError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.VALIDATION_ERROR, details, false);
     this.name = "ValidationError";
   }
 }
 
 export class TimeoutError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.TIMEOUT_ERROR, details, true);
     this.name = "TimeoutError";
   }
@@ -213,25 +196,6 @@ export class RateLimitError extends SDKError {
   constructor(message: string, retryAfter?: number) {
     super(message, ErrorCode.RATE_LIMIT, { retryAfter }, true);
     this.name = "RateLimitError";
-  }
-}
-
-export class PaymentError extends SDKError {
-  constructor(
-    message: string,
-    code: ErrorCode = ErrorCode.PAYMENT_REQUIRED,
-    details?: {
-      agentPrice?: number;
-      maxPrice?: number;
-      agentId?: string;
-      command?: string;
-      taskId?: string;
-      network?: string;
-      quoteExpiresAt?: Date;
-    }
-  ) {
-    super(message, code, details, false);
-    this.name = "PaymentError";
   }
 }
 
@@ -292,9 +256,24 @@ export class SignatureVerificationError extends SDKError {
  * ```
  */
 export class ConfigurationError extends SDKError {
-  constructor(message: string, details?: unknown) {
+  constructor(message: string, details?: any) {
     super(message, ErrorCode.CONFIG_ERROR, details, false);
     this.name = "ConfigurationError";
+  }
+}
+
+/**
+ * Error thrown when payment operations fail (v2.2.0).
+ * Can occur when:
+ * - Payment signature creation fails
+ * - Price limit is exceeded
+ * - Insufficient balance
+ * - Invalid payment network
+ */
+export class PaymentError extends SDKError {
+  constructor(message: string, code: ErrorCode, details?: any) {
+    super(message, code, details, false);
+    this.name = "PaymentError";
   }
 }
 
@@ -350,16 +329,13 @@ export interface SDKEvents {
   // Agent Room Management events (v2.0.0)
   "agent_room:agent_added": (roomId: string, agentId: string) => void;
   "agent_room:agent_removed": (roomId: string, agentId: string) => void;
-  "agent_room:agents_listed": (
-    roomId: string,
-    agents: z.infer<typeof AgentRoomInfoSchema>[]
-  ) => void;
-  "agent_room:available_agents_listed": (agents: z.infer<typeof AgentRoomInfoSchema>[]) => void;
+  "agent_room:agents_listed": (roomId: string, agents: any[]) => void;
+  "agent_room:available_agents_listed": (agents: any[]) => void;
   "agent_room:status_update": (data: {
     roomId: string;
     agentId: string;
     status: string;
-    agent?: z.infer<typeof AgentRoomInfoSchema>;
+    agent?: any;
   }) => void;
   "agent_room:add_error": (error: Error, roomId?: string) => void;
   "agent_room:remove_error": (error: Error, roomId?: string) => void;
@@ -371,24 +347,12 @@ export interface SDKEvents {
   "coordinator:selected": (agentId: string, reasoning: string) => void;
   "coordinator:error": (error: string) => void;
 
-  // Quote events (v2.2.0)
-  "quote:received": (quote: z.infer<typeof TaskQuoteMessageSchema>) => void;
-
-  // Payment events (v2.1.0)
-  "payment:blocked": (data: {
-    agentId: string;
-    agentPrice: number;
-    maxPrice: number;
-    command?: string;
-  }) => void;
-  "payment:attached": (data: { agentId: string; amount: number; command?: string }) => void;
-  "payment:error": (error: Error) => void;
-
-  // Webhook events
-  "webhook:sent": (payload: unknown, url: string) => void;
-  "webhook:success": (response: unknown, url: string) => void;
-  "webhook:error": (error: Error, url: string) => void;
-  "webhook:retry": (attempt: number, url: string) => void;
+  // Quote-Approve Payment events (v2.2.0)
+  "quote:received": (quote: any) => void;
+  "quote:expired": (taskId: string) => void;
+  "payment:blocked": (data: { agentId: string; agentPrice: number; maxPrice: number }) => void;
+  "payment:attached": (data: { agentId: string; amount: number; command: string }) => void;
+  "payment:error": (error: Error, agentId?: string) => void;
 
   // Rate Limit events
   rate_limit: (notification: {
@@ -396,8 +360,8 @@ export interface SDKEvents {
     message: string;
     ctaText?: string;
     ctaLink?: string;
-    messageType?: string;
-    limitType?: string;
+    messageType: string;
+    limitType: string;
     resetAt?: string;
   }) => void;
 
@@ -407,6 +371,12 @@ export interface SDKEvents {
 
   // User Presence events
   "user:authenticated": (data: { wallet: string }) => void;
+
+  // Webhook events
+  "webhook:sent": (payload: any, url: string) => void;
+  "webhook:success": (response: any, url: string) => void;
+  "webhook:error": (error: Error, url: string) => void;
+  "webhook:retry": (attempt: number, url: string) => void;
 
   // Error events
   error: (error: SDKError) => void;

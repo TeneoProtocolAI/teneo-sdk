@@ -12,7 +12,8 @@ export {
   MessageRouter,
   type SendMessageOptions,
   type AgentCommand,
-  type QuoteResult
+  type QuoteResult,
+  type MessageRouterConfig
 } from "./message-router";
 export {
   AdminManager,

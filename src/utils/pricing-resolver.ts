@@ -126,4 +126,3 @@ export function parseCommandForPricing(content: string): {
 
   return { agentName, commandTrigger, itemCount, duration };
 }
-

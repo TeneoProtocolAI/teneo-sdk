@@ -1,6 +1,6 @@
 /**
- * Handler for task_quote messages (X402 Payment Flow)
- * Processes pricing quotes from the coordinator
+ * Handler for task_quote messages (v2.2.0)
+ * Processes quotes from the coordinator for the quote-approve payment flow
  */
 
 import { z } from "zod";
@@ -19,16 +19,10 @@ export class TaskQuoteHandler extends BaseMessageHandler<TaskQuoteMessage> {
       price: message.data.pricing?.pricePerUnit
     });
 
-    // Delegate to payment manager if available
-    const paymentManager = (context as any).paymentManager;
-    if (paymentManager && typeof paymentManager.handleTaskQuote === "function") {
-      paymentManager.handleTaskQuote(message.data, (message as any).request_id);
-    }
-
-    // Emit quote:received event for the requestQuote() method to catch
+    // Emit quote:received event for MessageRouter to pick up
     this.emit(context, "quote:received", message);
 
-    // Send webhook
+    // Send webhook (fire-and-forget)
     this.sendWebhook(context, "task_quote", message.data, {
       taskId: message.data.task_id,
       agentId: message.data.agent_id

@@ -29,7 +29,6 @@ export { ListRoomAgentsHandler } from "./list-room-agents-handler";
 export { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 export { AgentStatusUpdateHandler } from "./agent-status-update-handler";
 
-
 // Agent Details handler
 export { AgentDetailsResponseHandler } from "./agent-details-response-handler";
 
