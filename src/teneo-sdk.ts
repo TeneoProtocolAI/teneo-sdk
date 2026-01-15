@@ -1697,8 +1697,13 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.connection.on("error", (error) => {
       this.emit("error", error);
       // Fire and forget - don't block event emission
+      // Defensive check: ensure error has toJSON method (SDKError instances do)
+      const errorPayload =
+        typeof error.toJSON === "function"
+          ? error.toJSON()
+          : { message: error.message, name: error.name, code: error.code };
       this.webhookHandler
-        .sendWebhook("error", error.toJSON(), { code: error.code })
+        .sendWebhook("error", errorPayload, { code: error.code })
         .catch((webhookError) => {
           this.logger.error("Failed to send webhook for error event", webhookError);
         });

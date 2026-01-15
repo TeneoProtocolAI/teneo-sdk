@@ -3,7 +3,8 @@
  * Processes room subscription confirmations
  */
 
-import { SubscribeResponse, SubscribeResponseSchema } from "../../types";
+import { SubscribeResponse, SubscribeResponseSchema, ErrorCode } from "../../types";
+import { SDKError } from "../../types/events";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
@@ -41,7 +42,16 @@ export class SubscribeResponseHandler extends BaseMessageHandler<SubscribeRespon
       });
 
       // Emit error event
-      this.emit(context, "error", new Error(`Subscription failed: ${message.data.message}`));
+      this.emit(
+        context,
+        "error",
+        new SDKError(
+          `Subscription failed: ${message.data.message}`,
+          ErrorCode.OPERATION_FAILED,
+          { roomId: message.data.room_id },
+          true
+        )
+      );
     }
   }
 }
