@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { AgentCategorySchema, MAX_CATEGORIES } from "./categories";
 
 /**
  * Coerces string booleans to actual booleans with strict validation.
@@ -179,7 +180,8 @@ export const AgentSchema = z.object({
   image: z.string().optional(),
   agentType: AgentTypeSchema.optional(),
   nlpFallback: stringToBoolean.optional(),
-  webhookUrl: z.string().url().optional()
+  webhookUrl: z.string().url().optional(),
+  categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
 });
 
 // Base message schema
@@ -607,7 +609,8 @@ export const AgentRoomInfoSchema = z
     image: z.string().optional(),
     status: z.string().optional(),
     added_by: z.string().optional(),
-    added_at: z.string().optional()
+    added_at: z.string().optional(),
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
   })
   .passthrough();
 

@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from "eventemitter3";
-import { Agent, Logger } from "../types";
+import { Agent, AgentCategory, Logger } from "../types";
 import { SDKEvents } from "../types/events";
 import { AgentIdSchema, SearchQuerySchema } from "../types/validation";
 
@@ -18,6 +18,7 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
   private capabilityIndex = new Map<string, Set<string>>();
   private nameTokenIndex = new Map<string, Set<string>>();
   private statusIndex = new Map<string, Set<string>>();
+  private categoryIndex = new Map<AgentCategory, Set<string>>();
 
   constructor(logger: Logger) {
     super();
@@ -201,6 +202,39 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Finds all agents that have a specific category.
+   * Uses O(1) category index lookup instead of O(n) filtering.
+   *
+   * @param category - The category to search for
+   * @returns Read-only array of agents with the specified category
+   *
+   * @example
+   * ```typescript
+   * const tradingAgents = agentRegistry.findByCategory('Trading');
+   * console.log(`Found ${tradingAgents.length} trading agents`);
+   * ```
+   */
+  public findByCategory(category: AgentCategory): ReadonlyArray<Agent> {
+    // Ensure cache is up to date
+    if (this.isAgentsCacheDirty || !this.cachedAgents) {
+      this.rebuildCache();
+    }
+
+    // O(1) index lookup
+    const agentIds = this.categoryIndex.get(category);
+
+    if (!agentIds || agentIds.size === 0) {
+      return [];
+    }
+
+    // Map agent IDs to agent objects with defensive copies
+    return Array.from(agentIds)
+      .map((id) => this.agents.get(id))
+      .filter((agent): agent is Agent => agent !== undefined)
+      .map((agent) => ({ ...agent }));
+  }
+
+  /**
    * Updates the registry with a new list of agents.
    * Merges with existing agents and marks cache as dirty.
    * Emits 'agent:list' event with the new agents.
@@ -291,6 +325,7 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
     this.capabilityIndex.clear();
     this.nameTokenIndex.clear();
     this.statusIndex.clear();
+    this.categoryIndex.clear();
 
     // Populate indices
     for (const agent of this.agents.values()) {
@@ -320,6 +355,16 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
         this.statusIndex.set(status, new Set());
       }
       this.statusIndex.get(status)!.add(agent.id);
+
+      // Index categories
+      if (agent.categories) {
+        for (const category of agent.categories) {
+          if (!this.categoryIndex.has(category)) {
+            this.categoryIndex.set(category, new Set());
+          }
+          this.categoryIndex.get(category)!.add(agent.id);
+        }
+      }
     }
 
     this.isAgentsCacheDirty = false;

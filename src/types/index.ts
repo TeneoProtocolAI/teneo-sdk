@@ -268,3 +268,11 @@ export { ErrorCode } from "./error-codes";
 
 // Health status types
 export { type HealthStatus } from "./health";
+
+// Agent category types
+export {
+  AGENT_CATEGORIES,
+  MAX_CATEGORIES,
+  AgentCategorySchema,
+  type AgentCategory
+} from "./categories";
