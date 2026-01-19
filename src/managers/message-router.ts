@@ -339,6 +339,11 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     if (this.maxPricePerRequest !== undefined) {
       const priceInUnits = quote.pricing.pricePerUnit * 1_000_000;
       if (priceInUnits > this.maxPricePerRequest) {
+        this.emit("payment:blocked", {
+          agentId: quote.agentId,
+          agentPrice: priceInUnits,
+          maxPrice: this.maxPricePerRequest
+        });
         throw new PaymentError(
           `Quote price exceeds limit: ${priceInUnits} > ${this.maxPricePerRequest}`,
           ErrorCode.PRICE_LIMIT_EXCEEDED,

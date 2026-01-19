@@ -73,9 +73,7 @@ export { USDC_CONTRACT, PEAQ_NETWORK_CAIP2 as PEAQ_CHAIN_ID };
  * buildX402ResourceUrl("wss://api.teneo.com/ws") // "https://api.teneo.com/x402"
  */
 export function buildX402ResourceUrl(wsUrl: string): string {
-  const httpUrl = wsUrl
-    .replace(/^wss:\/\//, "https://")
-    .replace(/^ws:\/\//, "http://");
+  const httpUrl = wsUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
 
   // Replace /ws endpoint with /x402, or append /x402 if URL doesn't end with /ws
   return /\/ws\/?$/.test(httpUrl)

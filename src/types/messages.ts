@@ -119,7 +119,11 @@ export const MessageTypeSchema = z.enum([
   "user_authenticated",
   "rate_limit_notification",
   "get_agent_details",
-  "agent_details_response"
+  "agent_details_response",
+
+  // User Preferences (2 types)
+  "set_user_preferences",
+  "user_preferences_updated"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -853,6 +857,38 @@ export const AgentDetailsResponseMessageSchema = z
 
 export type AgentDetailsResponseMessage = z.infer<typeof AgentDetailsResponseMessageSchema>;
 
+// User Preferences (set_user_preferences)
+export const SetUserPreferencesDataSchema = z.object({
+  max_price_per_request: z.number().min(0).optional().nullable()
+});
+
+export const SetUserPreferencesMessageSchema = z
+  .object({
+    type: z.literal("set_user_preferences"),
+    data: SetUserPreferencesDataSchema
+  })
+  .passthrough();
+
+export type SetUserPreferencesData = z.infer<typeof SetUserPreferencesDataSchema>;
+export type SetUserPreferencesMessage = z.infer<typeof SetUserPreferencesMessageSchema>;
+
+// User Preferences Response (user_preferences_updated)
+export const UserPreferencesUpdatedDataSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  max_price_per_request: z.number().optional().nullable()
+});
+
+export const UserPreferencesUpdatedMessageSchema = z
+  .object({
+    type: z.literal("user_preferences_updated"),
+    data: UserPreferencesUpdatedDataSchema
+  })
+  .passthrough();
+
+export type UserPreferencesUpdatedData = z.infer<typeof UserPreferencesUpdatedDataSchema>;
+export type UserPreferencesUpdatedMessage = z.infer<typeof UserPreferencesUpdatedMessageSchema>;
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -907,7 +943,10 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   UserCountMessageSchema,
   UserAuthenticatedMessageSchema,
   RateLimitNotificationMessageSchema,
-  AgentDetailsResponseMessageSchema
+  AgentDetailsResponseMessageSchema,
+
+  // User Preferences
+  UserPreferencesUpdatedMessageSchema
 ]);
 
 // Type inference from schemas
@@ -1106,6 +1145,17 @@ export function createConfirmTask(taskId: string, x402Payment?: string): Confirm
       task_id: taskId
     },
     ...(x402Payment && { payment: x402Payment }) // payment at top level for backend
+  });
+}
+
+export function createSetUserPreferences(
+  maxPricePerRequest?: number | null
+): SetUserPreferencesMessage {
+  return SetUserPreferencesMessageSchema.parse({
+    type: "set_user_preferences",
+    data: {
+      max_price_per_request: maxPricePerRequest
+    }
   });
 }
 

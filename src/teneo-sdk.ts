@@ -1070,6 +1070,79 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Updates user preferences on the server.
+   * Server-side enforcement of max price per request - prevents quotes/payments exceeding the limit.
+   *
+   * @param preferences - User preferences to update
+   * @param preferences.maxPricePerRequest - Max price per request in USDC (e.g., 0.01 = $0.01), or null to remove limit
+   * @returns Promise that resolves when preferences are updated
+   * @throws {SDKError} If update fails or times out
+   *
+   * @example
+   * ```typescript
+   * // Set a spending limit of $0.05 per request
+   * await sdk.setUserPreferences({ maxPricePerRequest: 0.05 });
+   *
+   * // Remove the spending limit
+   * await sdk.setUserPreferences({ maxPricePerRequest: null });
+   * ```
+   */
+  public async setUserPreferences(preferences: {
+    maxPricePerRequest?: number | null;
+  }): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    const message = {
+      type: "set_user_preferences" as const,
+      data: {
+        max_price_per_request: preferences.maxPricePerRequest
+      }
+    };
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new SDKError("Set user preferences request timed out", ErrorCode.TIMEOUT_ERROR));
+      }, 30000);
+
+      const handleResponse = (msg: {
+        type: string;
+        data?: { success?: boolean; message?: string; max_price_per_request?: number | null };
+      }) => {
+        if (msg.type === "user_preferences_updated") {
+          cleanup();
+          if (msg.data?.success) {
+            this.emit("preferences:updated", {
+              maxPricePerRequest: msg.data.max_price_per_request
+            });
+            resolve();
+          } else {
+            reject(
+              new SDKError(
+                msg.data?.message || "Failed to update preferences",
+                ErrorCode.MESSAGE_ERROR
+              )
+            );
+          }
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        this.wsClient.off("message:received", handleResponse);
+      };
+
+      this.wsClient.on("message:received", handleResponse);
+      this.wsClient.sendMessage(message).catch((error) => {
+        cleanup();
+        reject(error);
+      });
+    });
+  }
+
+  /**
    * Configures webhook URL and headers for receiving real-time event notifications.
    * Webhooks allow you to receive events at your server endpoint via HTTP POST requests.
    * Events include messages, agent responses, errors, and connection state changes.

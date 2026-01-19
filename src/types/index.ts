@@ -177,6 +177,17 @@ export {
   type RateLimitNotificationMessage,
   type GetAgentDetailsMessage,
   type AgentDetailsResponseMessage,
+
+  // User Preferences types
+  SetUserPreferencesDataSchema,
+  SetUserPreferencesMessageSchema,
+  UserPreferencesUpdatedDataSchema,
+  UserPreferencesUpdatedMessageSchema,
+  type SetUserPreferencesData,
+  type SetUserPreferencesMessage,
+  type UserPreferencesUpdatedData,
+  type UserPreferencesUpdatedMessage,
+
   type AnyMessage,
 
   // Type guards
@@ -200,6 +211,7 @@ export {
   createListRooms,
   createRequestTask,
   createConfirmTask,
+  createSetUserPreferences,
 
   // Validation helpers
   validateMessage,
