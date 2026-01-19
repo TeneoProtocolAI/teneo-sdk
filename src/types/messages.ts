@@ -110,7 +110,16 @@ export const MessageTypeSchema = z.enum([
 
   // Room Ping System (2 types)
   "room_ping",
-  "room_pong"
+  "room_pong",
+
+  // Admin Messages (7 types)
+  "list_all_agents",
+  "all_agents_response",
+  "user_count",
+  "user_authenticated",
+  "rate_limit_notification",
+  "get_agent_details",
+  "agent_details_response"
 ]);
 
 export const ContentTypeSchema = z.enum([
