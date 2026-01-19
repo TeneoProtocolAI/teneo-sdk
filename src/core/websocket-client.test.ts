@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WebSocketClient } from "./websocket-client";
-import { ConnectionError, AuthenticationError, TimeoutError } from "../types/events";
+import { ConnectionError } from "../types/events";
 import type { SDKConfig } from "../types/config";
 import WebSocket from "ws";
 import { privateKeyToAccount } from "viem/accounts";
@@ -21,10 +21,13 @@ vi.mock("viem/accounts", () => ({
 describe("WebSocketClient", () => {
   let client: WebSocketClient;
   let mockConfig: SDKConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockWs: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockAccount: any;
 
   // Helper to simulate successful authentication
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const simulateAuth = (client: any) => {
     // Update auth state to bypass authentication wait
     client.updateAuthState({ authenticated: true });
@@ -49,9 +52,11 @@ describe("WebSocketClient", () => {
     mockWs = {
       on: vi.fn(),
       once: vi.fn(),
-      send: vi.fn((data: any, callback?: any) => callback && callback()),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      send: vi.fn((data: unknown, callback?: () => void) => callback && callback()),
       close: vi.fn(),
-      ping: vi.fn((callback?: any) => callback && callback()),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ping: vi.fn((callback?: () => void) => callback && callback()),
       terminate: vi.fn(),
       readyState: WebSocket.OPEN,
       CONNECTING: 0,

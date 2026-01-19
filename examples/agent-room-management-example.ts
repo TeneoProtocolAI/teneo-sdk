@@ -44,12 +44,12 @@ async function main() {
 
   try {
     // Connect and authenticate
-    console.log("📡 Connecting to Teneo network...");
+    console.log("📡 Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✅ Connected and authenticated\n");
 
     // Wait for initial data to load
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Step 1: Get or create a test room
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -86,7 +86,7 @@ async function main() {
       await addAgentsToRoom(sdk, testRoom.id, availableAgents);
 
       // Wait for additions to process
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     // Step 5: List updated room agents (using cache this time)
@@ -110,7 +110,7 @@ async function main() {
       await removeAgentsFromRoom(sdk, testRoom.id, updatedAgents);
 
       // Wait for removals to process
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     // Step 8: Final room status
@@ -134,7 +134,6 @@ async function main() {
     console.log(`  ✅ Cache cleared for room ${testRoom.id}`);
 
     console.log("\n✅ Agent room management example completed!");
-
   } catch (error: any) {
     console.error("\n❌ Error:", error.message);
     console.error(error.stack);
@@ -276,7 +275,7 @@ async function addAgentsToRoom(sdk: TeneoSDK, roomId: string, availableAgents: a
       console.log(`Adding "${agent.agent_name}" (${agent.agent_id})...`);
       await sdk.addAgentToRoom(roomId, agent.agent_id);
       // Wait a bit between additions
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error: any) {
       console.error(`Failed to add agent ${agent.agent_id}: ${error.message}`);
     }
@@ -294,7 +293,7 @@ async function removeAgentsFromRoom(sdk: TeneoSDK, roomId: string, roomAgents: a
       console.log(`Removing "${agent.agent_name}" (${agent.agent_id})...`);
       await sdk.removeAgentFromRoom(roomId, agent.agent_id);
       // Wait a bit between removals
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (error: any) {
       console.error(`Failed to remove agent ${agent.agent_id}: ${error.message}`);
     }
@@ -309,7 +308,7 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   // Get cached agents (instant)
   const cachedAgents = sdk.getRoomAgents(roomId);
   if (cachedAgents) {
-    const names = cachedAgents.map(a => a.agent_name || "Unnamed").join(", ");
+    const names = cachedAgents.map((a) => a.agent_name || "Unnamed").join(", ");
     console.log(`Cached agents: ${names}`);
   }
 
@@ -317,7 +316,9 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   if (agents.length > 0) {
     const firstAgent = agents[0];
     const isInRoom = sdk.isAgentInRoom(roomId, firstAgent.agent_id);
-    console.log(`Is "${firstAgent.agent_name}" in room? ${isInRoom === true ? "✅ Yes" : isInRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`);
+    console.log(
+      `Is "${firstAgent.agent_name}" in room? ${isInRoom === true ? "✅ Yes" : isInRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`
+    );
   }
 
   // Get cached available agents (instant)

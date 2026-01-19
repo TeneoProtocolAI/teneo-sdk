@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { CircuitBreaker, CircuitBreakerError, type CircuitState } from "./circuit-breaker";
+import { CircuitBreaker, CircuitBreakerError } from "./circuit-breaker";
 
 describe("CircuitBreaker", () => {
   describe("constructor", () => {

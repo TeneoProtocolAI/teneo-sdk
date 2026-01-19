@@ -20,7 +20,8 @@ import {
 describe("stringToBoolean transform", () => {
   // Test stringToBoolean indirectly through RoomSchema which uses it for is_public and is_active
 
-  const createTestRoom = (is_public: any, is_active: any) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createTestRoom = (is_public: unknown, is_active: unknown) => ({
     id: "room-1",
     name: "Test Room",
     is_public,

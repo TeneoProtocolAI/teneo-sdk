@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import { TeneoSDK } from "../../src";
 import { SDKConfigBuilder } from "../../src/types";
 import { privateKeyToAccount } from "viem/accounts";
@@ -69,7 +69,7 @@ describe.skip("Room Management Integration Tests", () => {
             );
             break;
 
-          case "create_room":
+          case "create_room": {
             // Create new room
             const newRoomId = `room-${roomCounter++}`;
             const newRoom: RoomInfo = {
@@ -96,8 +96,9 @@ describe.skip("Room Management Integration Tests", () => {
               })
             );
             break;
+          }
 
-          case "update_room":
+          case "update_room": {
             // Update existing room
             const roomId = message.room_id;
             const existingRoom = rooms.get(roomId);
@@ -137,8 +138,9 @@ describe.skip("Room Management Integration Tests", () => {
               })
             );
             break;
+          }
 
-          case "delete_room":
+          case "delete_room": {
             // Delete room
             const deleteRoomId = message.room_id;
             const roomToDelete = rooms.get(deleteRoomId);
@@ -171,6 +173,7 @@ describe.skip("Room Management Integration Tests", () => {
               })
             );
             break;
+          }
 
           case "ping":
             ws.send(JSON.stringify({ type: "pong" }));
@@ -245,7 +248,6 @@ describe.skip("Room Management Integration Tests", () => {
       expect(ownedRooms[0].id).toBe(room.id);
     });
 
-
     it("should emit room:created event", async () => {
       const roomOptions = {
         name: "Event Test Room"
@@ -267,9 +269,7 @@ describe.skip("Room Management Integration Tests", () => {
     it("should validate room name", async () => {
       await expect(sdk.createRoom({ name: "" })).rejects.toThrow("Room name cannot be empty");
 
-      await expect(sdk.createRoom({ name: "a".repeat(101) })).rejects.toThrow(
-        "Room name too long"
-      );
+      await expect(sdk.createRoom({ name: "a".repeat(101) })).rejects.toThrow("Room name too long");
     });
 
     it("should validate room description", async () => {
@@ -470,9 +470,11 @@ describe.skip("Room Management Integration Tests", () => {
 
   describe("Multiple Rooms", () => {
     it("should handle creating multiple rooms", async () => {
+      /* eslint-disable @typescript-eslint/no-unused-vars */
       const room1 = await sdk.createRoom({ name: "Room 1" });
       const room2 = await sdk.createRoom({ name: "Room 2" });
       const room3 = await sdk.createRoom({ name: "Room 3" });
+      /* eslint-enable @typescript-eslint/no-unused-vars */
 
       expect(sdk.getOwnedRoomCount()).toBe(3);
 

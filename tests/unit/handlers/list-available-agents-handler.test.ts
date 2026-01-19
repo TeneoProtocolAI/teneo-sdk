@@ -143,12 +143,8 @@ describe("ListAvailableAgentsHandler", () => {
           agent_id: "agent-1",
           agent_name: "Weather Agent",
           description: "Provides weather information",
-          capabilities: [
-            { name: "weather-forecast", description: "Get weather forecasts" }
-          ],
-          commands: [
-            { trigger: "weather", description: "Check weather" }
-          ],
+          capabilities: [{ name: "weather-forecast", description: "Get weather forecasts" }],
+          commands: [{ trigger: "weather", description: "Check weather" }],
           image: "https://example.com/agent.png",
           status: "online"
         }
@@ -192,7 +188,7 @@ describe("ListAvailableAgentsHandler", () => {
   describe("Message Validation", () => {
     it("should handle invalid message structure", async () => {
       const invalidMessage = {
-        type: "available_agents_response",
+        type: "available_agents_response"
         // Missing data field
       } as any;
 
@@ -205,11 +201,7 @@ describe("ListAvailableAgentsHandler", () => {
       );
 
       // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith(
-        "message:error",
-        expect.any(Error),
-        invalidMessage
-      );
+      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
     });
 
     it("should accept valid message with extra fields", async () => {

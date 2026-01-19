@@ -13,10 +13,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
   readonly type = "room_operation_response" as const;
   readonly schema = RoomOperationResponseSchema;
 
-  protected handleValidated(
-    message: RoomOperationResponse,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: RoomOperationResponse, context: HandlerContext): void {
     const { success, message: errorMessage, room_id, room } = message.data;
 
     context.logger.debug("Handling room_operation_response", {
@@ -62,7 +59,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
       // For now, handlers will emit both and listeners filter by room_id
 
       // Update cache via room management manager if available
-      const roomManager = (context as any).roomManagementManager;
+      const roomManager = context.roomManagementManager;
       if (roomManager && typeof roomManager.upsertRoom === "function") {
         roomManager.upsertRoom(room);
       }
@@ -83,7 +80,7 @@ export class RoomOperationResponseHandler extends BaseMessageHandler<RoomOperati
       context.logger.info("Room deleted", { roomId: room_id });
 
       // Remove from cache
-      const roomManager = (context as any).roomManagementManager;
+      const roomManager = context.roomManagementManager;
       if (roomManager && typeof roomManager.removeRoom === "function") {
         roomManager.removeRoom(room_id);
       }

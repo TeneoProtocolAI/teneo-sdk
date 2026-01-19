@@ -44,7 +44,7 @@ Query Teneo agents (like X-Agent for Twitter/X data) from visual n8n workflows f
            │ WebSocket
            │
 ┌──────────▼───────────────┐
-│   Teneo Network          │
+│   Teneo Protocol          │
 │   (X-Agent, etc.)        │
 └──────────────────────────┘
 ```

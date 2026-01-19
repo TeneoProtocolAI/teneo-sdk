@@ -43,7 +43,7 @@ async function testDirectAgentCommand() {
     .withAuthentication(privateKey)
     .withPayments({
       autoApprove: true,
-      maxPricePerRequest: 10_000_000, // Max 10 USDC
+      maxPricePerRequest: 10_000_000 // Max 10 USDC
     })
     .withLogging("info")
     .build();
@@ -117,7 +117,7 @@ async function testDirectAgentCommand() {
     const response = await sdk.sendMessage("@x-agent-enterprise-v2 user @elonmusk", {
       room: TEST_ROOM,
       waitForResponse: true,
-      timeout: 120000, // 2 minutes
+      timeout: 120000 // 2 minutes
     });
 
     if (response) {

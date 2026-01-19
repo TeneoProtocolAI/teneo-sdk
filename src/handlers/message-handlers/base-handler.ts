@@ -71,31 +71,44 @@ export abstract class BaseMessageHandler<T extends BaseMessage = BaseMessage>
   /**
    * Helper: emit event
    */
-  protected emit(context: HandlerContext, event: string, ...args: any[]): void {
+  protected emit(context: HandlerContext, event: string, ...args: unknown[]): void {
     context.emit(event, ...args);
   }
 
   /**
    * Helper: send webhook (fire-and-forget pattern)
    */
-  protected sendWebhook(context: HandlerContext, type: string, data: any, metadata?: any): void {
+  protected sendWebhook(
+    context: HandlerContext,
+    type: string,
+    data: Record<string, unknown>,
+    metadata?: Record<string, unknown>
+  ): void {
     // Fire and forget - don't block event emission
-    context.sendWebhook(type as any, data, metadata).catch((error) => {
-      context.logger.error(`Failed to send webhook for ${this.type}`, error);
-    });
+    context
+      .sendWebhook(type as Parameters<typeof context.sendWebhook>[0], data, metadata)
+      .catch((error) => {
+        context.logger.error(`Failed to send webhook for ${this.type}`, error);
+      });
   }
 
   /**
    * Helper: update connection state
    */
-  protected updateConnectionState(context: HandlerContext, update: any): void {
+  protected updateConnectionState(
+    context: HandlerContext,
+    update: Partial<import("./types").ConnectionState>
+  ): void {
     context.updateConnectionState(update);
   }
 
   /**
    * Helper: update auth state
    */
-  protected updateAuthState(context: HandlerContext, update: any): void {
+  protected updateAuthState(
+    context: HandlerContext,
+    update: Partial<import("./types").AuthState>
+  ): void {
     context.updateAuthState(update);
   }
 }

@@ -350,8 +350,27 @@ export interface SDKEvents {
   // Quote-Approve Payment events (v2.2.0)
   "quote:received": (quote: any) => void;
   "quote:expired": (taskId: string) => void;
+  "payment:blocked": (data: { agentId: string; agentPrice: number; maxPrice: number }) => void;
   "payment:attached": (data: { agentId: string; amount: number; command: string }) => void;
   "payment:error": (error: Error, agentId?: string) => void;
+
+  // Rate Limit events
+  rate_limit: (notification: {
+    title: string;
+    message: string;
+    ctaText?: string;
+    ctaLink?: string;
+    messageType: string;
+    limitType: string;
+    resetAt?: string;
+  }) => void;
+
+  // Admin events
+  "admin:user_count": (data: { count: number; timestamp?: string }) => void;
+  "admin:status_changed": (isAdmin: boolean) => void;
+
+  // User Presence events
+  "user:authenticated": (data: { wallet: string }) => void;
 
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;

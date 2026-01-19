@@ -15,11 +15,12 @@ describe("WebhookHandler", () => {
   let handler: WebhookHandler;
   let mockConfig: SDKConfig;
   let mockLogger: Logger;
-  let mockFetch: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    mockFetch = fetch as any;
+    mockFetch = fetch as unknown as ReturnType<typeof vi.fn>;
     mockFetch.mockClear();
 
     mockConfig = {

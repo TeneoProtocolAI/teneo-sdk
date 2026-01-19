@@ -59,7 +59,8 @@ describe("AgentRegistry", () => {
       registry.updateAgents([agent]);
 
       const agents = registry.getAgents();
-      const firstAgent = agents[0] as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const firstAgent = agents[0] as Record<string, any>;
 
       // Mutate returned object
       firstAgent.name = "Modified";

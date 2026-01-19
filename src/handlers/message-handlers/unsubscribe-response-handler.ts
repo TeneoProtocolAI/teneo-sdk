@@ -3,7 +3,8 @@
  * Processes room unsubscription confirmations
  */
 
-import { UnsubscribeResponse, UnsubscribeResponseSchema } from "../../types";
+import { UnsubscribeResponse, UnsubscribeResponseSchema, ErrorCode } from "../../types";
+import { SDKError } from "../../types/events";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
@@ -41,7 +42,16 @@ export class UnsubscribeResponseHandler extends BaseMessageHandler<UnsubscribeRe
       });
 
       // Emit error event
-      this.emit(context, "error", new Error(`Unsubscription failed: ${message.data.message}`));
+      this.emit(
+        context,
+        "error",
+        new SDKError(
+          `Unsubscription failed: ${message.data.message}`,
+          ErrorCode.OPERATION_FAILED,
+          { roomId: message.data.room_id },
+          true
+        )
+      );
     }
   }
 }

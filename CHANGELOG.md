@@ -5,6 +5,75 @@ All notable changes to the Teneo Protocol SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0]
+
+### Quote-Approve Payment Flow
+
+Payments now use a quote-approve model. Instead of attaching payments blindly, the SDK requests a quote from the server first, then confirms with payment.
+
+### ✨ Added
+
+- **Quote-Approve Flow**
+  - `requestQuote(content, room)` - Request a quote without auto-approval
+  - `confirmQuote(taskId, options?)` - Confirm and pay for a quoted task
+  - `getPendingQuote(taskId)` - Get a pending quote by task ID
+  - New `QuoteResult` type with agent, pricing, and expiration info
+
+- **New Message Types**
+  - `request_task` - Request a task quote from coordinator
+  - `task_quote` - Server response with pricing info
+  - `confirm_task` - Confirm and execute with payment
+
+- **New Config Options**
+  - `autoApproveQuotes` - Auto-confirm quotes (default: `true`)
+  - `quoteTimeout` - Timeout for quote responses (default: `30000`ms)
+
+- **New Schemas**
+  - `PricingInfoSchema` - Agent pricing metadata
+  - `RequestTaskMessageSchema`, `TaskQuoteMessageSchema`, `ConfirmTaskMessageSchema`
+
+- **Factory Functions & Type Guards**
+  - `createRequestTask()`, `createConfirmTask()`
+  - `isTaskQuote()` type guard
+
+### 🔄 Changed
+
+- `sendMessage()` and `sendDirectCommand()` now use quote-approve flow by default
+- Payments are always enabled - removed `paymentsEnabled` config option
+- Payment client is set up automatically when `privateKey` is provided
+- `withPayments()` builder no longer has `enabled` option
+
+### 🗑️ Removed
+
+- `paymentsEnabled` config option (payments always on)
+- Legacy `validatePrice()` method (price check moved to `confirmQuote`)
+- Legacy `attachPayment()` method (handled in `confirmQuote`)
+- `setAgentRegistry()` method (no longer needed)
+
+### 📚 Documentation
+
+- Updated Payment Integration section with quote-approve examples
+- Added Manual Quote Flow documentation
+- Updated Environment Variables section
+
+---
+
+## [2.1.0] - 2025-12-08
+
+### ✨ Added
+
+#### Automatic X402 Payment Signing
+
+- SDK now auto-signs x402 payment headers when confirming tasks
+- Uses PEAQ chain with USDC stablecoin for micropayments
+- No manual payment encoding needed - just call `confirmTask({ taskId })`
+
+### 📦 Dependencies
+
+- Added `x402` library for payment signing support
+
+---
+
 ## [2.0.0] - 2025-11-05
 
 ### 🎉 Major Release: Multi-Room & Agent Customization

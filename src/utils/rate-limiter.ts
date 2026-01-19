@@ -123,6 +123,7 @@ export class TokenBucketRateLimiter {
   public async consume(timeout?: number): Promise<void> {
     const startTime = Date.now();
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (this.tryConsume()) {
         return;

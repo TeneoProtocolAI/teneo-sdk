@@ -93,6 +93,11 @@ export class AuthMessageHandler extends BaseMessageHandler<AuthMessage> {
       // Get updated auth state
       const authState = context.getAuthState();
 
+      // Update admin manager with admin status
+      if (context.adminManager) {
+        context.adminManager.setAdminStatus(message.data?.is_admin_whitelisted ?? false);
+      }
+
       // Emit events
       this.emit(context, "auth:success", authState);
       this.emit(context, "ready");

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { BoundedQueue, QueueOverflowError, type OverflowStrategy } from "./bounded-queue";
+import { BoundedQueue, QueueOverflowError } from "./bounded-queue";
 
 describe("BoundedQueue", () => {
   describe("constructor", () => {

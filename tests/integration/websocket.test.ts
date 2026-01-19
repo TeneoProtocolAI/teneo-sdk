@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import { TeneoSDK } from "../../src";
 import { SDKConfigBuilder } from "../../src/types";
 import { privateKeyToAccount } from "viem/accounts";
@@ -10,6 +10,7 @@ describe("WebSocket Integration Tests", () => {
   let sdk: TeneoSDK;
   let serverPort: number;
   let privateKey: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let walletAddress: string;
 
   // Mock server to simulate Teneo WebSocket server

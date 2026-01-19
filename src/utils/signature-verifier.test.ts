@@ -2,10 +2,10 @@
  * Tests for Signature Verifier
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import { SignatureVerifier } from "./signature-verifier";
-import { BaseMessage, createUserMessage } from "../types";
+import { BaseMessage } from "../types";
 
 describe("SignatureVerifier", () => {
   // Test accounts

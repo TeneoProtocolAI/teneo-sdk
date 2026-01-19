@@ -181,10 +181,11 @@ export class BoundedQueue<T> {
           `Queue is full (max size: ${this.maxSize}). Cannot add more items.`
         );
 
-      default:
+      default: {
         // TypeScript exhaustiveness check
         const _exhaustive: never = this.strategy;
         throw new Error(`Unknown overflow strategy: ${_exhaustive}`);
+      }
     }
   }
 }

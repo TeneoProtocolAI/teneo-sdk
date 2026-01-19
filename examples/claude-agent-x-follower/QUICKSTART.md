@@ -26,7 +26,7 @@ cp examples/claude-agent-x-follower/.env.example examples/claude-agent-x-followe
 Edit `.env` with your credentials:
 
 ```env
-# Required: Teneo Network Connection
+# Required: Teneo Protocol Connection
 WS_URL=wss://your-teneo-server.com/ws
 PRIVATE_KEY=0x1234567890123456789012345678901234567890123456789012345678901234
 WALLET_ADDRESS=0x1234567890123456789012345678901234567890  # Optional - auto-derived
@@ -76,7 +76,7 @@ npx tsx examples/claude-agent-x-follower/index.ts "Get timeline for VitalikButer
 ```
 🤖 Claude Agent + Teneo SDK - X Timeline Follower
 
-📡 Connecting to Teneo network...
+📡 Connecting to Teneo Protocol...
 ✅ Connected to Teneo
 
 💬 Prompt: "Get timeline for elonmusk and summarize the latest 5 tweets"

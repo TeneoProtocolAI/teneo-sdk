@@ -1,7 +1,7 @@
 /**
  * AgentRoomManager - Manages agent-room associations (v2.0.0)
  * Allows room owners to control which agents are available in their rooms
- * Implements caching with 5-minute TTL for performance
+ * Implements caching with 5-minute TTL and LRU eviction for performance
  */
 
 import { EventEmitter } from "eventemitter3";
@@ -27,16 +27,96 @@ export interface AgentRoomInfo {
 // Cache TTL: 5 minutes
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+// Maximum number of rooms to cache (LRU eviction beyond this)
+const MAX_CACHED_ROOMS = 1000;
+
+/**
+ * Simple LRU cache with TTL support
+ * Uses Map's insertion order for LRU tracking
+ */
+class LRUCache<T> {
+  private readonly cache = new Map<string, T>();
+  private readonly timestamps = new Map<string, number>();
+  private readonly maxSize: number;
+  private readonly ttlMs: number;
+
+  constructor(maxSize: number, ttlMs: number) {
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+  }
+
+  get(key: string): T | undefined {
+    const value = this.cache.get(key);
+    if (value === undefined) return undefined;
+
+    // Check TTL
+    const timestamp = this.timestamps.get(key);
+    if (timestamp && Date.now() - timestamp >= this.ttlMs) {
+      this.delete(key);
+      return undefined;
+    }
+
+    // Move to end (most recently used) by re-inserting
+    this.cache.delete(key);
+    this.cache.set(key, value);
+
+    return value;
+  }
+
+  set(key: string, value: T): void {
+    // Delete first to update insertion order
+    this.cache.delete(key);
+    this.timestamps.delete(key);
+
+    // Evict oldest entries if at capacity
+    while (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+        this.timestamps.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(key, value);
+    this.timestamps.set(key, Date.now());
+  }
+
+  delete(key: string): void {
+    this.cache.delete(key);
+    this.timestamps.delete(key);
+  }
+
+  has(key: string): boolean {
+    return this.get(key) !== undefined;
+  }
+
+  isValid(key: string): boolean {
+    const timestamp = this.timestamps.get(key);
+    if (!timestamp) return false;
+    return Date.now() - timestamp < this.ttlMs;
+  }
+
+  clear(): void {
+    this.cache.clear();
+    this.timestamps.clear();
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+}
+
 export class AgentRoomManager extends EventEmitter<SDKEvents> {
   private readonly wsClient: WebSocketClient;
   private readonly logger: Logger;
   private readonly roomManagementManager: RoomManagementManager; // Reference to check ownership
 
-  // Caches with TTL
-  private readonly roomAgentsCache = new Map<string, AgentRoomInfo[]>();
-  private readonly availableAgentsCache = new Map<string, AgentRoomInfo[]>();
-  private readonly roomAgentsCacheTime = new Map<string, number>();
-  private readonly availableAgentsCacheTime = new Map<string, number>();
+  // LRU caches with TTL (max 1000 rooms each)
+  private readonly roomAgentsCache = new LRUCache<AgentRoomInfo[]>(MAX_CACHED_ROOMS, CACHE_TTL_MS);
+  private readonly availableAgentsCache = new LRUCache<AgentRoomInfo[]>(
+    MAX_CACHED_ROOMS,
+    CACHE_TTL_MS
+  );
 
   constructor(
     wsClient: WebSocketClient,
@@ -70,7 +150,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public async addAgentToRoom(roomId: string, agentId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate inputs
@@ -152,7 +232,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public async removeAgentFromRoom(roomId: string, agentId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate inputs
@@ -230,19 +310,16 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * const freshAgents = await sdk.listRoomAgents('room-123', false);
    * ```
    */
-  public async listRoomAgents(
-    roomId: string,
-    useCache: boolean = true
-  ): Promise<AgentRoomInfo[]> {
+  public async listRoomAgents(roomId: string, useCache: boolean = true): Promise<AgentRoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate input
     this.validateRoomId(roomId);
 
     // Check cache if enabled
-    if (useCache && this.isCacheValid(this.roomAgentsCacheTime, roomId)) {
+    if (useCache) {
       const cached = this.roomAgentsCache.get(roomId);
       if (cached) {
         this.logger.debug("AgentRoomManager: Returning cached room agents", {
@@ -315,14 +392,14 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     useCache: boolean = true
   ): Promise<AgentRoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate input
     this.validateRoomId(roomId);
 
     // Check cache if enabled
-    if (useCache && this.isCacheValid(this.availableAgentsCacheTime, roomId)) {
+    if (useCache) {
       const cached = this.availableAgentsCache.get(roomId);
       if (cached) {
         this.logger.debug("AgentRoomManager: Returning cached available agents", {
@@ -391,9 +468,6 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * ```
    */
   public getRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
-    if (!this.isCacheValid(this.roomAgentsCacheTime, roomId)) {
-      return undefined;
-    }
     const cached = this.roomAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
   }
@@ -414,9 +488,6 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * ```
    */
   public getAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
-    if (!this.isCacheValid(this.availableAgentsCacheTime, roomId)) {
-      return undefined;
-    }
     const cached = this.availableAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
   }
@@ -493,8 +564,6 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
   public clearAllCaches(): void {
     this.roomAgentsCache.clear();
     this.availableAgentsCache.clear();
-    this.roomAgentsCacheTime.clear();
-    this.availableAgentsCacheTime.clear();
     this.logger.debug("AgentRoomManager: All caches cleared");
   }
 
@@ -524,10 +593,10 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public cacheRoomAgents(roomId: string, agents: AgentRoomInfo[]): void {
     this.roomAgentsCache.set(roomId, agents);
-    this.roomAgentsCacheTime.set(roomId, Date.now());
     this.logger.debug("AgentRoomManager: Cached room agents", {
       roomId,
-      count: agents.length
+      count: agents.length,
+      cacheSize: this.roomAgentsCache.size
     });
   }
 
@@ -537,10 +606,10 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    */
   public cacheAvailableAgents(roomId: string, agents: AgentRoomInfo[]): void {
     this.availableAgentsCache.set(roomId, agents);
-    this.availableAgentsCacheTime.set(roomId, Date.now());
     this.logger.debug("AgentRoomManager: Cached available agents", {
       roomId,
-      count: agents.length
+      count: agents.length,
+      cacheSize: this.availableAgentsCache.size
     });
   }
 
@@ -549,24 +618,11 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
   // ============================================================================
 
   /**
-   * Checks if cache is still valid (within TTL)
-   */
-  private isCacheValid(cacheTimeMap: Map<string, number>, roomId: string): boolean {
-    const cacheTime = cacheTimeMap.get(roomId);
-    if (!cacheTime) return false;
-
-    const age = Date.now() - cacheTime;
-    return age < CACHE_TTL_MS;
-  }
-
-  /**
    * Invalidates all caches for a specific room
    */
   private invalidateRoomCaches(roomId: string): void {
     this.roomAgentsCache.delete(roomId);
     this.availableAgentsCache.delete(roomId);
-    this.roomAgentsCacheTime.delete(roomId);
-    this.availableAgentsCacheTime.delete(roomId);
   }
 
   /**
@@ -604,6 +660,6 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     const ownedRooms = this.roomManagementManager.getOwnedRooms?.();
     if (!ownedRooms) return true; // Skip check if method not available
 
-    return ownedRooms.some((room: any) => room.id === roomId);
+    return ownedRooms.some((room) => room.id === roomId);
   }
 }

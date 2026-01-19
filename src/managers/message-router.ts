@@ -29,7 +29,7 @@ import {
   AgentCommandContentSchema
 } from "../types/validation";
 import { waitForEvent } from "../utils/event-waiter";
-import { PaymentClient } from "../payments/payment-client";
+import { PaymentClient, buildX402ResourceUrl } from "../payments/payment-client";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
 export interface SendMessageOptions {
@@ -173,7 +173,10 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
-      this.logger.debug("MessageRouter: Using quote-approve flow", { content: validatedContent, room });
+      this.logger.debug("MessageRouter: Using quote-approve flow", {
+        content: validatedContent,
+        room
+      });
       const quote = await this.requestQuote(validatedContent, room);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse: options.waitForResponse,
@@ -352,7 +355,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         paymentHeader = await this.paymentClient.createPaymentHeader(
           quote.pricing.pricePerUnit * 1_000_000,
           quote.agentWallet,
-          this.wsUrl
+          buildX402ResourceUrl(this.wsUrl)
         );
         this.emit("payment:attached", {
           agentId: quote.agentId,
@@ -361,7 +364,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         });
       } catch (error) {
         this.logger.error("Failed to create payment header for quote confirmation", error);
-        throw new PaymentError("Failed to create payment", ErrorCode.PAYMENT_FAILED, { agentId: quote.agentId });
+        throw new PaymentError("Failed to create payment", ErrorCode.PAYMENT_FAILED, {
+          agentId: quote.agentId
+        });
       }
     }
 

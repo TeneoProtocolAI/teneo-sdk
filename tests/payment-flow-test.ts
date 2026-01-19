@@ -43,7 +43,7 @@ async function testPaymentFlow() {
     .withAuthentication(privateKey)
     .withPayments({
       autoApprove: true,
-      maxPricePerRequest: 10_000_000, // Max 10 USDC
+      maxPricePerRequest: 10_000_000 // Max 10 USDC
     })
     .withLogging("info")
     .build();
@@ -121,7 +121,10 @@ async function testPaymentFlow() {
     if (response) {
       console.log("\n=== Test Complete ===");
       console.log("Response received successfully!");
-      console.log("Humanized:", typeof response.humanized === "string" ? response.humanized.substring(0, 500) : response);
+      console.log(
+        "Humanized:",
+        typeof response.humanized === "string" ? response.humanized.substring(0, 500) : response
+      );
     }
   } catch (error: unknown) {
     const err = error as Error & { details?: unknown };
@@ -137,7 +140,7 @@ async function testPaymentFlow() {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Run the test

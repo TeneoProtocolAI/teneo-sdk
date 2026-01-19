@@ -3,10 +3,7 @@
  * Processes real-time agent status updates for rooms
  */
 
-import {
-  AgentStatusUpdateMessage,
-  AgentStatusUpdateMessageSchema
-} from "../../types";
+import { AgentStatusUpdateMessage, AgentStatusUpdateMessageSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
@@ -14,10 +11,7 @@ export class AgentStatusUpdateHandler extends BaseMessageHandler<AgentStatusUpda
   readonly type = "agent_status_update" as const;
   readonly schema = AgentStatusUpdateMessageSchema;
 
-  protected handleValidated(
-    message: AgentStatusUpdateMessage,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: AgentStatusUpdateMessage, context: HandlerContext): void {
     const { room_id, agent_id, status, agent } = message.data;
 
     context.logger.debug("Handling agent_status_update", {
@@ -28,7 +22,7 @@ export class AgentStatusUpdateHandler extends BaseMessageHandler<AgentStatusUpda
     });
 
     // Invalidate cache for this room via agent room manager
-    const agentRoomManager = (context as any).agentRoomManager;
+    const agentRoomManager = context.agentRoomManager;
     if (agentRoomManager && typeof agentRoomManager.handleStatusUpdate === "function") {
       agentRoomManager.handleStatusUpdate(room_id, agent_id, status);
     }

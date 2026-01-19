@@ -103,7 +103,7 @@ async function main() {
 
   try {
     // Connect to Teneo
-    console.log("[SDK] Connecting to Teneo network...");
+    console.log("[SDK] Connecting to Teneo Protocol...");
     await sdk.connect();
 
     // Wait for ready

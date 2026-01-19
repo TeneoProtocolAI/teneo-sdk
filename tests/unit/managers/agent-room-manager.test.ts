@@ -8,6 +8,7 @@ import { AgentRoomManager, AgentRoomInfo } from "../../../src/managers/agent-roo
 import { RoomManagementManager } from "../../../src/managers/room-management-manager";
 import { WebSocketClient } from "../../../src/core/websocket-client";
 import { Logger, RoomInfo } from "../../../src/types";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ErrorCode } from "../../../src/types/error-codes";
 
 describe("AgentRoomManager", () => {
@@ -63,7 +64,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.addAgentToRoom("room-123", "agent-456")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -122,9 +123,7 @@ describe("AgentRoomManager", () => {
 
     it("should invalidate cache after adding agent", async () => {
       // Pre-populate cache
-      const cachedAgents: AgentRoomInfo[] = [
-        { agent_id: "agent-1", agent_name: "Agent 1" }
-      ];
+      const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
       expect(manager.getRoomAgents("room-123")).toHaveLength(1);
@@ -164,7 +163,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.removeAgentFromRoom("room-123", "agent-456")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -203,9 +202,7 @@ describe("AgentRoomManager", () => {
 
     it("should invalidate cache after removing agent", async () => {
       // Pre-populate cache
-      const cachedAgents: AgentRoomInfo[] = [
-        { agent_id: "agent-456", agent_name: "Agent 456" }
-      ];
+      const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-456", agent_name: "Agent 456" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
       expect(manager.getRoomAgents("room-123")).toHaveLength(1);
@@ -277,7 +274,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.listRoomAgents("room-123")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -359,7 +356,7 @@ describe("AgentRoomManager", () => {
       mockWsClient.isConnected = false;
 
       await expect(manager.listAvailableAgents("room-123")).rejects.toThrow(
-        "Not connected to Teneo network"
+        "Not connected to Teneo Protocol"
       );
     });
 
@@ -425,9 +422,7 @@ describe("AgentRoomManager", () => {
   });
 
   describe("Cache Management", () => {
-    const mockAgents: AgentRoomInfo[] = [
-      { agent_id: "agent-1", agent_name: "Agent 1" }
-    ];
+    const mockAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
 
     it("should cache room agents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
@@ -497,9 +492,7 @@ describe("AgentRoomManager", () => {
   });
 
   describe("Return Value Immutability", () => {
-    const mockAgents: AgentRoomInfo[] = [
-      { agent_id: "agent-1", agent_name: "Agent 1" }
-    ];
+    const mockAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
 
     it("should return defensive copies from getRoomAgents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);

@@ -26,8 +26,7 @@ import express from "express";
 import type { Request, Response } from "express";
 
 // Load configuration from environment
-const WS_URL =
-  process.env.WS_URL || "wss://your-teneo-server.com/ws";
+const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || "3001");
@@ -177,7 +176,7 @@ async function main() {
 
   try {
     // Step 4: Connect to Teneo
-    console.log("⚙️  Step 4: Connecting to Teneo network...");
+    console.log("⚙️  Step 4: Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("✅ Connected!\n");
 

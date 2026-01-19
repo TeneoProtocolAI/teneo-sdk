@@ -231,6 +231,7 @@ describe("Error Classes", () => {
       expect(isRecoverableError(regularError)).toBe(false);
 
       const customError = { message: "Not an error object" };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect(isRecoverableError(customError as any)).toBe(false);
     });
   });

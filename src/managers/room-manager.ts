@@ -5,13 +5,7 @@
 
 import { EventEmitter } from "eventemitter3";
 import { WebSocketClient } from "../core/websocket-client";
-import {
-  createSubscribe,
-  createUnsubscribe,
-  createListRooms,
-  Logger,
-  RoomInfo
-} from "../types";
+import { createSubscribe, createUnsubscribe, createListRooms, Logger, RoomInfo } from "../types";
 import { SDKEvents, SDKError } from "../types/events";
 import { ErrorCode } from "../types/error-codes";
 import { RoomIdSchema } from "../types/validation";
@@ -29,7 +23,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Subscribes to a public room in the Teneo network.
+   * Subscribes to a public room in the Teneo Protocol.
    * Validates room ID and sends subscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:subscribed event.
    *
@@ -46,7 +40,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public async subscribeToRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate room ID
@@ -59,24 +53,26 @@ export class RoomManager extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a room in the Teneo network.
+   * Unsubscribes from a public room in the Teneo Protocol.
    * Validates room ID and sends unsubscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:unsubscribed event.
    *
-   * @param roomId - The ID of the room to unsubscribe from
+   * Note: This only applies to public rooms. Private rooms cannot be unsubscribed from.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
    * @returns Promise that resolves when unsubscribed
    * @throws {SDKError} If not connected to the network
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await roomManager.unsubscribeFromRoom('general');
-   * console.log('Unsubscription request sent for general room');
+   * await roomManager.unsubscribeFromRoom('public-announcements');
+   * console.log('Unsubscription request sent for public room');
    * ```
    */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate room ID
@@ -185,7 +181,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    */
   public async listRooms(): Promise<RoomInfo[]> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     this.logger.info("RoomManager: Listing rooms");

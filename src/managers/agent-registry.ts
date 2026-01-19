@@ -4,15 +4,28 @@
  */
 
 import { EventEmitter } from "eventemitter3";
-import { Agent, AgentCategory, Logger } from "../types";
-import { SDKEvents } from "../types/events";
+import { Agent, AgentCategory, Logger, AgentRoomInfo } from "../types";
+import { SDKEvents, SDKError } from "../types/events";
+import { ErrorCode } from "../types/error-codes";
 import { AgentIdSchema, SearchQuerySchema } from "../types/validation";
+import { WebSocketClient } from "../core/websocket-client";
+
+/**
+ * Pending request for agent details with promise sharing for concurrent requests
+ */
+interface PendingDetailsRequest {
+  promise: Promise<AgentRoomInfo>;
+  resolve: (agent: AgentRoomInfo) => void;
+  reject: (error: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
 
 export class AgentRegistry extends EventEmitter<SDKEvents> {
   private readonly logger: Logger;
   private readonly agents = new Map<string, Agent>();
   private cachedAgents?: Readonly<Agent>[];
   private isAgentsCacheDirty = true;
+  private wsClient?: WebSocketClient;
 
   // PERF-3: Search indices for O(1) lookups
   private capabilityIndex = new Map<string, Set<string>>();
@@ -20,9 +33,21 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
   private statusIndex = new Map<string, Set<string>>();
   private categoryIndex = new Map<AgentCategory, Set<string>>();
 
+  // Pending agent details requests
+  private readonly pendingDetailsRequests = new Map<string, PendingDetailsRequest>();
+  private readonly detailsTimeout = 30000; // 30 seconds
+
   constructor(logger: Logger) {
     super();
     this.logger = logger;
+  }
+
+  /**
+   * Sets the WebSocket client for making requests.
+   * @internal
+   */
+  public setWebSocketClient(wsClient: WebSocketClient): void {
+    this.wsClient = wsClient;
   }
 
   /**
@@ -279,6 +304,97 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Fetches detailed information about a specific agent from the server.
+   * Makes a request to the server for full agent details including capabilities,
+   * commands, pricing, and more.
+   *
+   * Multiple concurrent calls for the same agent will share the same request,
+   * avoiding redundant server calls and preventing race conditions.
+   *
+   * @param agentId - The unique identifier of the agent
+   * @returns Promise that resolves with full agent details
+   * @throws {SDKError} If not connected or request times out
+   * @throws {ValidationError} If agentId is invalid
+   *
+   * @example
+   * ```typescript
+   * const details = await agentRegistry.getAgentDetails('weather-agent-001');
+   * console.log(`Agent: ${details.agent_name}`);
+   * console.log(`Capabilities: ${details.capabilities?.length}`);
+   * console.log(`Status: ${details.status}`);
+   * ```
+   */
+  public async getAgentDetails(agentId: string): Promise<AgentRoomInfo> {
+    if (!this.wsClient || !this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    // Validate agent ID
+    const validatedAgentId = AgentIdSchema.parse(agentId);
+
+    // Check if there's already a pending request for this agent - reuse it
+    const existingRequest = this.pendingDetailsRequests.get(validatedAgentId);
+    if (existingRequest) {
+      this.logger.debug("AgentRegistry: Reusing pending request for agent details", {
+        agentId: validatedAgentId
+      });
+      return existingRequest.promise;
+    }
+
+    this.logger.info("AgentRegistry: Requesting agent details", { agentId: validatedAgentId });
+
+    // Send get_agent_details message
+    const message = {
+      type: "get_agent_details" as const,
+      agent_id: validatedAgentId
+    };
+
+    await this.wsClient.sendMessage(message);
+
+    // Create promise with stored resolve/reject for later resolution
+    let resolvePromise: (agent: AgentRoomInfo) => void;
+    let rejectPromise: (error: Error) => void;
+
+    const promise = new Promise<AgentRoomInfo>((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+    });
+
+    const timeout = setTimeout(() => {
+      this.pendingDetailsRequests.delete(validatedAgentId);
+      rejectPromise!(new SDKError("Agent details request timed out", ErrorCode.TIMEOUT_ERROR));
+    }, this.detailsTimeout);
+
+    this.pendingDetailsRequests.set(validatedAgentId, {
+      promise,
+      resolve: resolvePromise!,
+      reject: rejectPromise!,
+      timeout
+    });
+
+    return promise;
+  }
+
+  /**
+   * Handles incoming agent_details_response from server.
+   * @internal
+   */
+  public handleAgentDetails(agent: AgentRoomInfo): void {
+    this.logger.debug("AgentRegistry: Received agent details", {
+      agentId: agent.agent_id,
+      agentName: agent.agent_name
+    });
+
+    // Resolve pending request
+    const pending = this.pendingDetailsRequests.get(agent.agent_id);
+    if (pending) {
+      clearTimeout(pending.timeout);
+      this.pendingDetailsRequests.delete(agent.agent_id);
+      pending.resolve(agent);
+    }
+  }
+
+  /**
    * Clears all agents from the registry.
    * Removes all cached agents and marks cache as dirty.
    *
@@ -291,6 +407,13 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
   public clear(): void {
     this.agents.clear();
     this.isAgentsCacheDirty = true;
+
+    // Clear pending requests
+    for (const [, pending] of this.pendingDetailsRequests) {
+      clearTimeout(pending.timeout);
+      pending.reject(new SDKError("Agent registry cleared", ErrorCode.SDK_DESTROYED));
+    }
+    this.pendingDetailsRequests.clear();
   }
 
   /**

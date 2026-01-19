@@ -1,0 +1,44 @@
+{
+  "name": "@teneo/nestjs-dashboard-example",
+  "version": "1.0.0",
+  "description": "NestJS dashboard example for Teneo Protocol SDK",
+  "private": true,
+  "scripts": {
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "build": "nest build",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/platform-express": "^11.1.9",
+    "@types/body-parser": "^1.19.6",
+    "dotenv": "^16.4.0",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.12",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "teneo",
+    "sdk",
+    "dashboard",
+    "nestjs",
+    "websocket",
+    "ai",
+    "agents",
+    "example"
+  ],
+  "author": "Teneo",
+  "license": "MIT"
+}

@@ -202,6 +202,7 @@ export {
   RateLimitError,
   SignatureVerificationError,
   ConfigurationError,
+  PaymentError,
 
   // Validation helpers
   validateEventData,
@@ -231,6 +232,27 @@ export {
  * SEC-3: In-memory encryption for private keys
  */
 export { SecurePrivateKey } from "./utils/secure-private-key";
+
+/**
+ * Payment utilities for x402 payment signing
+ * Enables SDK users to make payments directly using private keys
+ */
+export {
+  PaymentSigner,
+  type PaymentSignerConfig,
+  type CreatePaymentHeaderOptions,
+  PEAQ_CHAIN,
+  USDC_CONTRACT,
+  DEFAULT_PAY_TO_ADDRESS,
+  DEFAULT_RPC_URL,
+  USDC_DECIMALS,
+  X402_VERSION,
+  DEFAULT_PAYMENT_TIMEOUT_SECONDS,
+  buildX402ResourceUrl,
+  usdcToUnits,
+  unitsToUsdc,
+  type SupportedChain
+} from "./payments";
 
 /**
  * SDK version string

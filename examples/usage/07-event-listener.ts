@@ -15,8 +15,7 @@ import "dotenv/config";
 import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 
 // Load configuration from environment
-const WS_URL =
-  process.env.WS_URL || "wss://your-teneo-server.com/ws";
+const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 
@@ -336,7 +335,7 @@ async function main() {
   // ============================================================================
 
   try {
-    console.log("📡 Connecting to Teneo network...\n");
+    console.log("📡 Connecting to Teneo Protocol...\n");
     console.log("=".repeat(80));
     console.log("Listening to all events... (will run for 30 seconds)");
     console.log("=".repeat(80) + "\n");

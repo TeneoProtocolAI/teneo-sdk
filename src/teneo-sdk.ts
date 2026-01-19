@@ -6,6 +6,7 @@
 
 import { EventEmitter } from "eventemitter3";
 import { z } from "zod";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   SDKConfig,
   PartialSDKConfig,
@@ -17,6 +18,7 @@ import {
   validateConfig,
   DEFAULT_CONFIG,
   ResponseFormatSchema,
+  AgentRoomInfo,
   type HealthStatus
 } from "./types";
 import { SDKEvents, SDKError } from "./types/events";
@@ -37,14 +39,23 @@ import {
   MessageRouter,
   SendMessageOptions,
   AgentCommand,
-  QuoteResult
+  QuoteResult,
+  AdminManager,
+  ListAllAgentsOptions,
+  AllAgentsResult
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
 import { SecurePrivateKey } from "./utils/secure-private-key";
 
 // Re-export types for external use
-export type { SendMessageOptions, AgentCommand, QuoteResult };
+export type {
+  SendMessageOptions,
+  AgentCommand,
+  QuoteResult,
+  ListAllAgentsOptions,
+  AllAgentsResult
+};
 
 // Zod schemas for SDK-specific interfaces
 export const SendMessageOptionsSchema = z.object({
@@ -65,6 +76,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   private config: SDKConfig;
   private readonly logger: Logger;
   private isDestroyed = false;
+  private secureKey?: SecurePrivateKey;
 
   // Core components
   private readonly wsClient: WebSocketClient;
@@ -78,6 +90,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   private readonly agentRoom: AgentRoomManager;
   private readonly agents: AgentRegistry;
   private readonly messages: MessageRouter;
+  private readonly _admin: AdminManager;
 
   /**
    * Creates a new instance of the Teneo Protocol SDK.
@@ -143,6 +156,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Initialize logger
       this.logger = this.config.logger ?? this.createDefaultLogger();
 
+      // Store secure key for payment client
+      if (config.privateKey) {
+        if (typeof config.privateKey === "object" && "use" in config.privateKey) {
+          this.secureKey = config.privateKey;
+        } else {
+          this.secureKey = new SecurePrivateKey(config.privateKey as string);
+        }
+      }
+
       // Initialize core components
       this.wsClient = new WebSocketClient(this.config);
       this.webhookHandler = new WebhookHandler(this.config, this.logger);
@@ -160,6 +182,10 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.wsClient.setRoomManagementManager(this.roomManagement); // Enable room CRUD in handlers (v2.0.0)
       this.wsClient.setAgentRoomManager(this.agentRoom); // Enable agent-room operations in handlers (v2.0.0)
       this.agents = new AgentRegistry(this.logger);
+      this.agents.setWebSocketClient(this.wsClient); // Enable getAgentDetails requests
+      this._admin = new AdminManager(this.wsClient, this.logger);
+      this.wsClient.setAdminManager(this._admin); // Enable admin handlers
+      this.wsClient.setAgentRegistry(this.agents); // Enable agent details handler
       this.messages = new MessageRouter(
         this.wsClient,
         this.webhookHandler,
@@ -179,10 +205,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
       // Set up payment client if private key is configured (v2.2.0)
       if (this.config.privateKey) {
-        const secureKey = this.config.privateKey instanceof SecurePrivateKey
-          ? this.config.privateKey
-          : new SecurePrivateKey(this.config.privateKey);
-        const walletAddress = this.config.walletAddress || this.deriveWalletAddress(this.config.privateKey);
+        const secureKey =
+          this.config.privateKey instanceof SecurePrivateKey
+            ? this.config.privateKey
+            : new SecurePrivateKey(this.config.privateKey);
+        const walletAddress =
+          this.config.walletAddress || this.deriveWalletAddress(this.config.privateKey);
         this.messages.setPaymentClient(secureKey, walletAddress);
       }
 
@@ -199,7 +227,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Establishes a connection to the Teneo network via WebSocket.
+   * Establishes a connection to the Teneo Protocol via WebSocket.
    * Handles authentication automatically and joins any configured auto-join rooms.
    * Emits 'connection:open', 'auth:success', and 'ready' events on successful connection.
    *
@@ -212,7 +240,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```typescript
    * const sdk = new TeneoSDK({ wsUrl: 'wss://example.com', privateKey: '0x...' });
    * await sdk.connect();
-   * console.log('Connected to Teneo network');
+   * console.log('Connected to Teneo Protocol');
    * ```
    */
   public async connect(): Promise<void> {
@@ -221,7 +249,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     }
 
     try {
-      this.logger.info("Connecting to Teneo network");
+      this.logger.info("Connecting to Teneo Protocol");
       await this.connection.connect();
 
       // Auto-join rooms if configured
@@ -231,26 +259,26 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         }
       }
 
-      this.logger.info("Successfully connected to Teneo network");
+      this.logger.info("Successfully connected to Teneo Protocol");
     } catch (error) {
-      this.logger.error("Failed to connect to Teneo network", error);
+      this.logger.error("Failed to connect to Teneo Protocol", error);
       throw error;
     }
   }
 
   /**
-   * Disconnects from the Teneo network and cleans up all active connections.
+   * Disconnects from the Teneo Protocol and cleans up all active connections.
    * Clears all timers, pending messages, and stops automatic reconnection attempts.
    * Emits 'disconnect' event after disconnection is complete.
    *
    * @example
    * ```typescript
    * sdk.disconnect();
-   * console.log('Disconnected from Teneo network');
+   * console.log('Disconnected from Teneo Protocol');
    * ```
    */
   public disconnect(): void {
-    this.logger.info("Disconnecting from Teneo network");
+    this.logger.info("Disconnecting from Teneo Protocol");
     this.connection.disconnect();
   }
 
@@ -322,19 +350,49 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Subscribes to a specified room in the Teneo network.
-   * Agents in the room will be able to see and respond to your messages.
+   * Requests a quote for a task from the coordinator.
+   * The quote includes agent selection, pricing, and expiration.
+   * Does NOT auto-approve - use confirmQuote() to execute.
+   */
+  public async requestQuote(content: string, room: string): Promise<QuoteResult> {
+    return this.messages.requestQuote(content, room);
+  }
+
+  /**
+   * Confirms a pending quote and executes the task with payment.
+   * Attaches x402 payment header if payment client is configured.
+   */
+  public async confirmQuote(
+    taskId: string,
+    options?: { waitForResponse?: boolean; timeout?: number }
+  ): Promise<FormattedResponse | void> {
+    return this.messages.confirmQuote(taskId, options);
+  }
+
+  /**
+   * Gets a pending quote by task ID.
+   */
+  public getPendingQuote(taskId: string): QuoteResult | undefined {
+    return this.messages.getPendingQuote(taskId);
+  }
+
+  /**
+   * Subscribes to a public room in the Teneo Protocol.
+   * This is only needed for public rooms - private rooms are automatically subscribed.
    * Emits 'room:subscribed' event when successfully subscribed.
    *
-   * @param roomId - The ID of the room to subscribe to
+   * @param roomId - The ID of the public room to subscribe to
    * @returns Promise that resolves when the room has been subscribed
    * @throws {SDKError} If not connected to the network (ErrorCode.NOT_CONNECTED)
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await sdk.subscribeToRoom('general');
-   * console.log('Subscribed to general room');
+   * // Subscribe to a public room
+   * await sdk.subscribeToRoom('public-announcements');
+   * console.log('Subscribed to public room');
+   *
+   * // Note: Private rooms don't need subscription - you're always subscribed
    * ```
    */
   public async subscribeToRoom(roomId: string): Promise<void> {
@@ -342,19 +400,21 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Unsubscribes from a specified room in the Teneo network.
-   * You will no longer receive messages from agents in this room.
+   * Unsubscribes from a public room in the Teneo Protocol.
+   * You will no longer receive messages from this public room.
    * Emits 'room:unsubscribed' event when successfully unsubscribed.
    *
-   * @param roomId - The ID of the room to unsubscribe from
+   * Note: This only applies to public rooms. Private rooms cannot be unsubscribed from.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
    * @returns Promise that resolves when the room has been unsubscribed
    * @throws {SDKError} If not connected to the network (ErrorCode.NOT_CONNECTED)
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await sdk.unsubscribeFromRoom('general');
-   * console.log('Unsubscribed from general room');
+   * await sdk.unsubscribeFromRoom('public-announcements');
+   * console.log('Unsubscribed from public room');
    * ```
    */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
@@ -400,7 +460,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Gets a list of all available agents in the Teneo network.
+   * Gets a list of all available agents in the Teneo Protocol.
    * The list is automatically updated when new agents join or leave.
    * Returns a read-only array to prevent external modification.
    *
@@ -510,7 +570,84 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Gets a list of all available rooms in the Teneo network.
+   * Fetches detailed information about a specific agent from the server.
+   * Makes a request to the server for full agent details including capabilities,
+   * commands, pricing, and more.
+   *
+   * @param agentId - The unique identifier of the agent
+   * @returns Promise that resolves with full agent details
+   * @throws {SDKError} If not connected or request times out
+   * @throws {ValidationError} If agentId is invalid
+   *
+   * @example
+   * ```typescript
+   * const details = await sdk.getAgentDetails('weather-agent-001');
+   * console.log(`Agent: ${details.agent_name}`);
+   * console.log(`Capabilities: ${details.capabilities?.length}`);
+   * console.log(`Status: ${details.status}`);
+   * ```
+   */
+  public async getAgentDetails(agentId: string): Promise<AgentRoomInfo> {
+    return this.agents.getAgentDetails(agentId);
+  }
+
+  // ============================================================================
+  // ADMIN API (Admin-Only Features)
+  // ============================================================================
+
+  /**
+   * Gets the admin manager for admin-only features.
+   * Returns undefined if the current user is not an admin.
+   * Use this to access admin APIs like listing all agents, user counts, etc.
+   *
+   * @returns The AdminManager instance if user is admin, undefined otherwise
+   *
+   * @example
+   * ```typescript
+   * if (sdk.admin?.isAdmin) {
+   *   // List all agents in the network
+   *   const result = await sdk.admin.listAllAgents({ limit: 20 });
+   *   console.log(`Found ${result.total} agents`);
+   *
+   *   result.agents.forEach(agent => {
+   *     console.log(`${agent.agent_name}: verified=${agent.is_verified}, banned=${agent.is_banned}`);
+   *   });
+   *
+   *   // Get user count
+   *   const userCount = sdk.admin.getLastUserCount();
+   *   console.log(`Online users: ${userCount?.count}`);
+   *
+   *   // Listen for user count updates
+   *   sdk.admin.on('user_count', (data) => {
+   *     console.log(`User count updated: ${data.count}`);
+   *   });
+   * }
+   * ```
+   */
+  public get admin(): AdminManager | undefined {
+    return this._admin.isAdmin ? this._admin : undefined;
+  }
+
+  /**
+   * Lists all agents in the network (admin only, convenience method).
+   * Returns paginated list of agents with full admin information.
+   *
+   * @param options - Pagination and filter options
+   * @returns Promise that resolves with agents list
+   * @throws {SDKError} If not connected or not an admin
+   *
+   * @example
+   * ```typescript
+   * const result = await sdk.listAllAgents({ limit: 50, filter: 'weather' });
+   * console.log(`Found ${result.total} agents matching 'weather'`);
+   * ```
+   */
+  public async listAllAgents(options: ListAllAgentsOptions = {}): Promise<AllAgentsResult> {
+    return this._admin.listAllAgents(options);
+  }
+
+  /**
+   * Gets a list of all available rooms in the Teneo Protocol.
    * Includes rooms you have access to based on your authentication.
    * Returns a read-only array to prevent external modification.
    *
@@ -801,6 +938,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listRoomAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
     return this.agentRoom.listRoomAgents(roomId, useCache);
   }
@@ -822,6 +960,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * console.log(`${available.length} agents available to add`);
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
     return this.agentRoom.listAvailableAgents(roomId, useCache);
   }
@@ -843,6 +982,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getRoomAgents(roomId: string): any[] | undefined {
     return this.agentRoom.getRoomAgents(roomId);
   }
@@ -862,6 +1002,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getAvailableAgents(roomId: string): any[] | undefined {
     return this.agentRoom.getAvailableAgents(roomId);
   }
@@ -1017,7 +1158,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * This is a convenience getter that returns only the connection status.
    * For detailed state information, use getConnectionState().
    *
-   * @returns True if connected to the Teneo network, false otherwise
+   * @returns True if connected to the Teneo Protocol, false otherwise
    *
    * @example
    * ```typescript
@@ -1038,7 +1179,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * This is a convenience getter that returns only the authentication status.
    * For detailed auth information, use getAuthState().
    *
-   * @returns True if authenticated with the Teneo network, false otherwise
+   * @returns True if authenticated with the Teneo Protocol, false otherwise
    *
    * @example
    * ```typescript
@@ -1323,6 +1464,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.rooms.destroy();
     this.agents.destroy();
     this.messages.destroy();
+    this._admin.destroy();
 
     // Destroy other components
     this.webhookHandler.destroy();
@@ -1363,7 +1505,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       }
 
       // Ensure RoomManagementManager is synced with auth state
-      // This handles cases where auth handlers might have already set it, but ensures consistency
       if (state.roomObjects && state.roomObjects.length > 0) {
         const ownedRooms = state.roomObjects.filter((r) => r.is_owner);
         const sharedRooms = state.roomObjects.filter((r) => !r.is_owner);
@@ -1373,6 +1514,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         if (state.maxPrivateRooms) {
           this.roomManagement.setRoomLimit(state.maxPrivateRooms);
         }
+      }
+
+      // Set up payment client for x402 payments
+      if (this.secureKey && state.walletAddress) {
+        this.messages.setPaymentClient(this.secureKey, state.walletAddress);
       }
 
       this.emit("auth:success", state);
@@ -1393,7 +1539,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
     // Forward quote and payment events from MessageRouter (v2.2.0)
     this.messages.on("quote:received", (quote) => this.emit("quote:received", quote));
+    this.messages.on("payment:blocked", (data) => this.emit("payment:blocked", data));
     this.messages.on("payment:attached", (data) => this.emit("payment:attached", data));
+    this.messages.on("payment:error", (error) => this.emit("payment:error", error));
 
     // Forward coordinator events from MessageRouter
     this.messages.on("coordinator:processing", (request) =>
@@ -1515,6 +1663,24 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.emit("agent_room:list_available_error", error);
     });
 
+    // Forward admin events from AdminManager
+    this._admin.on("user_count", (data) => {
+      this.emit("admin:user_count", data);
+    });
+    this._admin.on("status_changed", (isAdmin) => {
+      this.emit("admin:status_changed", isAdmin);
+    });
+
+    // Forward rate limit notifications from WebSocketClient (emitted by handlers)
+    this.wsClient.on("rate_limit", (notification) => {
+      this.emit("rate_limit", notification);
+    });
+
+    // Forward user authenticated events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("user:authenticated", (data) => {
+      this.emit("user:authenticated", data);
+    });
+
     // Forward webhook events from WebhookHandler
     this.webhookHandler.on("webhook:sent", (payload, url) =>
       this.emit("webhook:sent", payload, url)
@@ -1531,8 +1697,13 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     this.connection.on("error", (error) => {
       this.emit("error", error);
       // Fire and forget - don't block event emission
+      // Defensive check: ensure error has toJSON method (SDKError instances do)
+      const errorPayload =
+        typeof error.toJSON === "function"
+          ? error.toJSON()
+          : { message: error.message, name: error.name, code: error.code };
       this.webhookHandler
-        .sendWebhook("error", error, { code: error.code })
+        .sendWebhook("error", errorPayload, { code: error.code })
         .catch((webhookError) => {
           this.logger.error("Failed to send webhook for error event", webhookError);
         });
@@ -1554,8 +1725,6 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * Derive wallet address from private key
    */
   private deriveWalletAddress(privateKey: string | SecurePrivateKey): string {
-    // Use viem to derive address
-    const { privateKeyToAccount } = require("viem/accounts");
     if (privateKey instanceof SecurePrivateKey) {
       return privateKey.use((key) => privateKeyToAccount(key as `0x${string}`).address);
     }

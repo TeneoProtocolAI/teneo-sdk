@@ -14,10 +14,7 @@ export class ListRoomAgentsHandler extends BaseMessageHandler<RoomAgentsResponse
   readonly type = "room_agents_response" as const;
   readonly schema = RoomAgentsResponseSchema;
 
-  protected handleValidated(
-    message: RoomAgentsResponse,
-    context: HandlerContext
-  ): void {
+  protected handleValidated(message: RoomAgentsResponse, context: HandlerContext): void {
     const { room_id, agents } = message.data;
 
     context.logger.debug("Handling room_agents_response", {
@@ -43,7 +40,7 @@ export class ListRoomAgentsHandler extends BaseMessageHandler<RoomAgentsResponse
     });
 
     // Cache via agent room manager if available
-    const agentRoomManager = (context as any).agentRoomManager;
+    const agentRoomManager = context.agentRoomManager;
     if (agentRoomManager && typeof agentRoomManager.cacheRoomAgents === "function") {
       agentRoomManager.cacheRoomAgents(room_id, agentList);
     }

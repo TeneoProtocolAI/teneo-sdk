@@ -9,6 +9,7 @@ export * from "./base-handler";
 
 // Export all handlers
 export { TaskResponseHandler } from "./task-response-handler";
+export { TaskQuoteHandler } from "./task-quote-handler";
 export { AgentSelectedHandler } from "./agent-selected-handler";
 export { ChallengeHandler } from "./challenge-handler";
 export { AuthMessageHandler } from "./auth-message-handler";
@@ -27,10 +28,23 @@ export { AgentRoomOperationResponseHandler } from "./agent-room-operation-respon
 export { ListRoomAgentsHandler } from "./list-room-agents-handler";
 export { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 export { AgentStatusUpdateHandler } from "./agent-status-update-handler";
-export { TaskQuoteHandler } from "./task-quote-handler";
+
+// Agent Details handler
+export { AgentDetailsResponseHandler } from "./agent-details-response-handler";
+
+// Rate Limit handler
+export { RateLimitNotificationHandler } from "./rate-limit-notification-handler";
+
+// Admin handlers
+export { AllAgentsResponseHandler } from "./all-agents-response-handler";
+export { UserCountHandler } from "./user-count-handler";
+
+// Presence handler
+export { UserAuthenticatedHandler } from "./user-authenticated-handler";
 
 // Import for convenience function
 import { TaskResponseHandler } from "./task-response-handler";
+import { TaskQuoteHandler } from "./task-quote-handler";
 import { AgentSelectedHandler } from "./agent-selected-handler";
 import { ChallengeHandler } from "./challenge-handler";
 import { AuthMessageHandler } from "./auth-message-handler";
@@ -49,7 +63,11 @@ import { AgentRoomOperationResponseHandler } from "./agent-room-operation-respon
 import { ListRoomAgentsHandler } from "./list-room-agents-handler";
 import { ListAvailableAgentsHandler } from "./list-available-agents-handler";
 import { AgentStatusUpdateHandler } from "./agent-status-update-handler";
-import { TaskQuoteHandler } from "./task-quote-handler";
+import { AgentDetailsResponseHandler } from "./agent-details-response-handler";
+import { RateLimitNotificationHandler } from "./rate-limit-notification-handler";
+import { AllAgentsResponseHandler } from "./all-agents-response-handler";
+import { UserCountHandler } from "./user-count-handler";
+import { UserAuthenticatedHandler } from "./user-authenticated-handler";
 import { MessageHandler } from "./types";
 
 /**
@@ -70,9 +88,9 @@ export function getDefaultHandlers(
 
     // Agent/coordinator handlers
     new TaskResponseHandler(),
+    new TaskQuoteHandler(),
     new AgentSelectedHandler(),
     new AgentsListHandler(),
-    new TaskQuoteHandler(),
 
     // Message handlers
     new RegularMessageHandler(),
@@ -91,6 +109,19 @@ export function getDefaultHandlers(
     new ListRoomAgentsHandler(),
     new ListAvailableAgentsHandler(),
     new AgentStatusUpdateHandler(),
+
+    // Agent Details handler
+    new AgentDetailsResponseHandler(),
+
+    // Rate Limit handler
+    new RateLimitNotificationHandler(),
+
+    // Admin handlers
+    new AllAgentsResponseHandler(),
+    new UserCountHandler(),
+
+    // Presence handler
+    new UserAuthenticatedHandler(),
 
     // Keepalive handlers
     new PingHandler(),

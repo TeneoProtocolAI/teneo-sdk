@@ -124,7 +124,10 @@ export const SDKConfigSchema = z.object({
   autoApproveQuotes: z.boolean().optional(),
   maxPricePerRequest: z.number().min(0).optional(), // in micro-USDC
   quoteTimeout: z.number().min(1000).max(120000).optional(), // 1s to 2 minutes
-  paymentNetwork: z.string().regex(/^[a-z0-9-]+:\d+$/, "Must be valid CAIP-2 format").optional(),
+  paymentNetwork: z
+    .string()
+    .regex(/^[a-z0-9-]+:\d+$/, "Must be valid CAIP-2 format")
+    .optional(),
   paymentAsset: z.string().optional()
 });
 
@@ -833,7 +836,10 @@ export class SDKConfigBuilder {
       this.config.quoteTimeout = z.number().min(1000).max(120000).parse(options.quoteTimeout);
     }
     if (options.network !== undefined) {
-      this.config.paymentNetwork = z.string().regex(/^[a-z0-9-]+:\d+$/).parse(options.network);
+      this.config.paymentNetwork = z
+        .string()
+        .regex(/^[a-z0-9-]+:\d+$/)
+        .parse(options.network);
     }
     if (options.asset !== undefined) {
       this.config.paymentAsset = z.string().parse(options.asset);

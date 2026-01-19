@@ -64,7 +64,7 @@ async function initSDK() {
 
   // Set up event listeners
   sdk.on("connection:open", () => {
-    console.log("[SDK] Connected to Teneo network");
+    console.log("[SDK] Connected to Teneo Protocol");
   });
 
   sdk.on("auth:success", (state) => {
@@ -137,7 +137,7 @@ wss.on("connection", (ws: WebSocket) => {
           ws.send(
             JSON.stringify({
               type: "error",
-              message: "Not connected to Teneo network"
+              message: "Not connected to Teneo Protocol"
             })
           );
           return;

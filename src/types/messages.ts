@@ -110,7 +110,16 @@ export const MessageTypeSchema = z.enum([
 
   // Room Ping System (2 types)
   "room_ping",
-  "room_pong"
+  "room_pong",
+
+  // Admin Messages (7 types)
+  "list_all_agents",
+  "all_agents_response",
+  "user_count",
+  "user_authenticated",
+  "rate_limit_notification",
+  "get_agent_details",
+  "agent_details_response"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -366,23 +375,25 @@ export const AgentSelectedMessageSchema = BaseMessageSchema.extend({
 // ============================================================================
 
 // Pricing information schema (flexible to handle server variations)
-export const PricingInfoSchema = z.object({
-  pricePerUnit: z.number().optional(),
-  price_per_unit: z.number().optional(),
-  priceType: z.string().optional(),
-  price_type: z.string().optional(),
-  timeUnit: z.string().optional(),
-  time_unit: z.string().optional(),
-  currency: z.string().optional().default("USDC"),
-  network: z.string().optional()
-}).transform((data) => ({
-  // Normalize to camelCase
-  pricePerUnit: data.pricePerUnit ?? data.price_per_unit ?? 0,
-  priceType: data.priceType ?? data.price_type,
-  timeUnit: data.timeUnit ?? data.time_unit,
-  currency: data.currency,
-  network: data.network
-}));
+export const PricingInfoSchema = z
+  .object({
+    pricePerUnit: z.number().optional(),
+    price_per_unit: z.number().optional(),
+    priceType: z.string().optional(),
+    price_type: z.string().optional(),
+    timeUnit: z.string().optional(),
+    time_unit: z.string().optional(),
+    currency: z.string().optional().default("USDC"),
+    network: z.string().optional()
+  })
+  .transform((data) => ({
+    // Normalize to camelCase
+    pricePerUnit: data.pricePerUnit ?? data.price_per_unit ?? 0,
+    priceType: data.priceType ?? data.price_type,
+    timeUnit: data.timeUnit ?? data.time_unit,
+    currency: data.currency,
+    network: data.network
+  }));
 
 // Request task message (initiates quote-approve flow)
 export const RequestTaskMessageSchema = BaseMessageSchema.extend({
@@ -412,7 +423,7 @@ export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   data: z.object({
     task_id: z.string()
   }),
-  payment: z.string().optional()  // x402 payment at top level (backend checks msg.Payment)
+  payment: z.string().optional() // x402 payment at top level (backend checks msg.Payment)
 });
 
 // System message schemas
@@ -717,6 +728,131 @@ export const RoomPongResponseSchema = z
   })
   .passthrough();
 
+// Admin agent info (admin only)
+export const AdminAgentInfoSchema = z
+  .object({
+    agent_id: z.string(),
+    agent_name: z.string(),
+    creator: z.string(),
+    creator_name: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    image_url: z.string().optional().nullable(),
+    is_online: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    is_verified: z.boolean().optional(),
+    is_public: z.boolean().optional(),
+    is_banned: z.boolean().optional(),
+    created_at: z.string().optional().nullable()
+  })
+  .passthrough();
+
+export type AdminAgentInfo = z.infer<typeof AdminAgentInfoSchema>;
+
+// List all agents request (client → server, admin only)
+export const ListAllAgentsMessageSchema = z
+  .object({
+    type: z.literal("list_all_agents"),
+    request_id: z.string().optional(),
+    filter: z.string().optional(),
+    offset: z.number().optional(),
+    limit: z.number().optional()
+  })
+  .passthrough();
+
+export type ListAllAgentsMessage = z.infer<typeof ListAllAgentsMessageSchema>;
+
+// All agents response (server → client, admin only)
+export const AllAgentsResponseSchema = z
+  .object({
+    type: z.literal("all_agents_response"),
+    request_id: z.string().optional(),
+    data: z
+      .object({
+        agents: z.array(AdminAgentInfoSchema),
+        total: z.number(),
+        offset: z.number(),
+        limit: z.number(),
+        has_more: z.boolean(),
+        filter: z.string().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export type AllAgentsResponse = z.infer<typeof AllAgentsResponseSchema>;
+
+// User count message (server → client, admin only)
+export const UserCountMessageSchema = z
+  .object({
+    type: z.literal("user_count"),
+    data: z
+      .object({
+        count: z.number(),
+        timestamp: z.string()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export type UserCountMessage = z.infer<typeof UserCountMessageSchema>;
+
+// User authenticated message (server → client)
+export const UserAuthenticatedMessageSchema = z
+  .object({
+    type: z.literal("user_authenticated"),
+    data: z
+      .object({
+        wallet: z.string()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export type UserAuthenticatedMessage = z.infer<typeof UserAuthenticatedMessageSchema>;
+
+// Rate limit notification (server → client)
+export const RateLimitNotificationMessageSchema = z
+  .object({
+    type: z.literal("rate_limit_notification"),
+    data: z
+      .object({
+        title: z.string(),
+        message: z.string(),
+        cta_text: z.string().optional(),
+        cta_link: z.string().optional(),
+        message_type: z.string(),
+        limit_type: z.string(),
+        reset_at: z.string().optional()
+      })
+      .passthrough()
+  })
+  .passthrough();
+
+export type RateLimitNotificationMessage = z.infer<typeof RateLimitNotificationMessageSchema>;
+
+// Agent details request (client → server)
+export const GetAgentDetailsMessageSchema = z
+  .object({
+    type: z.literal("get_agent_details"),
+    agent_id: z.string(),
+    request_id: z.string().optional()
+  })
+  .passthrough();
+
+export type GetAgentDetailsMessage = z.infer<typeof GetAgentDetailsMessageSchema>;
+
+// Agent details response (server → client)
+export const AgentDetailsResponseMessageSchema = z
+  .object({
+    type: z.literal("agent_details_response"),
+    request_id: z.string().optional(),
+    data: AgentRoomInfoSchema.optional(),
+    error: z.string().optional()
+  })
+  .passthrough();
+
+export type AgentDetailsResponseMessage = z.infer<typeof AgentDetailsResponseMessageSchema>;
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -764,7 +900,14 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentStatusUpdateMessageSchema,
 
   // Room Ping System (v2.0.0)
-  RoomPongResponseSchema
+  RoomPongResponseSchema,
+
+  // Admin Messages
+  AllAgentsResponseSchema,
+  UserCountMessageSchema,
+  UserAuthenticatedMessageSchema,
+  RateLimitNotificationMessageSchema,
+  AgentDetailsResponseMessageSchema
 ]);
 
 // Type inference from schemas
@@ -962,7 +1105,7 @@ export function createConfirmTask(taskId: string, x402Payment?: string): Confirm
     data: {
       task_id: taskId
     },
-    ...(x402Payment && { payment: x402Payment })  // payment at top level for backend
+    ...(x402Payment && { payment: x402Payment }) // payment at top level for backend
   });
 }
 

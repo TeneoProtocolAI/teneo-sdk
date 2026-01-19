@@ -121,7 +121,6 @@ export {
   type RequestTaskMessage,
   type TaskQuoteMessage,
   type ConfirmTaskMessage,
-
   type AgentsListMessage,
   type ErrorMessage,
   type PingMessage,
@@ -161,6 +160,23 @@ export {
   type RoomPingMessage,
   type RoomPongResponse,
 
+  // Admin types
+  AdminAgentInfoSchema,
+  ListAllAgentsMessageSchema,
+  AllAgentsResponseSchema,
+  UserCountMessageSchema,
+  UserAuthenticatedMessageSchema,
+  RateLimitNotificationMessageSchema,
+  GetAgentDetailsMessageSchema,
+  AgentDetailsResponseMessageSchema,
+  type AdminAgentInfo,
+  type ListAllAgentsMessage,
+  type AllAgentsResponse,
+  type UserCountMessage,
+  type UserAuthenticatedMessage,
+  type RateLimitNotificationMessage,
+  type GetAgentDetailsMessage,
+  type AgentDetailsResponseMessage,
   type AnyMessage,
 
   // Type guards

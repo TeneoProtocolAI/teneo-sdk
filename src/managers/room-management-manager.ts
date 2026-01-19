@@ -58,7 +58,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
    */
   public async createRoom(options: CreateRoomOptions): Promise<RoomInfo> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Validate inputs
@@ -135,7 +135,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
    */
   public async updateRoom(roomId: string, updates: UpdateRoomOptions): Promise<RoomInfo> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Verify user owns room
@@ -224,7 +224,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
    */
   public async deleteRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
-      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
     // Verify user owns room
@@ -505,10 +505,7 @@ export class RoomManagementManager extends EventEmitter<SDKEvents> {
       throw new SDKError("Room name cannot be empty", ErrorCode.VALIDATION_ERROR);
     }
     if (name.length > 100) {
-      throw new SDKError(
-        "Room name too long (max 100 characters)",
-        ErrorCode.VALIDATION_ERROR
-      );
+      throw new SDKError("Room name too long (max 100 characters)", ErrorCode.VALIDATION_ERROR);
     }
   }
 

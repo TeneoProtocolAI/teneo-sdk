@@ -65,7 +65,7 @@ cp examples/openai-teneo/.env.example examples/openai-teneo/.env
 # OpenAI Configuration
 OPENAI_API_KEY=sk-proj-your-openai-api-key-here
 
-# Teneo Network Connection
+# Teneo Protocol Connection
 WS_URL=wss://your-teneo-server.com/ws
 PRIVATE_KEY=0x1234567890123456789012345678901234567890123456789012345678901234
 WALLET_ADDRESS=0x1234567890123456789012345678901234567890  # Optional - auto-derived from private key
@@ -312,7 +312,7 @@ console.log('Codex Response:', data2.data.response);
             │                   │
             ▼                   ▼
   ┌─────────────────┐  ┌─────────────────┐
-  │  OpenAI Codex   │  │ Teneo Network   │
+  │  OpenAI Codex   │  │ Teneo Protocol   │
   │  (Agent Select) │  │  (X-Agent, etc) │
   └─────────────────┘  └─────────────────┘
 

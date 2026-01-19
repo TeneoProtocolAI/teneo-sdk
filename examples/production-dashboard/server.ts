@@ -130,8 +130,8 @@ async function initializeSDK() {
     // Set up comprehensive event listeners
     setupSDKEventListeners(sdk);
 
-    // Connect to Teneo network
-    console.log("[SDK] Connecting to Teneo network...");
+    // Connect to Teneo Protocol
+    console.log("[SDK] Connecting to Teneo Protocol...");
     await sdk.connect();
     console.log("[SDK] Successfully connected and authenticated!");
 

@@ -60,7 +60,7 @@ export interface WaitForEventOptions<T> {
  * });
  * ```
  */
-export async function waitForEvent<T = any>(
+export async function waitForEvent<T = unknown>(
   emitter: EventEmitter,
   eventName: string,
   options: WaitForEventOptions<T>
@@ -129,7 +129,7 @@ export async function waitForEvent<T = any>(
  * ]);
  * ```
  */
-export async function waitForAnyEvent<T = any>(
+export async function waitForAnyEvent<T = unknown>(
   waiters: Array<{
     emitter: EventEmitter;
     eventName: string;
@@ -157,7 +157,7 @@ export async function waitForAnyEvent<T = any>(
  * ]);
  * ```
  */
-export async function waitForAllEvents<T = any>(
+export async function waitForAllEvents<T = unknown>(
   waiters: Array<{
     emitter: EventEmitter;
     eventName: string;
