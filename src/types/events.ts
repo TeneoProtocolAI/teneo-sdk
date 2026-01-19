@@ -372,6 +372,9 @@ export interface SDKEvents {
   // User Presence events
   "user:authenticated": (data: { wallet: string }) => void;
 
+  // User Preferences events
+  "preferences:updated": (data: { maxPricePerRequest?: number | null }) => void;
+
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;
   "webhook:success": (response: any, url: string) => void;
