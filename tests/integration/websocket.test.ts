@@ -151,6 +151,7 @@ describe("WebSocket Integration Tests", () => {
       .withAuthentication(privateKey)
       .withReconnection(false) // Disable for tests
       .withAutoJoinRooms(["test-room"]) // Auto-join test room
+      .withPayments({ autoApprove: false }) // Use legacy flow for mock server
       .build();
 
     sdk = new TeneoSDK(config);
@@ -291,6 +292,7 @@ describe("WebSocket Integration Tests", () => {
           .withAuthentication(privateKey)
           .withWebhook("http://localhost:3001/webhook")
           .withReconnection(false)
+          .withPayments({ autoApprove: false }) // Use legacy flow for mock server
           .build()
       );
 
