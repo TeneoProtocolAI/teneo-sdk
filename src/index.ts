@@ -238,10 +238,9 @@ export { SecurePrivateKey } from "./utils/secure-private-key";
  * Enables SDK users to make payments directly using private keys
  */
 export {
-  PaymentSigner,
-  type PaymentSignerConfig,
-  type CreatePaymentHeaderOptions,
-  PEAQ_CHAIN,
+  PaymentClient,
+  type PaymentClientConfig,
+  PEAQ_CHAIN_ID,
   USDC_CONTRACT,
   DEFAULT_PAY_TO_ADDRESS,
   DEFAULT_RPC_URL,

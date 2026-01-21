@@ -3,15 +3,20 @@
  * Processes detailed agent information from the server
  */
 
-import { AgentDetailsResponse, AgentDetailsResponseSchema } from "../../types";
+import { AgentDetailsResponseMessage, AgentDetailsResponseMessageSchema } from "../../types";
 import { BaseMessageHandler } from "./base-handler";
 import { HandlerContext } from "./types";
 
-export class AgentDetailsResponseHandler extends BaseMessageHandler<AgentDetailsResponse> {
+export class AgentDetailsResponseHandler extends BaseMessageHandler<AgentDetailsResponseMessage> {
   readonly type = "agent_details_response" as const;
-  readonly schema = AgentDetailsResponseSchema;
+  readonly schema = AgentDetailsResponseMessageSchema;
 
-  protected handleValidated(message: AgentDetailsResponse, context: HandlerContext): void {
+  protected handleValidated(message: AgentDetailsResponseMessage, context: HandlerContext): void {
+    if (!message.data?.agent) {
+      context.logger.warn("Received agent_details_response without agent data");
+      return;
+    }
+
     const { agent } = message.data;
 
     context.logger.debug("Handling agent_details_response", {
