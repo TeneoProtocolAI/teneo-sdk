@@ -14,6 +14,7 @@ export {
 
   // Supporting schemas
   CapabilitySchema,
+  CommandPricingSchema,
   CommandSchema,
   RoomSchema,
   AgentSchema,
@@ -98,6 +99,7 @@ export {
   type AgentType,
   type AgentStatus,
   type Capability,
+  type CommandPricing,
   type Command,
   type Room,
   type Agent,
@@ -164,6 +166,7 @@ export {
   AdminAgentInfoSchema,
   ListAllAgentsMessageSchema,
   AllAgentsResponseSchema,
+  UserCountDataSchema,
   UserCountMessageSchema,
   UserAuthenticatedMessageSchema,
   RateLimitNotificationMessageSchema,
@@ -172,6 +175,7 @@ export {
   type AdminAgentInfo,
   type ListAllAgentsMessage,
   type AllAgentsResponse,
+  type UserCountData,
   type UserCountMessage,
   type UserAuthenticatedMessage,
   type RateLimitNotificationMessage,
