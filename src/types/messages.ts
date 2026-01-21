@@ -150,10 +150,20 @@ export const CapabilitySchema = z.object({
   description: z.string().optional()
 });
 
+export const CommandPricingSchema = z.object({
+  priceType: z.string().optional(),
+  pricePerUnit: z.number().optional(),
+  taskUnit: z.string().optional(),
+  timeUnit: z.enum(["hour", "day"]).optional()
+});
+
+export type CommandPricing = z.infer<typeof CommandPricingSchema>;
+
 export const CommandSchema = z.object({
   trigger: z.string(),
   argument: z.string().optional(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  pricing: CommandPricingSchema.optional()
 });
 
 export const RoomSchema = z.object({
@@ -785,16 +795,19 @@ export const AllAgentsResponseSchema = z
 
 export type AllAgentsResponse = z.infer<typeof AllAgentsResponseSchema>;
 
+// User count data schema
+export const UserCountDataSchema = z.object({
+  count: z.number(),
+  timestamp: z.string()
+});
+
+export type UserCountData = z.infer<typeof UserCountDataSchema>;
+
 // User count message (server → client, admin only)
 export const UserCountMessageSchema = z
   .object({
     type: z.literal("user_count"),
-    data: z
-      .object({
-        count: z.number(),
-        timestamp: z.string()
-      })
-      .passthrough()
+    data: UserCountDataSchema.passthrough()
   })
   .passthrough();
 
@@ -850,7 +863,12 @@ export const AgentDetailsResponseMessageSchema = z
   .object({
     type: z.literal("agent_details_response"),
     request_id: z.string().optional(),
-    data: AgentRoomInfoSchema.optional(),
+    data: z
+      .object({
+        agent: AgentRoomInfoSchema
+      })
+      .passthrough()
+      .optional(),
     error: z.string().optional()
   })
   .passthrough();
