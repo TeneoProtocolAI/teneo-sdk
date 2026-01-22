@@ -663,7 +663,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```
    */
   public getRooms(): ReadonlyArray<RoomInfo> {
-    return this.rooms.getRooms();
+    const managerRooms = this.rooms.getRooms();
+    // Fall back to auth state if RoomManager hasn't been updated yet (race condition after connect)
+    if (managerRooms.length === 0) {
+      const authState = this.connection.getAuthState();
+      if (authState.roomObjects && authState.roomObjects.length > 0) {
+        return authState.roomObjects;
+      }
+    }
+    return managerRooms;
   }
 
   /**
@@ -685,7 +693,13 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```
    */
   public getRoom(roomId: string): RoomInfo | undefined {
-    return this.rooms.getRoom(roomId);
+    const room = this.rooms.getRoom(roomId);
+    // Fall back to auth state if RoomManager hasn't been updated yet (race condition after connect)
+    if (!room) {
+      const authState = this.connection.getAuthState();
+      return authState.roomObjects?.find((r) => r.id === roomId);
+    }
+    return room;
   }
 
   // ============================================================================
