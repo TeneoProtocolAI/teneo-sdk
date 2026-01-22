@@ -336,7 +336,10 @@ export class SDKConfigBuilder {
    * builder.withWebSocketUrl('wss://teneo.example.com')
    * ```
    */
-  withWebSocketUrl(url: string): this {
+  withWebSocketUrl(url?: string): this {
+    if (!url) {
+      throw new Error("WebSocket URL is required");
+    }
     const parsed = z
       .string()
       .url()

@@ -256,7 +256,7 @@ export {
 /**
  * SDK version string
  */
-export const VERSION = "2.2.1";
+export const VERSION = "2.2.2";
 
 /**
  * Convenience type re-exports for message operations
