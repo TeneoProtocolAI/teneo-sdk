@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-2.2.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-2.2.2-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -23,7 +23,7 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 pnpm install @teneo-protocol/sdk
 ```
 
-### Your First Connection (10 Lines)
+### Your First Connection
 
 ```typescript
 import { TeneoSDK } from "@teneo-protocol/sdk";
@@ -31,7 +31,7 @@ import { TeneoSDK } from "@teneo-protocol/sdk";
 // 1. Initialize with your Ethereum private key
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
-  privateKey: "your_private_key_here" // No 0x prefix
+  privateKey: "0x..." // Your private key with 0x prefix
 });
 
 // 2. Listen for responses
@@ -39,18 +39,27 @@ sdk.on("agent:response", (response) => {
   console.log(`${response.agentName}: ${response.humanized}`);
 });
 
-// 3. Connect and send a message
+// 3. Connect (authenticates automatically)
 await sdk.connect();
-await sdk.sendMessage("Give me the last 5 tweets from @elonmusk");
 
-// The coordinator will select proper agent and return the results
+// 4. Get your private rooms (auto-available after auth)
+const rooms = sdk.getRooms();
+const roomId = rooms[0].id;
+
+// 5. Send a message to a room
+await sdk.sendMessage("Give me the last 5 tweets from @elonmusk", {
+  room: roomId
+});
+
+// The coordinator routes to the best agent and delivers the response
 ```
 
-**That's it!** The coordinator automatically:
+**That's it!** After authentication:
 
-1. Routes your message to the right agent
-2. Gets the response
-3. Delivers it via the event you're listening to
+1. Your private rooms are automatically available
+2. Send messages to any room by ID
+3. The coordinator routes to the right agent
+4. Responses arrive via the event listener
 
 ---
 
@@ -820,7 +829,7 @@ sdk.on("room:unsubscribed", (data) => {
 ```typescript
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
-  privateKey: "your_key", // No 0x prefix
+  privateKey: "0x...", // Your private key
   defaultRoom: "general",
   reconnect: true,
   logLevel: "info"
@@ -892,7 +901,7 @@ Create `.env`:
 
 ```bash
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
-PRIVATE_KEY=your_private_key_without_0x
+PRIVATE_KEY=0xYourPrivateKey
 WALLET_ADDRESS=0xYourWalletAddress
 DEFAULT_ROOM=general
 LOG_LEVEL=info
@@ -1123,8 +1132,8 @@ npm run build
 2. **Verify key length:**
 
    ```bash
-   echo -n "your_key" | wc -c
-   # Should output: 64 + 0x prefix
+   echo -n "0x1234...your_key" | wc -c
+   # Should output: 66 (0x prefix + 64 hex characters)
    ```
 
 3. **Enable debug logging:**
@@ -1150,7 +1159,7 @@ RateLimitError: Rate limit exceeded
 1. **Slow down requests:**
    ```typescript
    for (const message of messages) {
-     await sdk.sendMessage(message);
+     await sdk.sendMessage(message, { room: roomId });
      await new Promise((r) => setTimeout(r, 200)); // 200ms delay
    }
    ```
