@@ -1,6 +1,6 @@
 {
   "name": "@teneo-protocol/sdk",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "TypeScript SDK for external platforms to interact with Teneo agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +21,8 @@
     "example:dashboard": "cd examples/production-dashboard && bun run server.ts",
     "example:claude": "tsx examples/claude-agent-x-follower/index.ts",
     "example:openai": "cd examples/openai-teneo && tsx index.ts",
-    "example:n8n": "cd examples/n8n-teneo && tsx index.ts"
+    "example:n8n": "cd examples/n8n-teneo && tsx index.ts",
+    "example:chat": "tsx examples/minimal-chat.ts"
   },
   "keywords": [
     "teneo",
