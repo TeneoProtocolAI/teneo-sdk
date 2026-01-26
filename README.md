@@ -380,7 +380,7 @@ const allRooms = sdk.getAllRooms();
 console.log(`Total rooms accessible: ${allRooms.length}`);
 
 // Get specific room by ID
-const room = sdk.getRoomById("room-123");
+const room = sdk.getRoom("room-123");
 if (room) {
   console.log(`Room: ${room.name}`);
   console.log(`Created by: ${room.created_by}`);
@@ -849,8 +849,8 @@ const config = new SDKConfigBuilder()
   .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
   .withAuthentication(secureKey) // Encrypted key
 
-  // Rooms
-  .withRoom("general", ["announcements", "support"]) // default + auto-join
+  // Rooms - auto-join these public rooms on connect
+  .withAutoJoinRooms(["general", "announcements", "support"])
 
   // Reconnection strategy
   .withReconnectionStrategy({
