@@ -489,17 +489,17 @@ The SDK includes a `PaymentSigner` that **automatically creates x402 payment hea
 
 ```typescript
 // 1. Request a quote
-const quote = await sdk.requestQuote({
-  content: "Analyze Bitcoin trends for the past week",
-  room: roomId
-});
+const quote = await sdk.requestQuote(
+  "Analyze Bitcoin trends for the past week",
+  roomId
+);
 
 console.log(`Agent: ${quote.agent_name}`);
 console.log(`Price: $${quote.pricing.price_per_unit}`);
 console.log(`Expires: ${quote.expires_at}`);
 
 // 2. Confirm the task - SDK auto-signs the payment!
-await sdk.confirmTask({ taskId: quote.task_id });
+await sdk.confirmQuote(quote.task_id);
 
 // 3. Response comes via event
 sdk.on("agent:response", (response) => {
