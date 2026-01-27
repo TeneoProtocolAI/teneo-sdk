@@ -125,7 +125,7 @@ PRIVATE_KEY=0x...your-private-key
 WALLET_ADDRESS=0x...your-wallet-address
 
 # Optional
-DEFAULT_ROOM=general
+DEFAULT_ROOM=your-room-id
 PORT=3000
 
 # Security Features
@@ -223,7 +223,7 @@ const config = new SDKConfigBuilder()
 - `POST /api/room/subscribe` - Subscribe to a room (v1)
   ```json
   {
-    "roomId": "tech-support"
+    "roomId": "your-room-id"
   }
   ```
 - `POST /api/room/unsubscribe` - Unsubscribe from a room (v1)
@@ -536,7 +536,7 @@ The `/health` endpoint returns comprehensive status:
   },
   "rooms": {
     "count": 3,
-    "subscribedRooms": ["general", "announcements"]
+    "subscribedRooms": ["room-id-1", "room-id-2"]
   }
 }
 ```

@@ -9,7 +9,7 @@ import { TeneoSDK, SDKConfigBuilder, SecurePrivateKey } from "../src";
 const WS_URL = process.env.WS_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS;
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
+const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "your-room-id";
 
 async function main() {
   // Validate required configuration

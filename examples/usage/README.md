@@ -32,7 +32,7 @@ PRIVATE_KEY=your_ethereum_private_key_here
 WS_URL=wss://your-teneo-server.com/ws
 
 # Optional
-DEFAULT_ROOM=general
+DEFAULT_ROOM=your-room-id
 WALLET_ADDRESS=0x...  # Auto-derived if not provided
 LOG_LEVEL=info
 ```

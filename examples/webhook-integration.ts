@@ -106,11 +106,6 @@ async function main() {
     console.log("[SDK] Connecting to Teneo Protocol...");
     await sdk.connect();
 
-    // Wait for ready
-    await new Promise<void>((resolve) => {
-      sdk.once("ready", resolve);
-    });
-
     console.log("[SDK] Connected and ready!");
 
     // Send some test messages
