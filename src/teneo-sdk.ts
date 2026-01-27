@@ -42,7 +42,9 @@ import {
   QuoteResult,
   AdminManager,
   ListAllAgentsOptions,
-  AllAgentsResult
+  AllAgentsResult,
+  ListAvailableAgentsOptions,
+  PaginatedAgentsResult
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
@@ -54,7 +56,9 @@ export type {
   AgentCommand,
   QuoteResult,
   ListAllAgentsOptions,
-  AllAgentsResult
+  AllAgentsResult,
+  ListAvailableAgentsOptions,
+  PaginatedAgentsResult
 };
 
 // Zod schemas for SDK-specific interfaces
@@ -971,13 +975,31 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
+   * // Simple usage (cached)
    * const available = await sdk.listAvailableAgents('room-123');
    * console.log(`${available.length} agents available to add`);
+   *
+   * // With pagination options
+   * const result = await sdk.listAvailableAgents('room-123', {
+   *   limit: 20,
+   *   offset: 0,
+   *   sortBy: 'a-z'
+   * });
+   * console.log(`${result.total} total agents, showing ${result.agents.length}`);
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async listAvailableAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
-    return this.agentRoom.listAvailableAgents(roomId, useCache);
+  public async listAvailableAgents(roomId: string, useCache?: boolean): Promise<any[]>;
+  public async listAvailableAgents(
+    roomId: string,
+    options: ListAvailableAgentsOptions
+  ): Promise<PaginatedAgentsResult>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async listAvailableAgents(
+    roomId: string,
+    useCacheOrOptions?: boolean | ListAvailableAgentsOptions
+  ): Promise<any[] | PaginatedAgentsResult> {
+    return this.agentRoom.listAvailableAgents(roomId, useCacheOrOptions as any);
   }
 
   /**
@@ -1828,11 +1850,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Emit on SDK for external listeners
       this.emit("agent_room:agents_listed", roomId, agents);
     });
-    this.wsClient.on("agent_room:available_agents_listed", (agents) => {
+    this.wsClient.on("agent_room:available_agents_listed", (agents, paginationMeta) => {
       // Emit on AgentRoomManager for promise resolution
-      this.agentRoom.emit("agent_room:available_agents_listed", agents);
+      this.agentRoom.emit("agent_room:available_agents_listed", agents, paginationMeta);
       // Emit on SDK for external listeners
-      this.emit("agent_room:available_agents_listed", agents);
+      this.emit("agent_room:available_agents_listed", agents, paginationMeta);
     });
     this.wsClient.on("agent_room:status_update", (data) => {
       // Emit on SDK for external listeners

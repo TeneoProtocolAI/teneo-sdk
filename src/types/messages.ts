@@ -720,7 +720,11 @@ export const AvailableAgentsResponseSchema = z
     type: z.literal("available_agents_response"),
     data: z
       .object({
-        agents: z.array(AgentRoomInfoSchema).optional()
+        agents: z.array(AgentRoomInfoSchema).optional(),
+        total: z.number().optional(),
+        offset: z.number().optional(),
+        limit: z.number().optional(),
+        has_more: z.boolean().optional()
       })
       .passthrough()
   })
