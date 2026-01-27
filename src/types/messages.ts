@@ -151,20 +151,31 @@ export const CapabilitySchema = z.object({
   description: z.string().optional()
 });
 
+// Command pricing fields — flat on the command object, matching server Go struct.
+// Kept as a standalone schema for use by pricing-resolver.
 export const CommandPricingSchema = z.object({
   priceType: z.string().optional(),
   pricePerUnit: z.number().optional(),
   taskUnit: z.string().optional(),
-  timeUnit: z.enum(["hour", "day"]).optional()
+  timeUnit: z.enum(["second", "minute", "hour"]).optional()
 });
 
 export type CommandPricing = z.infer<typeof CommandPricingSchema>;
 
+// Command schema — pricing fields are flat (not nested), matching server Go struct.
 export const CommandSchema = z.object({
   trigger: z.string(),
   argument: z.string().optional(),
   description: z.string().optional(),
-  pricing: CommandPricingSchema.optional()
+  // Pricing fields (flat, matching server Command struct)
+  pricePerUnit: z.number().optional(),
+  priceType: z.string().optional(),
+  taskUnit: z.string().optional(),
+  timeUnit: z.enum(["second", "minute", "hour"]).optional(),
+  // Extended fields from server
+  hasVariants: z.boolean().optional(),
+  variants: z.array(z.any()).optional(),
+  parameters: z.array(z.any()).optional()
 });
 
 export const RoomSchema = z.object({
@@ -193,20 +204,29 @@ export const RoomInfoSchema = z
   })
   .passthrough(); // Allow extra fields backend might add
 
-export const AgentSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  room: z.string().optional(),
-  capabilities: z.array(CapabilitySchema).optional(),
-  commands: z.array(CommandSchema).optional(),
-  status: AgentStatusSchema,
-  image: z.string().optional(),
-  agentType: AgentTypeSchema.optional(),
-  nlpFallback: stringToBoolean.optional(),
-  webhookUrl: z.string().url().optional(),
-  categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
-});
+export const AgentSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    room: z.string().optional(),
+    capabilities: z.array(CapabilitySchema).optional(),
+    commands: z.array(CommandSchema).optional(),
+    status: AgentStatusSchema,
+    image: z.string().optional(),
+    // Accept both server field names and SDK field names
+    type: AgentTypeSchema.optional(), // server sends "type"
+    agentType: AgentTypeSchema.optional(), // SDK alias
+    nlp_fallback: stringToBoolean.optional(), // server sends "nlp_fallback"
+    nlpFallback: stringToBoolean.optional(), // SDK alias
+    webhookUrl: z.string().url().optional(),
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
+  })
+  .transform((data) => ({
+    ...data,
+    agentType: data.agentType ?? data.type,
+    nlpFallback: data.nlpFallback ?? data.nlp_fallback
+  }));
 
 // Base message schema
 export const BaseMessageSchema = z
@@ -396,6 +416,8 @@ export const PricingInfoSchema = z
     price_per_unit: z.number().optional(),
     priceType: z.string().optional(),
     price_type: z.string().optional(),
+    taskUnit: z.string().optional(),
+    task_unit: z.string().optional(),
     timeUnit: z.string().optional(),
     time_unit: z.string().optional(),
     currency: z.string().optional().default("USDC"),
@@ -405,6 +427,7 @@ export const PricingInfoSchema = z
     // Normalize to camelCase
     pricePerUnit: data.pricePerUnit ?? data.price_per_unit ?? 0,
     priceType: data.priceType ?? data.price_type,
+    taskUnit: data.taskUnit ?? data.task_unit,
     timeUnit: data.timeUnit ?? data.time_unit,
     currency: data.currency,
     network: data.network

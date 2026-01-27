@@ -7,7 +7,7 @@ export interface ResolvedPricing {
   pricePerUnit: number;
   priceType: PriceType;
   taskUnit?: string;
-  timeUnit?: "hour" | "day";
+  timeUnit?: "second" | "minute" | "hour";
   totalPrice: number;
   itemCount?: number;
   duration?: number;
@@ -40,7 +40,15 @@ export function resolveAgentPricing(
     const command = agent.commands.find(
       (cmd) => cmd.trigger.toLowerCase() === commandTrigger.toLowerCase()
     );
-    pricing = command?.pricing;
+    // Command pricing fields are flat on the command object
+    if (command) {
+      pricing = {
+        pricePerUnit: command.pricePerUnit,
+        priceType: command.priceType,
+        taskUnit: command.taskUnit,
+        timeUnit: command.timeUnit
+      };
+    }
   }
 
   if (!pricing) {
