@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AgentRoomManager, AgentRoomInfo } from "../../../src/managers/agent-room-manager";
+import { AgentRoomManager, AgentRoomInfo, PaginatedAgentsResult } from "../../../src/managers/agent-room-manager";
 import { RoomManagementManager } from "../../../src/managers/room-management-manager";
 import { WebSocketClient } from "../../../src/core/websocket-client";
 import { Logger, RoomInfo } from "../../../src/types";
@@ -488,6 +488,158 @@ describe("AgentRoomManager", () => {
 
       expect(manager.getRoomAgents("room-123")).toBeUndefined();
       expect(manager.getRoomAgents("room-456")).toBeDefined();
+    });
+  });
+
+  describe("listAvailableAgents with pagination", () => {
+    const mockAgents: AgentRoomInfo[] = [
+      { agent_id: "agent-3", agent_name: "Agent 3", status: "online" },
+      { agent_id: "agent-4", agent_name: "Agent 4", status: "online" }
+    ];
+
+    it("should send pagination params in the message data", async () => {
+      const listPromise = manager.listAvailableAgents("room-123", {
+        limit: 20,
+        offset: 10,
+        sortBy: "a-z"
+      });
+
+      setTimeout(() => {
+        manager.emit("agent_room:available_agents_listed", mockAgents, {
+          total: 100,
+          offset: 10,
+          limit: 20,
+          hasMore: true
+        });
+      }, 10);
+
+      await listPromise;
+
+      expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
+        type: "list_available_agents",
+        data: {
+          room_id: "room-123",
+          limit: 20,
+          offset: 10,
+          sort_by: "a-z"
+        }
+      });
+    });
+
+    it("should return PaginatedAgentsResult when called with options", async () => {
+      const listPromise = manager.listAvailableAgents("room-123", {
+        limit: 20,
+        offset: 10
+      });
+
+      setTimeout(() => {
+        manager.emit("agent_room:available_agents_listed", mockAgents, {
+          total: 100,
+          offset: 10,
+          limit: 20,
+          hasMore: true
+        });
+      }, 10);
+
+      const result = await listPromise;
+
+      expect(result).toEqual({
+        agents: mockAgents,
+        total: 100,
+        offset: 10,
+        limit: 20,
+        hasMore: true
+      } satisfies PaginatedAgentsResult);
+    });
+
+    it("should not use cache when called with options object", async () => {
+      // Pre-populate cache
+      manager.cacheAvailableAgents("room-123", mockAgents);
+
+      // Verify cache has data
+      expect(manager.getAvailableAgents("room-123")).toHaveLength(2);
+
+      const listPromise = manager.listAvailableAgents("room-123", { limit: 10 });
+
+      setTimeout(() => {
+        manager.emit("agent_room:available_agents_listed", mockAgents, {
+          total: 2,
+          offset: 0,
+          limit: 10,
+          hasMore: false
+        });
+      }, 10);
+
+      await listPromise;
+
+      // Should have sent a message to the server despite cache existing
+      expect(mockWsClient.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "list_available_agents" })
+      );
+    });
+
+    it("should send all option fields with correct snake_case mapping", async () => {
+      const listPromise = manager.listAvailableAgents("room-123", {
+        limit: 50,
+        offset: 0,
+        includeDetails: true,
+        minimal: false,
+        sortBy: "requests",
+        includeInRoom: true
+      });
+
+      setTimeout(() => {
+        manager.emit("agent_room:available_agents_listed", mockAgents, {
+          total: 2,
+          offset: 0,
+          limit: 50,
+          hasMore: false
+        });
+      }, 10);
+
+      await listPromise;
+
+      expect(mockWsClient.sendMessage).toHaveBeenCalledWith({
+        type: "list_available_agents",
+        data: {
+          room_id: "room-123",
+          limit: 50,
+          offset: 0,
+          include_details: true,
+          minimal: false,
+          sort_by: "requests",
+          include_in_room: true
+        }
+      });
+    });
+
+    it("should maintain backward compatibility with boolean useCache parameter", async () => {
+      const listPromise = manager.listAvailableAgents("room-123", true);
+
+      // Pre-populate cache is not set, so it will send a message
+      // But if we set cache first and call with true, it should use cache
+      manager.cacheAvailableAgents("room-123", mockAgents);
+
+      const cachedResult = await manager.listAvailableAgents("room-123", true);
+
+      // Should return AgentRoomInfo[] (not PaginatedAgentsResult)
+      expect(Array.isArray(cachedResult)).toBe(true);
+      expect(cachedResult).toHaveLength(2);
+      expect((cachedResult as AgentRoomInfo[])[0].agent_id).toBe("agent-3");
+
+      // The first call (no cache) should have triggered sendMessage
+      setTimeout(() => {
+        manager.emit("agent_room:available_agents_listed", mockAgents);
+      }, 10);
+
+      const result = await listPromise;
+
+      // Legacy call returns AgentRoomInfo[], not PaginatedAgentsResult
+      expect(Array.isArray(result)).toBe(true);
+      expect((result as AgentRoomInfo[])).toHaveLength(2);
+      // Should NOT have 'total', 'offset', 'limit', 'hasMore' properties
+      expect(result).not.toHaveProperty("total");
+      expect(result).not.toHaveProperty("hasMore");
     });
   });
 
