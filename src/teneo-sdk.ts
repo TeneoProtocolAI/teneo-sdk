@@ -1753,6 +1753,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.emit("agent:list", agents);
     });
 
+    // Forward task confirmed events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("task:confirmed", (data) => {
+      this.emit("task:confirmed", data);
+    });
+
     // Forward agent error events from WebSocketClient (emitted by handlers)
     this.wsClient.on("agent:error", (data) => {
       this.emit("agent:error", data);

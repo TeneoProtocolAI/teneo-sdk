@@ -68,6 +68,7 @@ export const MessageTypeSchema = z.enum([
   "request_task",
   "task_quote",
   "confirm_task",
+  "task_confirmed",
 
   // System
   "agents",
@@ -485,6 +486,22 @@ export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   }),
   payment: z.string().optional() // x402 payment at top level (backend checks msg.Payment)
 });
+
+// Task confirmed message (server acknowledgment after confirm_task)
+export const TaskConfirmedMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("task_confirmed"),
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string().optional(),
+      agent_name: z.string().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
 
 // System message schemas
 export const AgentsListMessageSchema = BaseMessageSchema.extend({
@@ -1029,6 +1046,7 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
 
   // Quote-Approve Flow (v2.2.0)
   TaskQuoteMessageSchema,
+  TaskConfirmedMessageSchema,
 
   // System
   ErrorMessageSchema,

@@ -194,6 +194,10 @@ export {
 
   type AnyMessage,
 
+  // Task Confirmed types
+  TaskConfirmedMessageSchema,
+  type TaskConfirmedMessage,
+
   // Agent Error types
   AgentErrorMessageSchema,
   type AgentErrorMessage,

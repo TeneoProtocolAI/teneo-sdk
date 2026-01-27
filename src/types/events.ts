@@ -362,6 +362,12 @@ export interface SDKEvents {
   // Quote-Approve Payment events (v2.2.0)
   "quote:received": (quote: any) => void;
   "quote:expired": (taskId: string) => void;
+  "task:confirmed": (data: {
+    taskId: string;
+    agentId?: string;
+    agentName?: string;
+    clientRequestId?: string;
+  }) => void;
   "payment:blocked": (data: { agentId: string; agentPrice: number; maxPrice: number }) => void;
   "payment:attached": (data: { agentId: string; amount: number; command: string }) => void;
   "payment:error": (error: Error, agentId?: string) => void;
