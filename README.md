@@ -846,7 +846,7 @@ sdk.on("room:unsubscribed", (data) => {
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0x...", // Your private key
-  autoJoinRooms: ["general"],
+  autoJoinRooms: ["room-id-1"],
   reconnect: true,
   logLevel: "info"
 });
@@ -866,7 +866,7 @@ const config = new SDKConfigBuilder()
   .withAuthentication(secureKey) // Encrypted key
 
   // Rooms - auto-join these public rooms on connect
-  .withAutoJoinRooms(["general", "announcements", "support"])
+  .withAutoJoinRooms(["room-id-1", "room-id-2"]) // public room IDs to auto-subscribe
 
   // Reconnection strategy
   .withReconnectionStrategy({
