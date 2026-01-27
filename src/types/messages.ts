@@ -130,7 +130,11 @@ export const MessageTypeSchema = z.enum([
   "set_api_key_preference",
 
   // Agent Error
-  "agent_error"
+  "agent_error",
+
+  // Wallet Transaction Flow
+  "trigger_wallet_tx",
+  "tx_result"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -953,6 +957,30 @@ export const AgentErrorMessageSchema = BaseMessageSchema.extend({
 
 export type AgentErrorMessage = z.infer<typeof AgentErrorMessageSchema>;
 
+// Wallet Transaction schemas
+export const TxResultStatusSchema = z.enum(["confirmed", "rejected", "failed"]);
+export type TxResultStatus = z.infer<typeof TxResultStatusSchema>;
+
+export const TriggerWalletTxMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("trigger_wallet_tx"),
+  from: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string(),
+      tx: z.object({
+        to: z.string(),
+        value: z.string(),
+        data: z.string().optional(),
+        chainId: z.number()
+      }),
+      description: z.string().optional(),
+      optional: z.boolean().optional()
+    })
+    .passthrough()
+});
+
+export type TriggerWalletTxMessage = z.infer<typeof TriggerWalletTxMessageSchema>;
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -1013,7 +1041,10 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   UserPreferencesUpdatedMessageSchema,
 
   // Agent Error
-  AgentErrorMessageSchema
+  AgentErrorMessageSchema,
+
+  // Wallet Transaction
+  TriggerWalletTxMessageSchema
 ]);
 
 // Type inference from schemas

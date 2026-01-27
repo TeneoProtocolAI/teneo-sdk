@@ -42,6 +42,9 @@ export { UserCountHandler } from "./user-count-handler";
 // Agent Error handler
 export { AgentErrorHandler } from "./agent-error-handler";
 
+// Wallet Transaction handler
+export { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
+
 // Presence handler
 export { UserAuthenticatedHandler } from "./user-authenticated-handler";
 
@@ -71,6 +74,7 @@ import { RateLimitNotificationHandler } from "./rate-limit-notification-handler"
 import { AllAgentsResponseHandler } from "./all-agents-response-handler";
 import { UserCountHandler } from "./user-count-handler";
 import { AgentErrorHandler } from "./agent-error-handler";
+import { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
 import { UserAuthenticatedHandler } from "./user-authenticated-handler";
 import { MessageHandler } from "./types";
 
@@ -126,6 +130,9 @@ export function getDefaultHandlers(
 
     // Agent Error handler
     new AgentErrorHandler(),
+
+    // Wallet Transaction handler
+    new TriggerWalletTxHandler(),
 
     // Presence handler
     new UserAuthenticatedHandler(),

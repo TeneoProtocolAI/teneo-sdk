@@ -382,6 +382,16 @@ export interface SDKEvents {
   // User Preferences events
   "preferences:updated": (data: { maxPricePerRequest?: number | null }) => void;
 
+  // Wallet Transaction events
+  "wallet:tx_requested": (data: {
+    taskId: string;
+    agentName?: string;
+    tx: { to: string; value: string; data?: string; chainId: number };
+    description?: string;
+    optional?: boolean;
+    room?: string;
+  }) => void;
+
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;
   "webhook:success": (response: any, url: string) => void;

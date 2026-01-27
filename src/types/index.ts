@@ -198,6 +198,12 @@ export {
   AgentErrorMessageSchema,
   type AgentErrorMessage,
 
+  // Wallet Transaction types
+  TxResultStatusSchema,
+  TriggerWalletTxMessageSchema,
+  type TxResultStatus,
+  type TriggerWalletTxMessage,
+
   // Type guards
   isAuthSuccess,
   isAuthError,

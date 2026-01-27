@@ -1158,6 +1158,56 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Sends the result of an on-chain transaction back to the server.
+   * Used in response to a "wallet:tx_requested" event after the user
+   * has confirmed, rejected, or encountered a failure with the transaction.
+   *
+   * @param taskId - The task ID from the wallet:tx_requested event
+   * @param status - Transaction result: "confirmed", "rejected", or "failed"
+   * @param txHash - The on-chain transaction hash (required for "confirmed" status)
+   * @param error - Error message (optional, for "failed" status)
+   * @throws {SDKError} If the SDK has been destroyed or not connected
+   *
+   * @example
+   * ```typescript
+   * sdk.on("wallet:tx_requested", async (data) => {
+   *   try {
+   *     const txHash = await wallet.sendTransaction(data.tx);
+   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash);
+   *   } catch (err) {
+   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message);
+   *   }
+   * });
+   * ```
+   */
+  public async sendTxResult(
+    taskId: string,
+    status: "confirmed" | "rejected" | "failed",
+    txHash?: string,
+    error?: string
+  ): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "tx_result" as const,
+      data: {
+        task_id: taskId,
+        status,
+        ...(txHash && { tx_hash: txHash }),
+        ...(error && { error })
+      }
+    };
+
+    await this.wsClient.sendMessage(message);
+  }
+
+  /**
    * Sets the API key preference for the current user.
    * Controls whether custom API keys are used for agent interactions.
    *
@@ -1684,6 +1734,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward agent error events from WebSocketClient (emitted by handlers)
     this.wsClient.on("agent:error", (data) => {
       this.emit("agent:error", data);
+    });
+
+    // Forward wallet transaction events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("wallet:tx_requested", (data) => {
+      this.emit("wallet:tx_requested", data);
     });
 
     // Forward message deduplication events from WebSocketClient
