@@ -39,6 +39,9 @@ export { RateLimitNotificationHandler } from "./rate-limit-notification-handler"
 export { AllAgentsResponseHandler } from "./all-agents-response-handler";
 export { UserCountHandler } from "./user-count-handler";
 
+// Agent Error handler
+export { AgentErrorHandler } from "./agent-error-handler";
+
 // Presence handler
 export { UserAuthenticatedHandler } from "./user-authenticated-handler";
 
@@ -67,6 +70,7 @@ import { AgentDetailsResponseHandler } from "./agent-details-response-handler";
 import { RateLimitNotificationHandler } from "./rate-limit-notification-handler";
 import { AllAgentsResponseHandler } from "./all-agents-response-handler";
 import { UserCountHandler } from "./user-count-handler";
+import { AgentErrorHandler } from "./agent-error-handler";
 import { UserAuthenticatedHandler } from "./user-authenticated-handler";
 import { MessageHandler } from "./types";
 
@@ -119,6 +123,9 @@ export function getDefaultHandlers(
     // Admin handlers
     new AllAgentsResponseHandler(),
     new UserCountHandler(),
+
+    // Agent Error handler
+    new AgentErrorHandler(),
 
     // Presence handler
     new UserAuthenticatedHandler(),

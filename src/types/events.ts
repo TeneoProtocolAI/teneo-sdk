@@ -311,6 +311,13 @@ export interface SDKEvents {
   "agent:response": (response: AgentResponse) => void;
   "agent:list": (agents: z.infer<typeof AgentSchema>[]) => void;
   "agent:status": (agentId: string, status: "online" | "offline") => void;
+  "agent:error": (data: {
+    agentName?: string;
+    content?: string;
+    taskId?: string;
+    clientRequestId?: string;
+    room?: string;
+  }) => void;
 
   // Room events
   "room:subscribed": (data: { roomId: string; subscriptions: string[] }) => void;

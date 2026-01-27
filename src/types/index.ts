@@ -194,6 +194,10 @@ export {
 
   type AnyMessage,
 
+  // Agent Error types
+  AgentErrorMessageSchema,
+  type AgentErrorMessage,
+
   // Type guards
   isAuthSuccess,
   isAuthError,

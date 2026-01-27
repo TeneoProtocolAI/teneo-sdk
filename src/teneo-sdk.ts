@@ -1681,6 +1681,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.emit("agent:list", agents);
     });
 
+    // Forward agent error events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("agent:error", (data) => {
+      this.emit("agent:error", data);
+    });
+
     // Forward message deduplication events from WebSocketClient
     this.wsClient.on("message:duplicate", (message) =>
       this.emit("message:duplicate", message)

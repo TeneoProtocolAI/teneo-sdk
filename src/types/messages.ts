@@ -127,7 +127,10 @@ export const MessageTypeSchema = z.enum([
   "user_preferences_updated",
 
   // API Key Preferences
-  "set_api_key_preference"
+  "set_api_key_preference",
+
+  // Agent Error
+  "agent_error"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -934,6 +937,22 @@ export const UserPreferencesUpdatedMessageSchema = z
 export type UserPreferencesUpdatedData = z.infer<typeof UserPreferencesUpdatedDataSchema>;
 export type UserPreferencesUpdatedMessage = z.infer<typeof UserPreferencesUpdatedMessageSchema>;
 
+// Agent Error message (server → client, when an agent fails)
+export const AgentErrorMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("agent_error"),
+  content: z.string().optional(),
+  from: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type AgentErrorMessage = z.infer<typeof AgentErrorMessageSchema>;
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -991,7 +1010,10 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentDetailsResponseMessageSchema,
 
   // User Preferences
-  UserPreferencesUpdatedMessageSchema
+  UserPreferencesUpdatedMessageSchema,
+
+  // Agent Error
+  AgentErrorMessageSchema
 ]);
 
 // Type inference from schemas
