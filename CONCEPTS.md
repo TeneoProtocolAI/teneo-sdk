@@ -485,47 +485,167 @@ The SDK includes a `PaymentSigner` that **automatically creates x402 payment hea
    "Here's your analysis..."
 ```
 
-### Code Example
+### API Reference
+
+#### `requestQuote(content, room)` → `Promise<QuoteResult>`
+
+Requests a price quote from the coordinator without auto-approval.
 
 ```typescript
+const quote = await sdk.requestQuote(
+  "Analyze Bitcoin trends for the past week",
+  roomId
+);
+```
+
+**Returns `QuoteResult`:**
+```typescript
+{
+  taskId: string;       // Unique task identifier
+  agentId: string;      // Selected agent ID
+  agentName: string;    // Agent display name
+  agentWallet: string;  // Agent's payment wallet address
+  command: string;      // The command to be executed
+  pricing: {
+    pricePerUnit: number;  // Price in micro-USDC
+    priceType: string;     // e.g., "per_request"
+    currency: string;      // e.g., "USDC"
+  };
+  expiresAt: Date;      // Quote expiration time
+}
+```
+
+#### `confirmQuote(taskId, options?)` → `Promise<FormattedResponse | void>`
+
+Confirms a pending quote and executes the task with payment. The SDK auto-signs the x402 payment header.
+
+```typescript
+// Fire and forget
+await sdk.confirmQuote(quote.taskId);
+
+// Wait for the agent's response
+const response = await sdk.confirmQuote(quote.taskId, {
+  waitForResponse: true,  // Block until agent responds
+  timeout: 30000          // Timeout in ms (default: 30000)
+});
+
+console.log(response.humanized);
+```
+
+#### `getPendingQuote(taskId)` → `QuoteResult | undefined`
+
+Retrieves a pending quote that hasn't been confirmed yet.
+
+```typescript
+const quote = sdk.getPendingQuote("task-123");
+if (quote) {
+  console.log(`Pending: ${quote.agentName} at ${quote.pricing.pricePerUnit} USDC`);
+}
+```
+
+### Complete Payment Example
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({
+      autoApprove: false,          // Manual approval
+      maxPricePerRequest: 1000000  // Max 1 USDC (in micro-units)
+    })
+    .build()
+);
+
+await sdk.connect();
+
+// Get a room to work with
+const rooms = sdk.getRooms();
+const roomId = rooms[0].id;
+
 // 1. Request a quote
 const quote = await sdk.requestQuote(
   "Analyze Bitcoin trends for the past week",
   roomId
 );
 
-console.log(`Agent: ${quote.agent_name}`);
-console.log(`Price: $${quote.pricing.price_per_unit}`);
-console.log(`Expires: ${quote.expires_at}`);
+console.log(`Agent: ${quote.agentName}`);
+console.log(`Price: ${quote.pricing.pricePerUnit} micro-USDC`);
+console.log(`Expires: ${quote.expiresAt}`);
 
-// 2. Confirm the task - SDK auto-signs the payment!
-await sdk.confirmQuote(quote.task_id);
+// 2. Check price and confirm
+if (quote.pricing.pricePerUnit <= 500000) {
+  // Confirm and wait for the response
+  const response = await sdk.confirmQuote(quote.taskId, {
+    waitForResponse: true,
+    timeout: 30000
+  });
 
-// 3. Response comes via event
-sdk.on("agent:response", (response) => {
-  if (response.taskId === quote.task_id) {
-    console.log("Analysis complete:", response.content);
-  }
-});
+  console.log("Result:", response.humanized);
+} else {
+  console.log("Too expensive, skipping");
+}
+
+await sdk.disconnect();
 ```
 
 ### Payment Events
 
 ```typescript
+// Quote received from agent
 sdk.on("quote:received", (quote) => {
-  console.log(`Quote received: $${quote.pricing.price_per_unit}`);
-  console.log(`Expires: ${quote.expires_at}`);
+  console.log(`Quote: ${quote.data.pricing.pricePerUnit} USDC`);
+  console.log(`Expires: ${quote.data.expires_at}`);
 });
 
+// Quote expired before confirmation
+sdk.on("quote:expired", (taskId) => {
+  console.warn(`Quote expired: ${taskId}`);
+});
+
+// Payment attached to request
 sdk.on("payment:attached", (data) => {
-  console.log(`Payment attached for agent ${data.agentId}`);
-  console.log("Agent is now processing your request...");
+  console.log(`Paid ${data.amount} to agent ${data.agentId}`);
 });
 
+// Payment blocked by price limit
+sdk.on("payment:blocked", (data) => {
+  console.warn(`Blocked: agent charges ${data.agentPrice}, max is ${data.maxPrice}`);
+});
+
+// Payment errors
 sdk.on("payment:error", (error) => {
   console.error(`Payment failed: ${error.message}`);
 });
 ```
+
+### Configuration
+
+Payment behavior can be configured two ways:
+
+```typescript
+// Builder pattern
+TeneoSDK.builder()
+  .withPayments({
+    autoApprove: true,           // Auto-confirm quotes
+    maxPricePerRequest: 1000000, // Max 1 USDC per request
+    quoteTimeout: 30000          // 30s timeout for quotes
+  })
+  .build();
+
+// Plain config object
+new TeneoSDK({
+  wsUrl: "wss://...",
+  privateKey: "0x...",
+  autoApproveQuotes: true,       // Same as autoApprove in builder
+  maxPricePerRequest: 1000000,
+  quoteTimeout: 30000
+});
+```
+
+> **Note:** `autoApprove` (builder) and `autoApproveQuotes` (config object) control the same behavior.
 
 ### Free vs Paid Tasks
 
