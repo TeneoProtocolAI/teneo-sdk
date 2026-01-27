@@ -43,6 +43,14 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 - Payment client is set up automatically when `privateKey` is provided
 - `withPayments()` builder no longer has `enabled` option
 
+### ⚠️ Breaking Changes
+
+- `paymentsEnabled` config option removed — payments are always enabled when `privateKey` is provided
+- `validatePrice()` method removed — price validation now happens in `confirmQuote`
+- `attachPayment()` method removed — payment attachment now happens in `confirmQuote`
+- `setAgentRegistry()` method removed — no longer needed
+- `withPayments()` builder no longer accepts `enabled` option
+
 ### 🗑️ Removed
 
 - `paymentsEnabled` config option (payments always on)
