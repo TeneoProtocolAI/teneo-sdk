@@ -275,7 +275,7 @@ export type { SendMessageOptions, AgentCommand } from "./teneo-sdk";
  * const sdk = await createTeneoSDK({
  *   wsUrl: 'ws://localhost:8080/ws',
  *   privateKey: 'your-private-key',
- *   autoJoinRooms: ['general']
+ *   autoJoinRooms: ['room-id-1']
  * });
  * ```
  */

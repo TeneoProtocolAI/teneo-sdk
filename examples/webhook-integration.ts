@@ -66,7 +66,7 @@ async function main() {
   const sdk = new TeneoSDK({
     wsUrl: process.env.WS_URL || "ws://localhost:8080/ws",
     privateKey: process.env.PRIVATE_KEY,
-    autoJoinRooms: ["general"],
+    autoJoinRooms: [process.env.ROOM_ID || "your-room-id"],
 
     // Webhook configuration
     webhookUrl: "http://localhost:3000/webhook",
@@ -117,9 +117,9 @@ async function main() {
     console.log("\n[SDK] Sending test messages...\n");
 
     // These will trigger webhooks
-    await sdk.sendMessage("What is blockchain technology?", { room: "general" });
-    await sdk.sendMessage("Explain quantum computing in simple terms", { room: "general" });
-    await sdk.sendMessage("How does machine learning work?", { room: "general" });
+    await sdk.sendMessage("What is blockchain technology?", { room: process.env.ROOM_ID || "your-room-id" });
+    await sdk.sendMessage("Explain quantum computing in simple terms", { room: process.env.ROOM_ID || "your-room-id" });
+    await sdk.sendMessage("How does machine learning work?", { room: process.env.ROOM_ID || "your-room-id" });
 
     // Check webhook queue status
     const webhookStatus = sdk.getWebhookStatus();

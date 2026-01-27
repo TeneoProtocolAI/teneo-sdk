@@ -287,7 +287,7 @@ await sdk.connect();
 
 // Send and wait for response
 const response = await sdk.sendMessage('hello', {
-  room: 'general',
+  room: roomId,
   waitForResponse: true,
   timeout: 30000
 });
@@ -306,7 +306,7 @@ const weatherAgent = agents[0];
 const response = await sdk.sendDirectCommand({
   agent: weatherAgent.id,
   command: 'forecast for NYC',
-  room: 'general'
+  room: roomId
 }, true);
 ```
 
@@ -319,7 +319,7 @@ sdk.on('agent:response', (response) => {
 });
 
 // Fire and forget
-await sdk.sendMessage('hello', { room: 'general' });
+await sdk.sendMessage('hello', { room: roomId });
 ```
 
 ## 🐛 Troubleshooting

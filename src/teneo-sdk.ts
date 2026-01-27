@@ -121,7 +121,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * const sdk = new TeneoSDK({
    *   wsUrl: 'wss://teneo.example.com',
    *   privateKey: '0x...',
-   *   autoJoinRooms: ['general', 'announcements'],
+   *   autoJoinRooms: ['room-id-1', 'room-id-2'],
    *   webhookUrl: 'https://api.example.com/webhooks',
    *   logLevel: 'debug',
    *   responseFormat: 'both',
@@ -338,7 +338,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * await sdk.sendDirectCommand({
    *   agent: 'weather-agent',
    *   command: 'Get forecast for New York',
-   *   room: 'general'
+   *   room: 'room-id'
    * });
    * ```
    */
@@ -389,7 +389,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Subscribe to a public room
-   * await sdk.subscribeToRoom('public-announcements');
+   * await sdk.subscribeToRoom('public-room-id');
    * console.log('Subscribed to public room');
    *
    * // Note: Private rooms don't need subscription - you're always subscribed
@@ -452,7 +452,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```typescript
    * const rooms = sdk.getSubscribedRooms();
    * console.log(`Subscribed to ${rooms.length} rooms:`, rooms);
-   * // Example output: Subscribed to 3 rooms: ['general', 'support', 'trading']
+   * // Example output: Subscribed to 3 rooms: ['room-id-1', 'room-id-2', 'room-id-3']
    * ```
    */
   public getSubscribedRooms(): string[] {
@@ -683,7 +683,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const room = sdk.getRoom('general');
+   * const room = sdk.getRoom('room-id');
    * if (room) {
    *   console.log(`Found room: ${room.name}`);
    *   console.log(`Members: ${room.members?.length ?? 0}`);

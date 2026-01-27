@@ -208,7 +208,7 @@ const config = new SDKConfigBuilder()
   {
     "agent": "weather-agent",
     "command": "weather New York",
-    "room": "general"
+    "room": "your-room-id"
   }
   ```
 

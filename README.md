@@ -245,7 +245,7 @@ await sdk.sendMessage("Crawl this website for data", { room: "crawler-room-id" }
 // Manage rooms dynamically
 const rooms = sdk.getSubscribedRooms();
 console.log("Active rooms:", rooms);
-// Output: Active rooms: ['Crawler Room', 'KOL tracker']
+// Output: Active rooms: ['crawler-room-id', 'kol-tracker-room-id']
 ```
 
 ### Example 3: Webhook Integration

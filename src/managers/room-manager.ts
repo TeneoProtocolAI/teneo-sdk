@@ -34,8 +34,8 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await roomManager.subscribeToRoom('general');
-   * console.log('Subscription request sent to general room');
+   * await roomManager.subscribeToRoom('room-id');
+   * console.log('Subscription request sent');
    * ```
    */
   public async subscribeToRoom(roomId: string): Promise<void> {
@@ -95,7 +95,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Internal SDK usage
-   * roomManager.updateSubscriptions(['general', 'support', 'trading']);
+   * roomManager.updateSubscriptions(['room-id-1', 'room-id-2', 'room-id-3']);
    * ```
    */
   public updateSubscriptions(subscriptions: string[]): void {
@@ -150,7 +150,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const room = roomManager.getRoom('general');
+   * const room = roomManager.getRoom('room-id');
    * if (room) {
    *   console.log(`Room: ${room.name}`);
    *   console.log(`Members: ${room.members?.length ?? 0}`);
