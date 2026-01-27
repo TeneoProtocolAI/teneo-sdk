@@ -114,7 +114,7 @@ sdk.on("auth:success", (state) => {
 });
 
 sdk.on("auth:error", (error) => {
-  console.error("Authentication failed:", error.message);
+  console.error("Authentication failed:", error);
 });
 ```
 
@@ -239,7 +239,7 @@ Your Message: "What's the weather in Tokyo?"
 sdk.on("agent:selected", (selection) => {
   console.log(`Selected: ${selection.agentName}`);
   console.log(`Reason: ${selection.reasoning}`);
-  console.log(`Capabilities: ${selection.capabilities.join(", ")}`);
+  console.log(`Capabilities: ${selection.capabilities?.map(c => c.name).join(", ")}`);
 });
 ```
 
@@ -315,10 +315,12 @@ details.commands?.forEach(cmd => {
   console.log(`- ${cmd.name}: ${cmd.description}`);
 });
 
-// Pricing (if paid agent)
-if (details.pricing) {
-  console.log(`Price: $${details.pricing.price_per_unit} per ${details.pricing.task_unit}`);
-}
+// Pricing (per command, if paid agent)
+details.commands?.forEach(cmd => {
+  if (cmd.pricing) {
+    console.log(`${cmd.trigger}: ${cmd.pricing.pricePerUnit} per ${cmd.pricing.taskUnit}`);
+  }
+});
 ```
 
 ### Agent Events
@@ -510,6 +512,8 @@ const quote = await sdk.requestQuote(
     pricePerUnit: number;  // Price in micro-USDC
     priceType: string;     // e.g., "per_request"
     currency: string;      // e.g., "USDC"
+    timeUnit?: string;     // e.g., "hour", "day"
+    network?: string;      // e.g., "peaq"
   };
   expiresAt: Date;      // Quote expiration time
 }
@@ -588,7 +592,7 @@ if (quote.pricing.pricePerUnit <= 500000) {
   console.log("Too expensive, skipping");
 }
 
-await sdk.disconnect();
+sdk.disconnect();
 ```
 
 ### Payment Events
@@ -827,7 +831,7 @@ const sdk = new TeneoSDK({
 const sdk = new TeneoSDK({
   wsUrl: "...",
   privateKey: "...",
-  reconnectionStrategy: {
+  reconnectStrategy: {
     type: "exponential",
     baseDelay: 3000,                  // 3s initial
     maxDelay: 120000,                 // 2 minute max
@@ -850,7 +854,7 @@ sdk.on("connection:reconnected", () => {
 
 ```typescript
 // Disconnect cleanly
-await sdk.disconnect();
+sdk.disconnect();
 
 // Or destroy completely (removes all listeners)
 sdk.destroy();
