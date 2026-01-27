@@ -220,6 +220,7 @@ export const AgentSchema = z
     name: z.string(),
     description: z.string().optional(),
     room: z.string().optional(),
+    rooms: z.array(z.string()).optional(), // Server sends plural rooms array
     capabilities: z.array(CapabilitySchema).optional(),
     commands: z.array(CommandSchema).optional(),
     status: AgentStatusSchema,
@@ -253,7 +254,9 @@ export const BaseMessageSchema = z
     publicKey: z.string().optional(),
     reasoning: z.string().optional(),
     task_id: z.string().optional(),
-    id: z.string().optional() // Added for message tracking
+    id: z.string().optional(), // Added for message tracking
+    payment: z.string().optional(), // x402 payment payload
+    request_id: z.string().optional() // Request-response correlation
   })
   .passthrough(); // Allow message-specific fields to pass through
 
@@ -454,15 +457,24 @@ export const RequestTaskMessageSchema = BaseMessageSchema.extend({
 export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
   type: z.literal("task_quote"),
   from: z.literal("coordinator"),
-  data: z.object({
-    task_id: z.string(),
-    agent_id: z.string(),
-    agent_name: z.string(),
-    agent_wallet: z.string(),
-    command: z.string(),
-    pricing: PricingInfoSchema,
-    expires_at: z.string()
-  })
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string(),
+      agent_name: z.string(),
+      agent_wallet: z.string(),
+      command: z.string(),
+      pricing: PricingInfoSchema,
+      expires_at: z.string(),
+      // x402 v2.5 settlement routing fields
+      client_request_id: z.string().optional(),
+      settlement_router: z.string().optional(),
+      salt: z.string().optional(),
+      facilitator_fee: z.string().optional(),
+      hook: z.string().optional(),
+      hook_data: z.string().optional()
+    })
+    .passthrough()
 });
 
 // Confirm task message (with payment at top level - backend expects msg.payment)
@@ -669,7 +681,15 @@ export const AgentRoomInfoSchema = z
     status: z.string().optional(),
     added_by: z.string().optional(),
     added_at: z.string().optional(),
-    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional(),
+    // Server-sent typed fields
+    type: AgentTypeSchema.optional(),
+    nlp_fallback: z.union([z.boolean(), z.string()]).optional(),
+    is_verified: z.boolean().optional(),
+    is_public: z.boolean().optional(),
+    created_at: z.string().optional(),
+    creator: z.string().optional(),
+    is_banned: z.boolean().optional()
   })
   .passthrough();
 
