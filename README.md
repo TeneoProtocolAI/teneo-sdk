@@ -830,7 +830,7 @@ sdk.on("room:unsubscribed", (data) => {
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0x...", // Your private key
-  defaultRoom: "general",
+  autoJoinRooms: ["general"],
   reconnect: true,
   logLevel: "info"
 });
@@ -902,8 +902,6 @@ Create `.env`:
 ```bash
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 PRIVATE_KEY=0xYourPrivateKey
-WALLET_ADDRESS=0xYourWalletAddress
-DEFAULT_ROOM=general
 LOG_LEVEL=info
 ```
 
@@ -916,8 +914,6 @@ dotenv.config();
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  walletAddress: process.env.WALLET_ADDRESS,
-  defaultRoom: process.env.DEFAULT_ROOM,
   logLevel: (process.env.LOG_LEVEL as any) || "info"
 });
 ```
