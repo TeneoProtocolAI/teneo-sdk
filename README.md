@@ -300,8 +300,8 @@ await sdk.connect();
 
 // Check webhook health
 const status = sdk.getWebhookStatus();
-console.log("Queue size:", status.queueSize);
-console.log("Circuit state:", status.circuitState); // OPEN/CLOSED/HALF_OPEN
+console.log("Pending:", status.queue.pending);
+console.log("Circuit state:", status.queue.circuitState); // OPEN/CLOSED/HALF_OPEN
 ```
 
 ---
@@ -593,8 +593,8 @@ sdk.on("agent_room:list_error", (error, roomId) => {
   console.error(`Failed to list agents in ${roomId}: ${error.message}`);
 });
 
-sdk.on("agent_room:list_available_error", (error, roomId) => {
-  console.error(`Failed to list available agents for ${roomId}: ${error.message}`);
+sdk.on("agent_room:list_available_error", (error) => {
+  console.error(`Failed to list available agents: ${error.message}`);
 });
 ```
 
@@ -811,7 +811,7 @@ sdk.on("auth:success", (state) => {
   console.log(`✅ Authenticated as ${state.walletAddress}`);
   console.log(`Whitelisted: ${state.isWhitelisted}`);
 });
-sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error.message));
+sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error));
 ```
 
 ### Agent Events
@@ -820,7 +820,6 @@ sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error.message)
 sdk.on("agent:selected", (selection) => {
   console.log(`🤖 ${selection.agentName} was selected by coordinator`);
   console.log(`Reasoning: ${selection.reasoning}`);
-  console.log(`Confidence: ${selection.confidence}`);
 });
 
 sdk.on("agent:response", (response) => {
@@ -830,7 +829,7 @@ sdk.on("agent:response", (response) => {
 sdk.on("agent:list", (agents) => {
   console.log(`📋 Agent list updated: ${agents.length} agents available`);
   agents.forEach((agent) => {
-    console.log(`  - ${agent.name}: ${agent.capabilities?.join(", ")}`);
+    console.log(`  - ${agent.name}: ${agent.capabilities?.map(c => c.name).join(", ")}`);
   });
 });
 ```
@@ -914,7 +913,6 @@ const config = new SDKConfigBuilder()
   })
 
   // Performance
-  .withRateLimit(10, 20) // 10 msg/sec, burst 20
   .withMessageDeduplication(true, 60000, 10000)
   .withLogging("debug")
 
@@ -979,7 +977,7 @@ Prevents cascading failures in webhook delivery:
 ```typescript
 const status = sdk.getWebhookStatus();
 
-console.log("Circuit state:", status.circuitState);
+console.log("Circuit state:", status.queue.circuitState);
 // CLOSED = Normal operation, webhooks being delivered
 // OPEN = Too many failures, failing fast (60s timeout)
 // HALF_OPEN = Testing recovery (2 successes → CLOSED)
@@ -1065,12 +1063,11 @@ sdk.on("signature:failed", (type, reason) => {
 const health = sdk.getHealth();
 
 console.log("Status:", health.status); // 'healthy' | 'degraded' | 'unhealthy'
-console.log("Connected:", health.connection.connected);
+console.log("Connected:", health.connection.status);
 console.log("Authenticated:", health.connection.authenticated);
-console.log("Uptime:", health.uptime);
 
 if (health.webhook) {
-  console.log("Webhook queue:", health.webhook.queueSize);
+  console.log("Webhook pending:", health.webhook.pending);
   console.log("Circuit state:", health.webhook.circuitState);
 }
 
@@ -1214,7 +1211,7 @@ RateLimitError: Rate limit exceeded
 3. **Check circuit breaker:**
    ```typescript
    const status = sdk.getWebhookStatus();
-   if (status.circuitState === "OPEN") {
+   if (status.queue.circuitState === "OPEN") {
      console.log("Circuit open, will retry in 60s");
    }
    ```
