@@ -1158,6 +1158,41 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Sets the API key preference for the current user.
+   * Controls whether custom API keys are used for agent interactions.
+   *
+   * @param useCustomKeys - Whether to use custom API keys
+   * @throws {SDKError} If the SDK has been destroyed or not connected
+   *
+   * @example
+   * ```typescript
+   * // Enable custom API keys
+   * await sdk.setApiKeyPreference(true);
+   *
+   * // Disable custom API keys
+   * await sdk.setApiKeyPreference(false);
+   * ```
+   */
+  public async setApiKeyPreference(useCustomKeys: boolean): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "set_api_key_preference" as const,
+      data: {
+        use_custom_keys: useCustomKeys
+      }
+    };
+
+    await this.wsClient.sendMessage(message);
+  }
+
+  /**
    * Configures webhook URL and headers for receiving real-time event notifications.
    * Webhooks allow you to receive events at your server endpoint via HTTP POST requests.
    * Events include messages, agent responses, errors, and connection state changes.

@@ -124,7 +124,10 @@ export const MessageTypeSchema = z.enum([
 
   // User Preferences (2 types)
   "set_user_preferences",
-  "user_preferences_updated"
+  "user_preferences_updated",
+
+  // API Key Preferences
+  "set_api_key_preference"
 ]);
 
 export const ContentTypeSchema = z.enum([
