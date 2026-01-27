@@ -316,7 +316,7 @@ export interface SDKEvents {
   "room:subscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:unsubscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
-  "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;
+
 
   // Room Management events (v2.0.0)
   "room:created": (room: z.infer<typeof RoomInfoSchema>) => void;

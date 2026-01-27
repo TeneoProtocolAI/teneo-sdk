@@ -213,11 +213,6 @@ async function main() {
     console.log(`🏠 [ROOM] Unsubscribed from room: ${data.roomId}`);
   });
 
-  sdk.on("room:list", (rooms) => {
-    eventStats.room++;
-    console.log(`🏠 [ROOM] Room list received: ${rooms.length} rooms`);
-  });
-
   // ============================================================================
   // WEBHOOK EVENTS
   // ============================================================================
@@ -323,11 +318,6 @@ async function main() {
     if (error.stack) {
       console.error("       Stack:", error.stack.split("\n").slice(0, 3).join("\n"));
     }
-  });
-
-  sdk.on("warning", (warning) => {
-    eventStats.error++;
-    console.warn("⚠️  [WARNING]", warning);
   });
 
   // ============================================================================
