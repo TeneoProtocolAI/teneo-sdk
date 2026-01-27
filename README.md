@@ -1085,12 +1085,12 @@ console.log("Reconnect attempts:", state.reconnectAttempts);
 ### Performance Metrics
 
 ```typescript
-// Rate limiter status
-const rateLimit = sdk.getRateLimiterStatus();
-if (rateLimit) {
-  console.log("Available:", rateLimit.availableTokens);
-  console.log("Rate:", rateLimit.tokensPerSecond, "/sec");
-  console.log("Burst capacity:", rateLimit.maxBurst);
+// Rate limiter status (via health check)
+const health = sdk.getHealth();
+if (health.rateLimit) {
+  console.log("Available:", health.rateLimit.availableTokens);
+  console.log("Rate:", health.rateLimit.tokensPerSecond, "/sec");
+  console.log("Burst capacity:", health.rateLimit.maxBurst);
 }
 
 // Deduplication cache
