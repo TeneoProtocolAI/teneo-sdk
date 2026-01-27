@@ -512,13 +512,13 @@ sdk.on("agent:response", (response) => {
 ### Payment Events
 
 ```typescript
-sdk.on("payment:quote", (quote) => {
+sdk.on("quote:received", (quote) => {
   console.log(`Quote received: $${quote.pricing.price_per_unit}`);
   console.log(`Expires: ${quote.expires_at}`);
 });
 
-sdk.on("payment:confirmed", (taskId) => {
-  console.log(`Payment confirmed for task ${taskId}`);
+sdk.on("payment:attached", (data) => {
+  console.log(`Payment attached for agent ${data.agentId}`);
   console.log("Agent is now processing your request...");
 });
 
@@ -532,7 +532,7 @@ sdk.on("payment:error", (error) => {
 - **Free**: Message → Coordinator → Agent → Response (direct)
 - **Paid**: Message → Coordinator → Quote → Confirm → Agent → Response
 
-You'll know it's a paid task when you receive a `payment:quote` event instead of going directly to `agent:response`.
+You'll know it's a paid task when you receive a `quote:received` event instead of going directly to `agent:response`.
 
 ---
 
@@ -588,8 +588,10 @@ The SDK is fully event-driven. Here's the complete event reference:
 
 | Event | When | Data |
 |-------|------|------|
-| `payment:quote` | Quote received | `(quote)` |
-| `payment:confirmed` | Payment confirmed | `(taskId)` |
+| `quote:received` | Quote received | `(quote)` |
+| `quote:expired` | Quote expired | `(taskId)` |
+| `payment:attached` | Payment attached to request | `(data)` |
+| `payment:blocked` | Payment blocked (price too high) | `(data)` |
 | `payment:error` | Payment error | `(error)` |
 
 ### Lifecycle Events
@@ -623,9 +625,9 @@ The SDK is fully event-driven. Here's the complete event reference:
 ```
 1. message:sent        ─── Your message sent
 2. agent:selected      ─── Coordinator picked agent
-3. payment:quote       ─── Quote received
+3. quote:received      ─── Quote received
    ... user confirms payment ...
-4. payment:confirmed   ─── Payment validated
+4. payment:attached    ─── Payment attached and validated
 5. agent:response      ─── Agent responded
 ```
 
