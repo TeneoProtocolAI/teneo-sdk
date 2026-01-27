@@ -312,7 +312,7 @@ details.capabilities?.forEach(cap => {
 
 // Commands
 details.commands?.forEach(cmd => {
-  console.log(`- ${cmd.name}: ${cmd.description}`);
+  console.log(`- ${cmd.trigger}: ${cmd.description}`);
 });
 
 // Pricing (per command, if paid agent)
