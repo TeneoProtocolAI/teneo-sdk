@@ -1556,9 +1556,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
     // Destroy other components
     this.webhookHandler.destroy();
-    this.removeAllListeners();
 
     this.emit("destroy");
+    this.removeAllListeners();
   }
 
   /**
@@ -1643,7 +1643,24 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Handle agent list updates from WebSocketClient
     this.wsClient.on("agent:list", (agents) => {
       this.agents.updateAgents(agents);
+      this.emit("agent:list", agents);
     });
+
+    // Forward message deduplication events from WebSocketClient
+    this.wsClient.on("message:duplicate", (message) =>
+      this.emit("message:duplicate", message)
+    );
+
+    // Forward signature verification events from WebSocketClient
+    this.wsClient.on("signature:verified", (messageType, address) =>
+      this.emit("signature:verified", messageType, address)
+    );
+    this.wsClient.on("signature:failed", (messageType, reason, address) =>
+      this.emit("signature:failed", messageType, reason, address)
+    );
+    this.wsClient.on("signature:missing", (messageType, required) =>
+      this.emit("signature:missing", messageType, required)
+    );
 
     // Forward room events from WebSocketClient (emitted by room subscription handlers)
     this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
