@@ -130,11 +130,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    *
    * // Using builder pattern (recommended for complex configs)
-   * const sdk = TeneoSDK.builder()
-   *   .wsUrl('wss://teneo.example.com')
-   *   .privateKey('0x...')
-   *   .withAutoJoinRooms(['general'])
+   * const config = TeneoSDK.builder()
+   *   .withWebSocketUrl('wss://teneo.example.com')
+   *   .withAuthentication('0x...')
+   *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
    *   .build();
+   * const sdk = new TeneoSDK(config);
    * ```
    *
    * @see {@link SDKConfigBuilder} for fluent configuration API
@@ -413,7 +414,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await sdk.unsubscribeFromRoom('public-announcements');
+   * await sdk.unsubscribeFromRoom('public-room-id');
    * console.log('Unsubscribed from public room');
    * ```
    */
@@ -1827,13 +1828,14 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const sdk = TeneoSDK.builder()
-   *   .wsUrl('wss://teneo.example.com')
-   *   .privateKey('0x...')
-   *   .withAutoJoinRooms(['general'])
-   *   .logLevel('debug')
-   *   .webhookUrl('https://api.example.com/webhooks')
+   * const config = TeneoSDK.builder()
+   *   .withWebSocketUrl('wss://teneo.example.com')
+   *   .withAuthentication('0x...')
+   *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
+   *   .withLogging('debug')
+   *   .withWebhook('https://api.example.com/webhooks')
    *   .build();
+   * const sdk = new TeneoSDK(config);
    *
    * await sdk.connect();
    * ```

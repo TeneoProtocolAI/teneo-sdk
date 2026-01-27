@@ -66,7 +66,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await roomManager.unsubscribeFromRoom('public-announcements');
+   * await roomManager.unsubscribeFromRoom('public-room-id');
    * console.log('Unsubscription request sent for public room');
    * ```
    */

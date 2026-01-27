@@ -301,7 +301,7 @@ export function safeParseConfig(config: unknown): {
  * const config = new SDKConfigBuilder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...', '0xYourWalletAddress')
- *   .withAutoJoinRooms(['general', 'announcements'])
+ *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
  *   .withWebhook('https://api.example.com/webhooks', {
  *     'Authorization': 'Bearer token'
  *   })
@@ -314,11 +314,12 @@ export function safeParseConfig(config: unknown): {
  * const sdk = new TeneoSDK(config);
  *
  * // Using via TeneoSDK.builder() (recommended)
- * const sdk = TeneoSDK.builder()
+ * const config = TeneoSDK.builder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...')
- *   .withAutoJoinRooms(['general'])
+ *   .withAutoJoinRooms(['room-id-1'])
  *   .build();
+ * const sdk = new TeneoSDK(config);
  * ```
  *
  * @see {@link TeneoSDK} for the main SDK class
@@ -429,7 +430,7 @@ export class SDKConfigBuilder {
    *
    * @example
    * ```typescript
-   * builder.withAutoJoinRooms(['general', 'announcements', 'support'])
+   * builder.withAutoJoinRooms(['room-id-1', 'room-id-2', 'room-id-3'])
    * ```
    */
   withAutoJoinRooms(rooms: string[]): this {
@@ -908,7 +909,7 @@ export class SDKConfigBuilder {
    * const config = new SDKConfigBuilder()
    *   .withWebSocketUrl('wss://teneo.example.com')
    *   .withAuthentication('0x...')
-   *   .withAutoJoinRooms(['general'])
+   *   .withAutoJoinRooms(['room-id-1'])
    *   .build();  // Validates and returns final config
    *
    * const sdk = new TeneoSDK(config);
