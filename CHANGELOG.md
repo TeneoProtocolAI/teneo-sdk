@@ -85,7 +85,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 #### Phase 1: Room Management System
 
 - **Room CRUD Operations**
-  - `createRoom(name, description?)` - Create new private rooms with validation
+  - `createRoom({ name, description?, isPublic? })` - Create new rooms with validation
   - `updateRoom(roomId, updates)` - Update room name/description (owner only)
   - `deleteRoom(roomId)` - Delete owned rooms
 
@@ -268,7 +268,7 @@ await sdk.subscribeToRoom("room-id");
 
 ```typescript
 // Create your own rooms
-const room = await sdk.createRoom("My Room", "Description");
+const room = await sdk.createRoom({ name: "My Room", description: "Description" });
 
 // Get all your rooms
 const ownedRooms = sdk.getOwnedRooms();
