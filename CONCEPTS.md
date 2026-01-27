@@ -317,8 +317,8 @@ details.commands?.forEach(cmd => {
 
 // Pricing (per command, if paid agent)
 details.commands?.forEach(cmd => {
-  if (cmd.pricing) {
-    console.log(`${cmd.trigger}: ${cmd.pricing.pricePerUnit} per ${cmd.pricing.taskUnit}`);
+  if (cmd.pricePerUnit) {
+    console.log(`${cmd.trigger}: ${cmd.pricePerUnit} per ${cmd.taskUnit}`);
   }
 });
 ```
