@@ -676,6 +676,8 @@ console.log(response.humanized);
 // Output: User profile for @elonmusk...
 ```
 
+> **Note:** The builder uses `withPayments({ autoApprove: true })` while the plain config object uses `autoApproveQuotes: true`. Both control the same behavior. The builder also accepts `maxPricePerRequest` and `quoteTimeout`.
+
 ### Direct Agent Commands
 
 ```typescript
@@ -718,9 +720,19 @@ sdk.on("quote:received", (quote) => {
   console.log(`Expires: ${quote.data.expires_at}`);
 });
 
+// Quote expired before confirmation
+sdk.on("quote:expired", (taskId) => {
+  console.warn(`Quote expired for task ${taskId}`);
+});
+
 // Payment attached to request
 sdk.on("payment:attached", (data) => {
   console.log(`Paid ${data.amount / 1_000_000} USDC to ${data.agentId}`);
+});
+
+// Payment blocked (price exceeds maxPricePerRequest)
+sdk.on("payment:blocked", (data) => {
+  console.warn(`Payment blocked: agent ${data.agentId} charges ${data.agentPrice} but max is ${data.maxPrice}`);
 });
 
 // Payment errors
