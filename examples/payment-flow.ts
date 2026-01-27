@@ -39,10 +39,6 @@ async function main() {
     console.log(`[quote:received] Agent: ${quote.agentName}, Price: ${quote.pricing?.pricePerUnit} micro-USDC`);
   });
 
-  sdk.on("quote:expired", (taskId) => {
-    console.log(`[quote:expired] Task ${taskId} quote expired`);
-  });
-
   sdk.on("payment:attached", (data) => {
     console.log(`[payment:attached] Agent: ${data.agentId}, Amount: ${data.amount}, Command: ${data.command}`);
   });

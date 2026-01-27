@@ -720,11 +720,6 @@ sdk.on("quote:received", (quote) => {
   console.log(`Expires: ${quote.data.expires_at}`);
 });
 
-// Quote expired before confirmation
-sdk.on("quote:expired", (taskId) => {
-  console.warn(`Quote expired for task ${taskId}`);
-});
-
 // Payment attached to request
 sdk.on("payment:attached", (data) => {
   console.log(`Paid ${data.amount / 1_000_000} USDC to ${data.agentId}`);

@@ -604,11 +604,6 @@ sdk.on("quote:received", (quote) => {
   console.log(`Expires: ${quote.data.expires_at}`);
 });
 
-// Quote expired before confirmation
-sdk.on("quote:expired", (taskId) => {
-  console.warn(`Quote expired: ${taskId}`);
-});
-
 // Payment attached to request
 sdk.on("payment:attached", (data) => {
   console.log(`Paid ${data.amount} to agent ${data.agentId}`);
@@ -713,7 +708,6 @@ The SDK is fully event-driven. Here's the complete event reference:
 | Event | When | Data |
 |-------|------|------|
 | `quote:received` | Quote received | `(quote)` |
-| `quote:expired` | Quote expired | `(taskId)` |
 | `payment:attached` | Payment attached to request | `(data)` |
 | `payment:blocked` | Payment blocked (price too high) | `(data)` |
 | `payment:error` | Payment error | `(error)` |
