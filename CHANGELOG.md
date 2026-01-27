@@ -93,7 +93,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
   - `getOwnedRooms()` - Get all rooms you created
   - `getSharedRooms()` - Get rooms you were invited to
   - `getAllRooms()` - Get all rooms (owned + shared) convenience method
-  - `getRoomById(roomId)` - Get specific room details
+  - `getRoom(roomId)` - Get specific room details
   - `getRoomLimit()` - Check your room creation limit
   - `canCreateRoom()` - Check if you can create more rooms
   - `getOwnedRoomCount()` - Count your owned rooms
