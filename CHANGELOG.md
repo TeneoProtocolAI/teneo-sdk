@@ -66,7 +66,7 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 
 - SDK now auto-signs x402 payment headers when confirming tasks
 - Uses PEAQ chain with USDC stablecoin for micropayments
-- No manual payment encoding needed - just call `confirmTask({ taskId })`
+- No manual payment encoding needed - just call `confirmQuote(taskId)`
 
 ### 📦 Dependencies
 
