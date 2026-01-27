@@ -161,10 +161,10 @@ console.log(`Rooms: ${sdk.getOwnedRoomCount()}/${sdk.getRoomLimit()}`);
 
 ```typescript
 // Subscribe to a public room
-await sdk.subscribeToRoom("public-announcements");
+await sdk.subscribeToRoom("public-room-id");
 
 // Unsubscribe when done
-await sdk.unsubscribeFromRoom("public-announcements");
+await sdk.unsubscribeFromRoom("public-room-id");
 ```
 
 ### Room Lifecycle
@@ -354,7 +354,7 @@ Understanding how messages flow through the system helps you debug and optimize 
 ### Complete Flow: sendMessage to Response
 
 ```
-sdk.sendMessage("What's 2+2?", { room: "math-room" })
+sdk.sendMessage("What's 2+2?", { room: roomId })
          │
          ▼
 ┌─────────────────────────────────────┐
@@ -370,7 +370,7 @@ sdk.sendMessage("What's 2+2?", { room: "math-room" })
 │    {                                │
 │      type: "message",               │
 │      content: "What's 2+2?",        │
-│      room: "math-room",             │
+│      room: roomId,                  │
 │      from: "0xYourWallet"           │
 │    }                                │
 └─────────────────┬───────────────────┘

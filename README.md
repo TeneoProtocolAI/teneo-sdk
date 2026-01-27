@@ -229,17 +229,17 @@ Organize agents by context using rooms:
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  autoJoinRooms: ["Crawler Room", "KOL tracker"]
+  autoJoinRooms: ["crawler-room-id", "kol-tracker-room-id"]
 });
 
 // Each room may have different agents available
 await sdk.connect();
 
 // Send to specific room contexts
-await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "KOL tracker" });
+await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "kol-tracker-room-id" });
 // → Routed to X Agent in KOL tracker room
 
-await sdk.sendMessage("Crawl this website for data", { room: "Crawler Room" });
+await sdk.sendMessage("Crawl this website for data", { room: "crawler-room-id" });
 // → Routed to Crawler Agent in Crawler Room
 
 // Manage rooms dynamically
