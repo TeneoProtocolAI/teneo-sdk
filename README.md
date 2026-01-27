@@ -679,7 +679,23 @@ console.log(response.humanized);
 ### Direct Agent Commands
 
 ```typescript
-// Target a specific agent directly
+// Option 1: Use sendDirectCommand for explicit agent targeting
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "timeline @elonmusk 5",
+  room: roomId
+});
+
+// Option 2: With wait for response
+const response = await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId
+}, true); // waitForResponse
+
+console.log(response.humanized);
+
+// Option 3: Use @mention syntax via sendMessage
 await sdk.sendMessage("@x-agent-enterprise-v2 timeline @elonmusk 5", {
   room: roomId,
   waitForResponse: true
