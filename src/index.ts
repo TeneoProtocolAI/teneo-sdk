@@ -243,14 +243,25 @@ export {
   PEAQ_CHAIN_ID,
   USDC_CONTRACT,
   DEFAULT_PAY_TO_ADDRESS,
-  DEFAULT_RPC_URL,
   USDC_DECIMALS,
   X402_VERSION,
   DEFAULT_PAYMENT_TIMEOUT_SECONDS,
   buildX402ResourceUrl,
   usdcToUnits,
-  unitsToUsdc,
-  type SupportedChain
+  unitsToUsdc
+} from "./payments";
+
+// Multi-network support (v2.3.0)
+export {
+  type NetworkConfig,
+  NETWORKS,
+  CHAIN_ID_TO_NETWORK,
+  CAIP2_TO_NETWORK,
+  getNetwork,
+  getDefaultNetwork,
+  createChainDefinition,
+  isNetworkSupported,
+  getSupportedNetworks
 } from "./payments";
 
 /**
