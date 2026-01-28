@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-2.2.2-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.0.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -12,6 +12,30 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
 - 🔐 **Web3-native authentication** using Ethereum wallet signatures (no API keys!)
+
+---
+
+## 🎉 What's New in v3.0
+
+Version 3.0 introduces **API Naming Improvements** for better clarity and consistency:
+
+### 📝 Clearer Method Names
+
+All method names have been improved to be more explicit and intuitive:
+
+- **Room subscriptions** - `subscribeToPublicRoom()` makes it clear these only work for public rooms
+- **Cache-only methods** - `getCached*()` prefix makes sync vs async operations obvious
+- **Boolean semantics** - `checkAgentInRoom()` clearly indicates it may return `undefined`
+- **Search scope** - `findAvailableAgentsBy*()` clarifies network-wide search
+
+### 🔄 Fully Backward Compatible
+
+**All old method names still work!** They're deprecated with helpful aliases:
+- Old names forward to new implementations
+- TypeScript shows deprecation warnings
+- Migrate at your convenience
+
+[Jump to Migration Guide](#v300-migration-guide) | [See Full CHANGELOG](CHANGELOG.md#300---2026-01-28)
 
 ---
 
@@ -1152,6 +1176,57 @@ const sdk = new TeneoSDK({
   // TENEO_NETWORK is automatically used by SDK for payment network
 });
 ```
+
+---
+
+## 🔄 v3.0.0 Migration Guide
+
+All v3.0.0 changes are **backward compatible**. Old method names still work via deprecated aliases.
+
+### Quick Migration (Optional)
+
+Search and replace across your codebase to use the new, clearer names:
+
+```bash
+# Config property
+autoJoinRooms: → autoJoinPublicRooms:
+
+# Room subscription methods
+.subscribeToRoom( → .subscribeToPublicRoom(
+.unsubscribeFromRoom( → .unsubscribeFromPublicRoom(
+
+# Cache-only methods (sync)
+.getRoomAgents( → .getCachedRoomAgents(
+.getAvailableAgents( → .getCachedAvailableAgents(
+.getRoomAgentCount( → .getCachedRoomAgentCount(
+
+# Boolean check methods
+.isAgentInRoom( → .checkAgentInRoom(
+
+# Network-wide search methods
+.findAgentsByCapability( → .findAvailableAgentsByCapability(
+.findAgentsByName( → .findAvailableAgentsByName(
+.findAgentsByStatus( → .findAvailableAgentsByStatus(
+```
+
+### Why These Changes?
+
+**Room Subscriptions**: `subscribeToPublicRoom()` clarifies that only public rooms need subscription. Private rooms are automatically available after authentication.
+
+**Cache Methods**: The `getCached*` prefix makes it obvious these are synchronous, cache-only operations. Async methods like `listRoomAgents()` still fetch from server.
+
+**Boolean Checks**: `checkAgentInRoom()` returns `boolean | undefined`, not just boolean. The name clarifies this uncertainty.
+
+**Search Scope**: `findAvailableAgentsBy*()` methods search ALL available agents network-wide, not just room-specific agents.
+
+### No Rush!
+
+- ✅ Old names work indefinitely
+- ✅ TypeScript/JSDoc shows deprecation hints
+- ✅ Migrate on your schedule
+- ✅ Zero functional changes
+
+See [CHANGELOG.md](CHANGELOG.md#300---2026-01-28) for detailed explanations and examples.
 
 ---
 
