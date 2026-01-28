@@ -73,6 +73,7 @@ export const MessageTypeSchema = z.enum([
   // System
   "agents",
   "error",
+  "success",
   "ping",
   "pong",
   "capabilities",
@@ -110,9 +111,8 @@ export const MessageTypeSchema = z.enum([
   "room_agents_response",
   "available_agents_response",
 
-  // Room Ping System (2 types)
+  // Room Ping System (1 type - pong reuses "pong" type with room data)
   "room_ping",
-  "room_pong",
 
   // Admin Messages (7 types)
   "list_all_agents",
@@ -281,7 +281,8 @@ export const ChallengeMessageSchema = BaseMessageSchema.extend({
 export const CheckCachedAuthMessageSchema = BaseMessageSchema.extend({
   type: z.literal("check_cached_auth"),
   data: z.object({
-    address: z.string()
+    address: z.string(),
+    session_token: z.string().optional() // 64-char hex token for fast re-auth (24h validity)
   })
 });
 
@@ -316,7 +317,12 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       private_rooms: z.array(RoomSchema).optional(),
       private_room_id: z.string().optional(),
       cached_auth: stringToBoolean.optional(),
-      max_private_rooms: z.number().optional()
+      max_private_rooms: z.number().optional(),
+      // Auth enhancement fields (audit #6, #7, #9)
+      jwt_token: z.string().optional(), // JWT token for KeyVault API authentication
+      session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+      whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+      user_count: z.number().optional() // Total user count (admin only)
     })
     .optional()
 });
@@ -333,7 +339,12 @@ export const AuthSuccessMessageSchema = BaseMessageSchema.extend({
     rooms: z.array(RoomInfoSchema).optional().nullable(), // v2.0.0: Uses RoomInfo with is_owner field
     private_room_id: z.string().optional(), // DEPRECATED: Use rooms array instead
     cached_auth: stringToBoolean.optional(), // Admin field, optional
-    max_private_rooms: z.number().optional() // NEW in v2.0.0: Max rooms user can create
+    max_private_rooms: z.number().optional(), // NEW in v2.0.0: Max rooms user can create
+    // Auth enhancement fields (audit #6, #7, #9)
+    jwt_token: z.string().optional(), // JWT token for KeyVault API authentication
+    session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+    whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+    user_count: z.number().optional() // Total user count (admin only)
   })
 });
 
@@ -521,12 +532,38 @@ export const ErrorMessageSchema = BaseMessageSchema.extend({
   })
 });
 
+export const SuccessMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("success"),
+  content: z.string().optional(),
+  from: z.literal("system").optional(),
+  data: z
+    .object({
+      content: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+}).passthrough();
+
 export const PingMessageSchema = BaseMessageSchema.extend({
   type: z.literal("ping")
 });
 
 export const PongMessageSchema = BaseMessageSchema.extend({
-  type: z.literal("pong")
+  type: z.literal("pong"),
+  data: z
+    .union([
+      // Regular pong (no data)
+      z.undefined(),
+      // Room pong (with room data)
+      z
+        .object({
+          room_id: z.string(),
+          live_count: z.number().optional(),
+          timestamp: z.string()
+        })
+        .passthrough()
+    ])
+    .optional()
 });
 
 // Room subscription schemas
@@ -804,18 +841,8 @@ export const RoomPingMessageSchema = z
   })
   .passthrough();
 
-export const RoomPongResponseSchema = z
-  .object({
-    type: z.literal("room_pong"),
-    data: z
-      .object({
-        room_id: z.string(),
-        live_count: z.number().optional(), // Optional - consuming code should handle missing as 0
-        timestamp: z.string()
-      })
-      .passthrough()
-  })
-  .passthrough();
+// Note: RoomPong reuses the "pong" message type with room data in the data field
+// The PongHandler checks for room_id in data to distinguish room pong from regular pong
 
 // Admin agent info (admin only)
 export const AdminAgentInfoSchema = z
@@ -1050,6 +1077,7 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
 
   // System
   ErrorMessageSchema,
+  SuccessMessageSchema,
   PingMessageSchema,
   PongMessageSchema,
 
@@ -1068,9 +1096,6 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   RoomAgentsResponseSchema,
   AvailableAgentsResponseSchema,
   AgentStatusUpdateMessageSchema,
-
-  // Room Ping System (v2.0.0)
-  RoomPongResponseSchema,
 
   // Admin Messages
   AllAgentsResponseSchema,
@@ -1124,6 +1149,7 @@ export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
 export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
 
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
+export type SuccessMessage = z.infer<typeof SuccessMessageSchema>;
 export type PingMessage = z.infer<typeof PingMessageSchema>;
 export type PongMessage = z.infer<typeof PongMessageSchema>;
 export type SubscribeMessage = z.infer<typeof SubscribeMessageSchema>;
@@ -1159,7 +1185,7 @@ export type AgentStatusUpdateMessage = z.infer<typeof AgentStatusUpdateMessageSc
 
 // Room Ping Types (v2.0.0)
 export type RoomPingMessage = z.infer<typeof RoomPingMessageSchema>;
-export type RoomPongResponse = z.infer<typeof RoomPongResponseSchema>;
+// Note: Room pong responses use the PongMessage type with room data
 
 export type AnyMessage = z.infer<typeof AnyMessageSchema>;
 
@@ -1210,10 +1236,16 @@ export function createRequestChallenge(
   });
 }
 
-export function createCheckCachedAuth(address: string): CheckCachedAuthMessage {
+export function createCheckCachedAuth(
+  address: string,
+  sessionToken?: string
+): CheckCachedAuthMessage {
   return CheckCachedAuthMessageSchema.parse({
     type: "check_cached_auth",
-    data: { address }
+    data: {
+      address,
+      ...(sessionToken && { session_token: sessionToken })
+    }
   });
 }
 

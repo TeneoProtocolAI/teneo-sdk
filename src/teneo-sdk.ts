@@ -1265,6 +1265,41 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Send a room ping to get live user count
+   * Server responds with room_pong message containing current live user count
+   *
+   * @param roomId - The room ID to ping
+   * @throws {SDKError} If not connected or SDK is destroyed
+   *
+   * @example
+   * ```typescript
+   * // Ping a room to get live user count
+   * await sdk.sendRoomPing("my-room");
+   *
+   * // Listen for the response
+   * sdk.on("room:pong", (data) => {
+   *   console.log(`Room ${data.roomId} has ${data.liveCount} live users`);
+   * });
+   * ```
+   */
+  public async sendRoomPing(roomId: string): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "room_ping" as const,
+      room_id: roomId
+    };
+
+    await this.wsClient.sendMessage(message);
+  }
+
+  /**
    * Configures webhook URL and headers for receiving real-time event notifications.
    * Webhooks allow you to receive events at your server endpoint via HTTP POST requests.
    * Events include messages, agent responses, errors, and connection state changes.
@@ -1766,6 +1801,16 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward wallet transaction events from WebSocketClient (emitted by handlers)
     this.wsClient.on("wallet:tx_requested", (data) => {
       this.emit("wallet:tx_requested", data);
+    });
+
+    // Forward room pong events from WebSocketClient (emitted by pong handler)
+    this.wsClient.on("room:pong", (data) => {
+      this.emit("room:pong", data);
+    });
+
+    // Forward success events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("success", (message) => {
+      this.emit("success", message);
     });
 
     // Forward message deduplication events from WebSocketClient

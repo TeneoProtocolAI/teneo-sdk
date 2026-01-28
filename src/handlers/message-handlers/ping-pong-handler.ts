@@ -22,9 +22,38 @@ export class PongHandler extends BaseMessageHandler<PongMessage> {
   readonly type = "pong" as const;
   readonly schema = PongMessageSchema;
 
-  protected async handleValidated(_message: PongMessage, context: HandlerContext): Promise<void> {
-    // Pong messages are handled at the WebSocket level (ws library)
-    // No special processing needed here
-    context.logger.debug("Received pong");
+  protected async handleValidated(message: PongMessage, context: HandlerContext): Promise<void> {
+    // Check if this is a room pong (has room data) or regular pong
+    if (message.data && typeof message.data === "object" && "room_id" in message.data) {
+      // Room pong - server responds to room_ping with live user count
+      const roomData = message.data as {
+        room_id: string;
+        live_count?: number;
+        timestamp: string;
+      };
+
+      context.logger.debug("Received room pong", {
+        roomId: roomData.room_id,
+        liveCount: roomData.live_count,
+        timestamp: roomData.timestamp
+      });
+
+      // Emit room pong event
+      this.emit(context, "room:pong", {
+        roomId: roomData.room_id,
+        liveCount: roomData.live_count ?? 0,
+        timestamp: roomData.timestamp
+      });
+
+      // Send webhook
+      this.sendWebhook(context, "room_pong", {
+        roomId: roomData.room_id,
+        liveCount: roomData.live_count ?? 0,
+        timestamp: roomData.timestamp
+      });
+    } else {
+      // Regular pong - handled at the WebSocket level (ws library)
+      context.logger.debug("Received pong");
+    }
   }
 }
