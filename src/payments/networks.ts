@@ -57,9 +57,8 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     caip2: "eip155:43114",
     rpcUrl: "https://api.avax.network/ext/bc/C/rpc",
     usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
-    // TODO: Update with deployed addresses after deployment
-    settlementRouter: "0x0000000000000000000000000000000000000000",
-    transferHook: "0x0000000000000000000000000000000000000000",
+    settlementRouter: "0xF38709cFd3f89734c231dd8E59Ff1d44caCddEe8",
+    transferHook: "0x6D21298950dC58a984664B12Cdf4DeBA143889aa",
     eip712: { name: "USD Coin", version: "2" }
   }
 };
