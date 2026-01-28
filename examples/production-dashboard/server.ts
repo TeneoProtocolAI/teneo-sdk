@@ -100,7 +100,7 @@ async function initializeSDK() {
         backoffMultiplier: 2
       })
       .withResponseFormat({ format: "both", includeMetadata: true })
-      .withLogging("debug")
+      .withLogging("info")
       .withCache(true, 300000, 100)
       // CB-4: Message deduplication to prevent duplicate processing
       .withMessageDeduplication(
@@ -494,6 +494,18 @@ app.get("/api/deduplication", (c) => {
 // Webhook receiver endpoint
 app.post("/webhook", async (c) => {
   const payload = await c.req.json();
+
+  // Filter out spammy admin broadcast events
+  const ignoredEvents = [
+    'user_count',           // Admin-only: User count updates
+    'user_authenticated',   // Broadcast when ANY user connects
+    'rate_limit_notification', // Rate limit warnings (usually not needed in webhooks)
+  ];
+  
+  if (ignoredEvents.includes(payload.event)) {
+    // Silently ignore these events - don't log, don't store, just return OK
+    return c.json({ status: "ignored" });
+  }
 
   console.log("[WEBHOOK] Received:", payload.event);
 
