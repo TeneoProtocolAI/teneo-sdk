@@ -33,7 +33,7 @@ export class AllAgentsResponseHandler extends BaseMessageHandler<AllAgentsRespon
       filter
     });
 
-    // Send webhook
-    this.sendWebhook(context, "all_agents_response", message.data);
+    // Note: This is a query response, not sent via webhook
+    // Admins can listen to the 'admin:all_agents' event if needed
   }
 }

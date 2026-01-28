@@ -39,7 +39,8 @@ export class RateLimitNotificationHandler extends BaseMessageHandler<RateLimitNo
       resetAt: reset_at
     });
 
-    // Send webhook
-    this.sendWebhook(context, "rate_limit_notification", message.data);
+    // Note: Rate limits are already logged and handled internally
+    // Sending via webhook would be redundant
+    // Users can listen to the 'rate_limit' event if needed
   }
 }

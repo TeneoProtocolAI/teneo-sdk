@@ -19,9 +19,8 @@ export class SuccessHandler extends BaseMessageHandler<SuccessMessage> {
     // Emit success event
     this.emit(context, "success", content || "Operation successful");
 
-    // Send webhook
-    if (content) {
-      this.sendWebhook(context, "success", { content });
-    }
+    // Note: Generic success messages are too vague for webhooks
+    // Specific success events (room_operation, etc.) have their own handlers
+    // Users can listen to the 'success' event if needed
   }
 }

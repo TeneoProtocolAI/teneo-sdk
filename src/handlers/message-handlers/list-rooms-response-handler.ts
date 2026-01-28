@@ -21,10 +21,7 @@ export class ListRoomsResponseHandler extends BaseMessageHandler<ListRoomsRespon
     // Emit room:list event with room info array
     this.emit(context, "room:list", message.data.rooms);
 
-    // Send webhook (fire-and-forget)
-    this.sendWebhook(context, "room_list", {
-      rooms: message.data.rooms,
-      count: message.data.rooms.length
-    });
+    // Note: This is a query response, not sent via webhook
+    // Users can listen to the 'room:list' event if needed
   }
 }

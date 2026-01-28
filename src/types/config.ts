@@ -32,13 +32,31 @@ export const ResponseFormatSchema = z.enum(["raw", "humanized", "both"]);
 
 // Webhook event type schema
 export const WebhookEventTypeSchema = z.enum([
+  // Core events
   "message",
   "task",
   "task_response",
   "agent_selected",
   "error",
   "connection_state",
-  "auth_state"
+  "auth_state",
+  
+  // Error events
+  "agent_error",
+  "room_operation_error",
+  "agent_room_operation_error",
+  
+  // Payment flow events
+  "task_quote",
+  "task_confirmed",
+  "wallet_tx_requested",
+  
+  // State change events
+  "room_subscribed",
+  "room_unsubscribed",
+  "room_deleted",
+  "room_operation",
+  "agent_room_operation"
 ]);
 
 // Custom Zod schema for SecurePrivateKey or string

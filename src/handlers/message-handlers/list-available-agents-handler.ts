@@ -47,14 +47,7 @@ export class ListAvailableAgentsHandler extends BaseMessageHandler<AvailableAgen
       this.emit(context, "agent_room:available_agents_listed", agentList);
     }
 
-    // Send webhook
-    this.sendWebhook(context, "available_agents_listed", {
-      agents: agentList,
-      count: agentList.length,
-      ...(total !== undefined && { total }),
-      ...(offset !== undefined && { offset }),
-      ...(limit !== undefined && { limit }),
-      ...(has_more !== undefined && { hasMore: has_more })
-    });
+    // Note: This is a query response, not sent via webhook
+    // Users can listen to the 'agent_room:available_agents_listed' event if needed
   }
 }

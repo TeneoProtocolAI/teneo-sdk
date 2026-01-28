@@ -45,12 +45,8 @@ export class PongHandler extends BaseMessageHandler<PongMessage> {
         timestamp: roomData.timestamp
       });
 
-      // Send webhook
-      this.sendWebhook(context, "room_pong", {
-        roomId: roomData.room_id,
-        liveCount: roomData.live_count ?? 0,
-        timestamp: roomData.timestamp
-      });
+      // Note: room_pong is an internal keepalive/user-count event, not sent via webhook
+      // Users can listen to the 'room:pong' event if needed
     } else {
       // Regular pong - handled at the WebSocket level (ws library)
       context.logger.debug("Received pong");
