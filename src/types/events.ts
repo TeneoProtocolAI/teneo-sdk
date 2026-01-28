@@ -325,6 +325,9 @@ export interface SDKEvents {
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
 
 
+  // Room Ping/Pong events
+  "room:pong": (data: { roomId: string; liveCount: number; timestamp: string }) => void;
+
   // Room Management events (v2.0.0)
   "room:created": (room: z.infer<typeof RoomInfoSchema>) => void;
   "room:updated": (room: z.infer<typeof RoomInfoSchema>) => void;
@@ -411,6 +414,7 @@ export interface SDKEvents {
 
   // Error events
   error: (error: SDKError) => void;
+  success: (message: string) => void;
   warning: (warning: string) => void;
 
   // Lifecycle events

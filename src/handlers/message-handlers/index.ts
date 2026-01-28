@@ -18,6 +18,7 @@ export { AuthErrorHandler } from "./auth-error-handler";
 export { AuthRequiredHandler } from "./auth-required-handler";
 export { AgentsListHandler } from "./agents-list-handler";
 export { ErrorMessageHandler } from "./error-message-handler";
+export { SuccessHandler } from "./success-handler";
 export { RegularMessageHandler } from "./regular-message-handler";
 export { PingHandler, PongHandler } from "./ping-pong-handler";
 export { SubscribeResponseHandler } from "./subscribe-response-handler";
@@ -62,6 +63,7 @@ import { AuthErrorHandler } from "./auth-error-handler";
 import { AuthRequiredHandler } from "./auth-required-handler";
 import { AgentsListHandler } from "./agents-list-handler";
 import { ErrorMessageHandler } from "./error-message-handler";
+import { SuccessHandler } from "./success-handler";
 import { RegularMessageHandler } from "./regular-message-handler";
 import { PingHandler, PongHandler } from "./ping-pong-handler";
 import { SubscribeResponseHandler } from "./subscribe-response-handler";
@@ -107,6 +109,7 @@ export function getDefaultHandlers(
     // Message handlers
     new RegularMessageHandler(),
     new ErrorMessageHandler(),
+    new SuccessHandler(),
 
     // Room handlers
     new SubscribeResponseHandler(),
