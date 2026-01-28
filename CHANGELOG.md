@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2026-01-28
 
+*Built on top of v2.3.0 multi-network support*
+
+## [2.3.0] - 2026-01-28
+
+### ✨ Multi-Network Payment Support
+
+The SDK now supports USDC payments across multiple EVM networks, not just PEAQ! This enables agents to accept payments on Base, Avalanche, and other supported chains.
+
+#### 🌐 Supported Networks
+
+- **PEAQ Mainnet** (chainId: 3338) - Original network
+- **Base Mainnet** (chainId: 8453) - Layer 2 scaling solution
+- **Avalanche Mainnet** (chainId: 43114) - High-throughput blockchain
+
+Each network includes:
+- Network-specific USDC contract addresses
+- Settlement router contracts for x402 payments
+- Transfer hook contracts for payment verification
+- EIP-712 signing parameters
+
+#### 📦 New Exports
+
+```typescript
+import {
+  // Network utilities
+  NETWORKS,
+  CHAIN_ID_TO_NETWORK,
+  CAIP2_TO_NETWORK,
+  getNetwork,
+  getDefaultNetwork,
+  createChainDefinition,
+  isNetworkSupported,
+  getSupportedNetworks,
+  type NetworkConfig
+} from "@teneo-protocol/sdk";
+```
+
+#### 🔧 Network Configuration API
+
+```typescript
+// Get network by name
+const peaq = getNetwork("peaq");
+const base = getNetwork("base");
+const avalanche = getNetwork("avalanche");
+
+// Get default network (PEAQ)
+const defaultNetwork = getDefaultNetwork();
+
+// Check if network is supported
+if (isNetworkSupported("base")) {
+  // Create chain definition for viem
+  const baseChain = createChainDefinition("base");
+}
+
+// Get all supported networks
+const allNetworks = getSupportedNetworks();
+console.log(allNetworks); // ["peaq", "base", "avalanche"]
+```
+
+#### 💰 Network-Aware Payment Configuration
+
+The `PaymentClient` now automatically uses the correct network configuration:
+
+```typescript
+import { PaymentClient, getNetwork } from "@teneo-protocol/sdk";
+
+// Use Base network for payments
+const baseNetwork = getNetwork("base");
+const paymentClient = new PaymentClient({
+  privateKey: "0x...",
+  wsUrl: "wss://teneo.network/ws"
+});
+```
+
+#### 🔄 Backward Compatibility
+
+All existing code continues to work! The SDK defaults to PEAQ network if no network is specified. Legacy exports like `PEAQ_CHAIN_ID` and `USDC_CONTRACT` are maintained for backward compatibility.
+
+---
+
+## [3.0.0] - 2026-01-28
+
 ### 🎉 Major Release: API Naming Improvements
 
 Version 3.0 introduces comprehensive naming improvements to make the SDK API more intuitive and explicit. All renamed methods include deprecated aliases for backward compatibility during migration.
