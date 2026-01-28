@@ -1,37 +1,21 @@
 /**
  * PaymentClient - Handles x402 payment header generation for quote-approve flow
  *
- * Creates x402 V2 payment headers for USDC payments on PEAQ network.
+ * Creates x402 V2 payment headers for USDC payments on multiple networks.
  * Implements ERC-3009 TransferWithAuthorization signing using viem's EIP-712.
+ *
+ * v2.3.0: Multi-network support with dynamic chain configuration
  */
 
-import { defineChain, type Hex, toHex } from "viem";
+import { type Hex, toHex } from "viem";
 import { privateKeyToAccount, signTypedData } from "viem/accounts";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
-
-// PEAQ chain definition
-const peaq = defineChain({
-  id: 3338,
-  name: "peaq",
-  network: "peaq",
-  nativeCurrency: {
-    decimals: 18,
-    name: "PEAQ",
-    symbol: "PEAQ"
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://peaq.api.onfinality.io/public"]
-    },
-    public: {
-      http: ["https://peaq.api.onfinality.io/public"]
-    }
-  }
-});
-
-// USDC contract on PEAQ
-const USDC_CONTRACT = "0xbbA60da06c2c5424f03f7434542280FCAd453d10";
-const PEAQ_NETWORK_CAIP2 = "eip155:3338";
+import {
+  getNetwork,
+  getDefaultNetwork,
+  createChainDefinition,
+  type NetworkConfig
+} from "./networks";
 
 // ERC-3009 TransferWithAuthorization EIP-712 types
 const ERC3009_TYPES = {
@@ -46,8 +30,9 @@ const ERC3009_TYPES = {
 } as const;
 
 export interface PaymentClientConfig {
-  network?: string; // CAIP-2 format, default: "eip155:3338"
-  asset?: string; // Asset contract, default: USDC on PEAQ
+  network?: string; // Network name (peaq, base, avalanche) or CAIP-2 format
+  networkChainId?: number; // Or chain ID directly
+  asset?: string; // Optional override for asset contract
   resourceUrl?: string; // x402 resource URL
 }
 
@@ -56,11 +41,10 @@ export const USDC_DECIMALS = 6;
 export const X402_VERSION = 2;
 export const DEFAULT_PAYMENT_TIMEOUT_SECONDS = 60;
 export const DEFAULT_PAY_TO_ADDRESS = "0x0000000000000000000000000000000000000000";
-export const DEFAULT_RPC_URL = "https://peaq.api.onfinality.io/public";
-export type SupportedChain = "peaq";
 
-// Re-export constants for external use
-export { USDC_CONTRACT, PEAQ_NETWORK_CAIP2 as PEAQ_CHAIN_ID };
+// Re-export for backwards compatibility
+export const USDC_CONTRACT = "0xbbA60da06c2c5424f03f7434542280FCAd453d10"; // PEAQ USDC
+export const PEAQ_CHAIN_ID = "eip155:3338";
 
 /**
  * Converts a WebSocket URL to an HTTP(S) URL for x402 resource specification.
@@ -109,14 +93,49 @@ function generateNonce(): Hex {
 }
 
 /**
+ * Resolve network configuration from various input formats
+ *
+ * @param config - PaymentClientConfig with network options
+ * @returns Resolved NetworkConfig
+ */
+function resolveNetworkConfig(config: PaymentClientConfig): NetworkConfig {
+  // Priority: chainId > network name > default
+  if (config.networkChainId) {
+    return getNetwork(config.networkChainId);
+  }
+  if (config.network) {
+    return getNetwork(config.network);
+  }
+  return getDefaultNetwork();
+}
+
+/**
  * PaymentClient handles creation of x402 V2 payment headers
  * for the quote-approve payment flow.
+ *
+ * Supports multiple networks with dynamic configuration.
+ *
+ * @example
+ * ```typescript
+ * // Default network (PEAQ or TENEO_NETWORK env var)
+ * const client = new PaymentClient(secureKey, walletAddress);
+ *
+ * // Specific network by name
+ * const baseClient = new PaymentClient(secureKey, walletAddress, {
+ *   network: "base"
+ * });
+ *
+ * // Specific network by chain ID
+ * const avaxClient = new PaymentClient(secureKey, walletAddress, {
+ *   networkChainId: 43114
+ * });
+ * ```
  */
 export class PaymentClient {
   private readonly secureKey: SecurePrivateKey;
   private readonly walletAddress: string;
-  private readonly network: string;
-  private readonly asset: string;
+  private readonly networkConfig: NetworkConfig;
+  private readonly assetOverride?: string;
   private readonly resourceUrl: string;
 
   constructor(
@@ -126,9 +145,30 @@ export class PaymentClient {
   ) {
     this.secureKey = secureKey;
     this.walletAddress = walletAddress;
-    this.network = config.network ?? PEAQ_NETWORK_CAIP2;
-    this.asset = config.asset ?? USDC_CONTRACT;
+    this.networkConfig = resolveNetworkConfig(config);
+    this.assetOverride = config.asset;
     this.resourceUrl = config.resourceUrl ?? "";
+  }
+
+  /**
+   * Get the current network configuration
+   */
+  get network(): NetworkConfig {
+    return this.networkConfig;
+  }
+
+  /**
+   * Get the USDC contract address for the current network
+   */
+  get asset(): string {
+    return this.assetOverride ?? this.networkConfig.usdcContract;
+  }
+
+  /**
+   * Get the CAIP-2 network identifier
+   */
+  get caip2(): string {
+    return this.networkConfig.caip2;
   }
 
   /**
@@ -137,15 +177,25 @@ export class PaymentClient {
    * @param amountMicroUnits - Amount in micro-units (e.g., 1000 = 0.001 USDC)
    * @param recipientAddress - Wallet address of the payment recipient (agent)
    * @param resourceUrl - Optional override for x402 resource URL
+   * @param networkOverride - Optional network override for this specific payment
    * @returns Base64 encoded x402 V2 payment header
    */
   async createPaymentHeader(
     amountMicroUnits: number,
     recipientAddress: string,
-    resourceUrl?: string
+    resourceUrl?: string,
+    networkOverride?: string | number
   ): Promise<string> {
     const resource = resourceUrl || this.resourceUrl || this.getDefaultResourceUrl();
     const amountStr = Math.round(amountMicroUnits).toString();
+
+    // Resolve network for this payment (allows per-request override)
+    const network = networkOverride
+      ? getNetwork(networkOverride)
+      : this.networkConfig;
+
+    const asset = this.assetOverride ?? network.usdcContract;
+    const chain = createChainDefinition(network);
 
     // Create payment header using the secure key
     const header = await this.secureKey.use(async (privateKey) => {
@@ -157,12 +207,12 @@ export class PaymentClient {
       const validBefore = now + 60; // Valid until 60 seconds from now
       const nonce = generateNonce();
 
-      // EIP-712 domain for USDC on PEAQ
+      // EIP-712 domain using network-specific parameters
       const domain = {
-        name: "USDC",
-        version: "2",
-        chainId: BigInt(peaq.id),
-        verifyingContract: this.asset as `0x${string}`
+        name: network.eip712.name,
+        version: network.eip712.version,
+        chainId: BigInt(chain.id),
+        verifyingContract: asset as `0x${string}`
       };
 
       // ERC-3009 TransferWithAuthorization message
@@ -207,12 +257,12 @@ export class PaymentClient {
         },
         accepted: {
           scheme: "exact",
-          network: this.network,
+          network: network.caip2,
           amount: amountStr,
-          asset: this.asset,
+          asset: asset,
           payTo: recipientAddress,
           maxTimeoutSeconds: 60,
-          extra: { name: "USDC", version: "2" }
+          extra: { name: network.eip712.name, version: network.eip712.version }
         },
         payload: v1Payload
       };

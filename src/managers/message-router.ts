@@ -38,6 +38,8 @@ export interface SendMessageOptions {
   waitForResponse?: boolean;
   timeout?: number;
   format?: ResponseFormat | "raw" | "humanized";
+  network?: string; // Network name override (peaq, base, avalanche) (v2.3.0)
+  networkChainId?: number; // Chain ID override (v2.3.0)
 }
 
 export interface AgentCommand {

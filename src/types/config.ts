@@ -128,7 +128,11 @@ export const SDKConfigSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]+:\d+$/, "Must be valid CAIP-2 format")
     .optional(),
-  paymentAsset: z.string().optional()
+  paymentAsset: z.string().optional(),
+
+  // Multi-network support (v2.3.0)
+  network: z.string().optional(), // Network name (peaq, base, avalanche)
+  networkChainId: z.number().optional() // Or chain ID directly
 });
 
 // Partial config for constructor
@@ -847,6 +851,46 @@ export class SDKConfigBuilder {
     if (options.asset !== undefined) {
       this.config.paymentAsset = z.string().parse(options.asset);
     }
+    return this;
+  }
+
+  /**
+   * Sets the default network by name for payment operations (v2.3.0).
+   *
+   * Priority order for network selection:
+   * 1. Per-request network override in sendMessage options
+   * 2. This builder setting
+   * 3. TENEO_NETWORK environment variable
+   * 4. Default: PEAQ (eip155:3338)
+   *
+   * @param network - Network name (peaq, base, avalanche)
+   * @returns this builder for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withNetwork("base") // Use Base Mainnet for payments
+   * builder.withNetwork("avalanche") // Use Avalanche Mainnet
+   * ```
+   */
+  withNetwork(network: string): this {
+    this.config.network = z.string().parse(network);
+    return this;
+  }
+
+  /**
+   * Sets the default network by chain ID for payment operations (v2.3.0).
+   *
+   * @param chainId - Chain ID (3338 for PEAQ, 8453 for Base, 43114 for Avalanche)
+   * @returns this builder for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withNetworkChainId(8453) // Use Base Mainnet for payments
+   * builder.withNetworkChainId(43114) // Use Avalanche Mainnet
+   * ```
+   */
+  withNetworkChainId(chainId: number): this {
+    this.config.networkChainId = z.number().parse(chainId);
     return this;
   }
 
