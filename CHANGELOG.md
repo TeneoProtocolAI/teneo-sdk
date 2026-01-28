@@ -5,6 +5,135 @@ All notable changes to the Teneo Protocol SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-28
+
+### 🎉 Major Release: API Naming Improvements
+
+Version 3.0 introduces comprehensive naming improvements to make the SDK API more intuitive and explicit. All renamed methods include deprecated aliases for backward compatibility during migration.
+
+### 💥 Breaking Changes
+
+#### Room Subscription Clarity
+
+**Before:**
+```typescript
+const sdk = new TeneoSDK({
+  autoJoinRooms: ['room-1', 'room-2']
+});
+await sdk.subscribeToRoom('room-id');
+await sdk.unsubscribeFromRoom('room-id');
+```
+
+**After (v3.0):**
+```typescript
+const sdk = new TeneoSDK({
+  autoJoinPublicRooms: ['room-1', 'room-2']  // Explicit: only public rooms
+});
+await sdk.subscribeToPublicRoom('room-id');     // Explicit: only works for public rooms
+await sdk.unsubscribeFromPublicRoom('room-id'); // Private rooms are auto-available
+```
+
+**Why:** These methods only work with public rooms. Private rooms are automatically available after authentication. The new names make this distinction explicit.
+
+---
+
+#### Cache-Only Methods Now Explicit
+
+**Before:**
+```typescript
+const agents = sdk.getRoomAgents('room-123');           // Unclear: cache or fetch?
+const available = sdk.getAvailableAgents('room-123');   // Unclear: cache or fetch?
+const count = sdk.getRoomAgentCount('room-123');        // Returns undefined if not cached
+```
+
+**After (v3.0):**
+```typescript
+const agents = sdk.getCachedRoomAgents('room-123');           // Clear: cache-only
+const available = sdk.getCachedAvailableAgents('room-123');   // Clear: cache-only
+const count = sdk.getCachedRoomAgentCount('room-123');        // Clear: cache-only
+
+// Async methods unchanged (still fetch from server):
+await sdk.listRoomAgents('room-123');        // Still async fetch
+await sdk.listAvailableAgents('room-123');   // Still async fetch
+```
+
+**Why:** Method names now clearly indicate sync (cache-only) vs async (server fetch) behavior.
+
+---
+
+#### Boolean Method Semantic Clarity
+
+**Before:**
+```typescript
+const result = sdk.isAgentInRoom('room-123', 'agent-456');
+// Returns: boolean | undefined (but 'is*' implies boolean-only)
+```
+
+**After (v3.0):**
+```typescript
+const result = sdk.checkAgentInRoom('room-123', 'agent-456');
+// Returns: boolean | undefined (name doesn't mislead about return type)
+// - true: agent IS in room (verified)
+// - false: agent is NOT in room (verified)
+// - undefined: cache unavailable (need to fetch)
+```
+
+**Why:** `is*` naming convention implies boolean-only return. `check*` makes it clear the method may return multiple states.
+
+---
+
+#### Network-Wide Search Scope Clarity
+
+**Before:**
+```typescript
+const agents = sdk.findAgentsByCapability('weather');  // Unclear: what scope?
+const results = sdk.findAgentsByName('bot');           // All agents? Room agents?
+const online = sdk.findAgentsByStatus('online');       // Which agents?
+```
+
+**After (v3.0):**
+```typescript
+const agents = sdk.findAvailableAgentsByCapability('weather');  // Clear: all available agents
+const results = sdk.findAvailableAgentsByName('bot');           // Clear: network-wide search
+const online = sdk.findAvailableAgentsByStatus('online');       // Clear: all available agents
+```
+
+**Why:** These methods search ALL available agents network-wide, not just room-specific agents. The new names make this scope explicit.
+
+---
+
+### 🔄 Migration Guide
+
+**All old method names are deprecated but still work!** You'll see deprecation warnings in TypeScript/JSDoc. Update at your convenience:
+
+1. **Search & Replace** across your codebase:
+   - `autoJoinRooms:` → `autoJoinPublicRooms:`
+   - `.subscribeToRoom(` → `.subscribeToPublicRoom(`
+   - `.unsubscribeFromRoom(` → `.unsubscribeFromPublicRoom(`
+   - `.getRoomAgents(` → `.getCachedRoomAgents(`
+   - `.getAvailableAgents(` → `.getCachedAvailableAgents(`
+   - `.getRoomAgentCount(` → `.getCachedRoomAgentCount(`
+   - `.isAgentInRoom(` → `.checkAgentInRoom(`
+   - `.findAgentsByCapability(` → `.findAvailableAgentsByCapability(`
+   - `.findAgentsByName(` → `.findAvailableAgentsByName(`
+   - `.findAgentsByStatus(` → `.findAvailableAgentsByStatus(`
+
+2. **Update TypeScript types** if you reference them directly
+
+3. **Test thoroughly** - all functionality remains the same, only names changed
+
+---
+
+### ✨ Summary of Changes
+
+- **6 major naming improvements** for clarity and consistency
+- **All old names deprecated** with helpful migration messages
+- **Zero functional changes** - only naming improvements
+- **Backward compatible** - old names still work via aliases
+- **All documentation updated** - README, CONCEPTS, examples
+
+---
+
 ## [2.2.2]
 
 ### 🐛 Fixed
