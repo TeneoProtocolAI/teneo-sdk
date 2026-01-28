@@ -66,7 +66,7 @@ async function main() {
   const sdk = new TeneoSDK({
     wsUrl: process.env.WS_URL || "ws://localhost:8080/ws",
     privateKey: process.env.PRIVATE_KEY,
-    autoJoinRooms: [process.env.ROOM_ID || "your-room-id"],
+    autoJoinPublicRooms: [process.env.ROOM_ID || "your-room-id"],
 
     // Webhook configuration
     webhookUrl: "http://localhost:3000/webhook",

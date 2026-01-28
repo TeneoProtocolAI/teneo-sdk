@@ -258,7 +258,7 @@ describe("WebSocket Integration Tests", () => {
         setTimeout(() => reject(new Error("Event timeout")), 10000);
       });
 
-      await sdk.subscribeToRoom("test-room-2"); // Use different room to avoid auto-join conflicts
+      await sdk.subscribeToPublicRoom("test-room-2"); // Use different room to avoid auto-join conflicts
       await subscribePromise;
 
       expect(sdk.getSubscribedRooms()).toContain("test-room-2");

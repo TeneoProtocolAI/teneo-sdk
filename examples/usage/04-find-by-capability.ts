@@ -191,7 +191,7 @@ async function main() {
     if (candidates.length === 0) {
       console.log("⚠️  No capability match, trying name search...");
       const nameResults = sdk
-        .findAgentsByName("twitter")
+        .findAvailableAgentsByName("twitter")
         .concat(sdk.findAvailableAgentsByName("x platform"))
         .concat(sdk.findAvailableAgentsByName("social"));
 
