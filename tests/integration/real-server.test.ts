@@ -614,7 +614,7 @@ describe.skipIf(!hasCredentials)("Real Teneo Server Integration Test", () => {
       if (rooms.length > 0) {
         const testRoom = rooms[0];
 
-        await sdk.subscribeToRoom(testRoom.id);
+        await sdk.subscribeToPublicRoom(testRoom.id);
         expect(sdk.getSubscribedRooms()).toContain(testRoom.id);
 
         console.log(`Subscribed to room: ${testRoom.name} (${testRoom.id})`);

@@ -318,7 +318,7 @@ app.get("/rooms", (_req: Request, res: Response) => {
 app.post("/rooms/:roomId/subscribe", async (req: Request, res: Response) => {
   try {
     const { roomId } = req.params;
-    await sdk.subscribeToRoom(roomId);
+    await sdk.subscribeToPublicRoom(roomId);
 
     res.json({
       success: true,
@@ -340,7 +340,7 @@ app.post("/rooms/:roomId/subscribe", async (req: Request, res: Response) => {
 app.post("/rooms/:roomId/unsubscribe", async (req: Request, res: Response) => {
   try {
     const { roomId } = req.params;
-    await sdk.unsubscribeFromRoom(roomId);
+    await sdk.unsubscribeFromPublicRoom(roomId);
 
     res.json({
       success: true,

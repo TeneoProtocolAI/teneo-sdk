@@ -75,7 +75,7 @@ async function main() {
     // Only public rooms need subscription - private rooms are auto-available after auth
     if (selectedRoom.is_public) {
       console.log(`\nSubscribing to "${selectedRoom.name || selectedRoom.id}"...`);
-      await sdk.subscribeToRoom(selectedRoom.id);
+      await sdk.subscribeToPublicRoom(selectedRoom.id);
       console.log("Subscribed!");
     } else {
       console.log(`\nUsing private room "${selectedRoom.name || selectedRoom.id}"...`);

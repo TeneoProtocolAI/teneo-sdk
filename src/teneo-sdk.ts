@@ -260,7 +260,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Auto-join public rooms if configured
       if (this.config.autoJoinPublicRooms && this.config.autoJoinPublicRooms.length > 0) {
         for (const room of this.config.autoJoinPublicRooms) {
-          await this.rooms.subscribeToRoom(room);
+          await this.rooms.subscribeToPublicRoom(room);
         }
       }
 
@@ -394,14 +394,27 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Subscribe to a public room
-   * await sdk.subscribeToRoom('public-room-id');
+   * await sdk.subscribeToPublicRoom('public-room-id');
    * console.log('Subscribed to public room');
    *
    * // Note: Private rooms don't need subscription - you're always subscribed
    * ```
    */
+  public async subscribeToPublicRoom(roomId: string): Promise<void> {
+    return this.rooms.subscribeToPublicRoom(roomId);
+  }
+
+  /**
+   * @deprecated Use subscribeToPublicRoom() instead. This method only affects public rooms.
+   * Private rooms are automatically available after authentication without subscription.
+   *
+   * Subscribes to a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to subscribe to
+   * @returns Promise that resolves when the room has been subscribed
+   */
   public async subscribeToRoom(roomId: string): Promise<void> {
-    return this.rooms.subscribeToRoom(roomId);
+    return this.subscribeToPublicRoom(roomId);
   }
 
   /**
@@ -418,12 +431,25 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await sdk.unsubscribeFromRoom('public-room-id');
+   * await sdk.unsubscribeFromPublicRoom('public-room-id');
    * console.log('Unsubscribed from public room');
    * ```
    */
+  public async unsubscribeFromPublicRoom(roomId: string): Promise<void> {
+    return this.rooms.unsubscribeFromPublicRoom(roomId);
+  }
+
+  /**
+   * @deprecated Use unsubscribeFromPublicRoom() instead. This method only affects public rooms.
+   * Private rooms cannot be unsubscribed from.
+   *
+   * Unsubscribes from a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
+   * @returns Promise that resolves when the room has been unsubscribed
+   */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
-    return this.rooms.unsubscribeFromRoom(roomId);
+    return this.unsubscribeFromPublicRoom(roomId);
   }
 
   /**

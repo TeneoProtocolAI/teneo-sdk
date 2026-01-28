@@ -59,7 +59,7 @@ async function main() {
         console.log(
           `\n→ Subscribing to additional room: ${additionalRoom.name || additionalRoom.id}`
         );
-        await sdk.subscribeToRoom(additionalRoom.id);
+        await sdk.subscribeToPublicRoom(additionalRoom.id);
 
         // Show updated subscriptions
         const updatedSubscriptions = sdk.getSubscribedRooms();

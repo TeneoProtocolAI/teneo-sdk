@@ -788,7 +788,7 @@ app.post("/api/room/join", async (c) => {
       return c.json({ error: "Room ID is required" }, 400);
     }
 
-    await sdk.subscribeToRoom(roomId);
+    await sdk.subscribeToPublicRoom(roomId);
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -808,7 +808,7 @@ app.post("/api/room/leave", async (c) => {
       return c.json({ error: "Room ID is required" }, 400);
     }
 
-    await sdk.unsubscribeFromRoom(roomId);
+    await sdk.unsubscribeFromPublicRoom(roomId);
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);

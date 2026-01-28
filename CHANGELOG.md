@@ -286,7 +286,7 @@ pnpm install @teneo-protocol/sdk@2.0.0
 **Before (v1.x):** Single room subscription
 
 ```typescript
-await sdk.subscribeToRoom("room-id");
+await sdk.subscribeToPublicRoom("room-id");
 ```
 
 **After (v2.0):** Create and manage multiple rooms
@@ -346,7 +346,7 @@ All v1.x APIs continue to work:
 
 - ✅ `connect()`, `disconnect()`
 - ✅ `sendMessage()`
-- ✅ `subscribeToRoom()`, `unsubscribeFromRoom()`
+- ✅ `subscribeToPublicRoom()`, `unsubscribeFromPublicRoom()`
 - ✅ `getAgents()`, `getAgent()`
 - ✅ All existing events
 

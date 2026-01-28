@@ -241,7 +241,7 @@ describe("WebSocket Integration Tests", () => {
         sdk.on("agent:list", resolve);
       });
 
-      await sdk.subscribeToRoom("test-room");
+      await sdk.subscribeToPublicRoom("test-room");
       const agents = await agentsPromise;
 
       expect(agents).toBeDefined();

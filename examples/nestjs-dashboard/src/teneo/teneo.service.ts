@@ -365,14 +365,14 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
     if (!this.sdk?.isConnected) {
       throw new Error("SDK not connected");
     }
-    return await this.sdk.subscribeToRoom(roomId);
+    return await this.sdk.subscribeToPublicRoom(roomId);
   }
 
   async unsubscribeFromRoom(roomId: string) {
     if (!this.sdk?.isConnected) {
       throw new Error("SDK not connected");
     }
-    return await this.sdk.unsubscribeFromRoom(roomId);
+    return await this.sdk.unsubscribeFromPublicRoom(roomId);
   }
 
   async createRoom(name: string, description?: string) {

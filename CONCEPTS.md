@@ -129,13 +129,13 @@ Rooms are isolated spaces where you send messages and receive responses from age
 | Type | Subscription | Ownership | Use Case |
 |------|-------------|-----------|----------|
 | **Private** | Automatic | You own it | Personal workspace, private conversations |
-| **Public** | Manual (`subscribeToRoom()`) | System/shared | Community channels, announcements |
+| **Public** | Manual (`subscribeToPublicRoom()`) | System/shared | Community channels, announcements |
 | **Shared** | Automatic | Someone invited you | Collaboration, team rooms |
 
 ### Private Rooms
 
 - **You create them** with `createRoom()`
-- **You're always subscribed** - no need to call `subscribeToRoom()`
+- **You're always subscribed** - no need to call `subscribeToPublicRoom()`
 - **You control agents** - add/remove agents as needed
 - **Subject to limits** - typically 1-10 rooms based on your plan
 
@@ -161,10 +161,10 @@ console.log(`Rooms: ${sdk.getOwnedRoomCount()}/${sdk.getRoomLimit()}`);
 
 ```typescript
 // Subscribe to a public room
-await sdk.subscribeToRoom("public-room-id");
+await sdk.subscribeToPublicRoom("public-room-id");
 
 // Unsubscribe when done
-await sdk.unsubscribeFromRoom("public-room-id");
+await sdk.unsubscribeFromPublicRoom("public-room-id");
 ```
 
 ### Room Lifecycle
