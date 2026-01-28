@@ -534,15 +534,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const agents = sdk.getRoomAgents('room-123');
+   * const agents = sdk.getCachedRoomAgents('room-123');
    * if (agents) {
    *   console.log(`Found ${agents.length} agents in cache`);
    * }
    * ```
    */
-  public getRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
+  public getCachedRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
     const cached = this.roomAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgents() instead. This method returns cached data only.
+   * 
+   * Gets agents currently in a room from cache (synchronous).
+   *
+   * @param roomId - Room ID to query
+   * @returns Array of agents or undefined if not cached
+   */
+  public getRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
+    return this.getCachedRoomAgents(roomId);
   }
 
   /**
@@ -554,15 +566,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const available = sdk.getAvailableAgents('room-123');
+   * const available = sdk.getCachedAvailableAgents('room-123');
    * if (available) {
    *   console.log(`${available.length} agents can be added`);
    * }
    * ```
    */
-  public getAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
+  public getCachedAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
     const cached = this.availableAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedAvailableAgents() instead. This method returns cached data only.
+   * 
+   * Gets available agents for a room from cache (synchronous).
+   *
+   * @param roomId - Room ID to query
+   * @returns Array of available agents or undefined if not cached
+   */
+  public getAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
+    return this.getCachedAvailableAgents(roomId);
   }
 
   /**
@@ -582,7 +606,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * ```
    */
   public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
-    const agents = this.getRoomAgents(roomId);
+    const agents = this.getCachedRoomAgents(roomId);
     if (!agents) return undefined;
     return agents.some((agent) => agent.agent_id === agentId);
   }
@@ -603,7 +627,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * ```
    */
   public getRoomAgentCount(roomId: string): number | undefined {
-    const agents = this.getRoomAgents(roomId);
+    const agents = this.getCachedRoomAgents(roomId);
     return agents ? agents.length : undefined;
   }
 

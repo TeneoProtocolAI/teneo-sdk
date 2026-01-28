@@ -126,7 +126,7 @@ describe("AgentRoomManager", () => {
       const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
-      expect(manager.getRoomAgents("room-123")).toHaveLength(1);
+      expect(manager.getCachedRoomAgents("room-123")).toHaveLength(1);
 
       const addPromise = manager.addAgentToRoom("room-123", "agent-456");
 
@@ -137,7 +137,7 @@ describe("AgentRoomManager", () => {
       await addPromise;
 
       // Cache should be invalidated
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
     });
   });
 
@@ -205,7 +205,7 @@ describe("AgentRoomManager", () => {
       const cachedAgents: AgentRoomInfo[] = [{ agent_id: "agent-456", agent_name: "Agent 456" }];
       manager.cacheRoomAgents("room-123", cachedAgents);
 
-      expect(manager.getRoomAgents("room-123")).toHaveLength(1);
+      expect(manager.getCachedRoomAgents("room-123")).toHaveLength(1);
 
       const removePromise = manager.removeAgentFromRoom("room-123", "agent-456");
 
@@ -216,7 +216,7 @@ describe("AgentRoomManager", () => {
       await removePromise;
 
       // Cache should be invalidated
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
     });
   });
 
@@ -374,28 +374,28 @@ describe("AgentRoomManager", () => {
     it("should get room agents from cache", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      const result = manager.getRoomAgents("room-123");
+      const result = manager.getCachedRoomAgents("room-123");
 
       expect(result).toHaveLength(2);
       expect(result![0].agent_id).toBe("agent-1");
     });
 
     it("should return undefined if room agents not cached", () => {
-      const result = manager.getRoomAgents("room-999");
+      const result = manager.getCachedRoomAgents("room-999");
       expect(result).toBeUndefined();
     });
 
     it("should get available agents from cache", () => {
       manager.cacheAvailableAgents("room-123", mockAgents);
 
-      const result = manager.getAvailableAgents("room-123");
+      const result = manager.getCachedAvailableAgents("room-123");
 
       expect(result).toHaveLength(2);
       expect(result![0].agent_id).toBe("agent-1");
     });
 
     it("should return undefined if available agents not cached", () => {
-      const result = manager.getAvailableAgents("room-999");
+      const result = manager.getCachedAvailableAgents("room-999");
       expect(result).toBeUndefined();
     });
 
@@ -427,7 +427,7 @@ describe("AgentRoomManager", () => {
     it("should cache room agents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      const result = manager.getRoomAgents("room-123");
+      const result = manager.getCachedRoomAgents("room-123");
       expect(result).toHaveLength(1);
       expect(result![0].agent_id).toBe("agent-1");
     });
@@ -435,7 +435,7 @@ describe("AgentRoomManager", () => {
     it("should cache available agents", () => {
       manager.cacheAvailableAgents("room-123", mockAgents);
 
-      const result = manager.getAvailableAgents("room-123");
+      const result = manager.getCachedAvailableAgents("room-123");
       expect(result).toHaveLength(1);
     });
 
@@ -446,9 +446,9 @@ describe("AgentRoomManager", () => {
 
       manager.invalidateCache("room-123");
 
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
-      expect(manager.getAvailableAgents("room-123")).toBeUndefined();
-      expect(manager.getRoomAgents("room-456")).toBeDefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedAvailableAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-456")).toBeDefined();
     });
 
     it("should clear all caches", () => {
@@ -458,9 +458,9 @@ describe("AgentRoomManager", () => {
 
       manager.clearAllCaches();
 
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
-      expect(manager.getRoomAgents("room-456")).toBeUndefined();
-      expect(manager.getAvailableAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-456")).toBeUndefined();
+      expect(manager.getCachedAvailableAgents("room-123")).toBeUndefined();
     });
   });
 
@@ -472,12 +472,12 @@ describe("AgentRoomManager", () => {
     it("should handle status updates and invalidate cache", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      expect(manager.getRoomAgents("room-123")).toBeDefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeDefined();
 
       manager.handleStatusUpdate("room-123", "agent-1", "offline");
 
       // Cache should be invalidated
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
     });
 
     it("should not invalidate other room caches on status update", () => {
@@ -486,8 +486,8 @@ describe("AgentRoomManager", () => {
 
       manager.handleStatusUpdate("room-123", "agent-1", "offline");
 
-      expect(manager.getRoomAgents("room-123")).toBeUndefined();
-      expect(manager.getRoomAgents("room-456")).toBeDefined();
+      expect(manager.getCachedRoomAgents("room-123")).toBeUndefined();
+      expect(manager.getCachedRoomAgents("room-456")).toBeDefined();
     });
   });
 
@@ -557,7 +557,7 @@ describe("AgentRoomManager", () => {
       manager.cacheAvailableAgents("room-123", mockAgents);
 
       // Verify cache has data
-      expect(manager.getAvailableAgents("room-123")).toHaveLength(2);
+      expect(manager.getCachedAvailableAgents("room-123")).toHaveLength(2);
 
       const listPromise = manager.listAvailableAgents("room-123", { limit: 10 });
 
@@ -646,21 +646,21 @@ describe("AgentRoomManager", () => {
   describe("Return Value Immutability", () => {
     const mockAgents: AgentRoomInfo[] = [{ agent_id: "agent-1", agent_name: "Agent 1" }];
 
-    it("should return defensive copies from getRoomAgents", () => {
+    it("should return defensive copies from getCachedRoomAgents", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      const agents1 = manager.getRoomAgents("room-123");
-      const agents2 = manager.getRoomAgents("room-123");
+      const agents1 = manager.getCachedRoomAgents("room-123");
+      const agents2 = manager.getCachedRoomAgents("room-123");
 
       expect(agents1).not.toBe(agents2);
       expect(agents1![0]).not.toBe(agents2![0]);
     });
 
-    it("should return defensive copies from getAvailableAgents", () => {
+    it("should return defensive copies from getCachedAvailableAgents", () => {
       manager.cacheAvailableAgents("room-123", mockAgents);
 
-      const agents1 = manager.getAvailableAgents("room-123");
-      const agents2 = manager.getAvailableAgents("room-123");
+      const agents1 = manager.getCachedAvailableAgents("room-123");
+      const agents2 = manager.getCachedAvailableAgents("room-123");
 
       expect(agents1).not.toBe(agents2);
       expect(agents1![0]).not.toBe(agents2![0]);

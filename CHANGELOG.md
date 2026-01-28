@@ -147,8 +147,8 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
   - `listAvailableAgents(roomId, useCache?)` - List agents available to add
 
 - **Agent Room Query Methods (Synchronous)**
-  - `getRoomAgents(roomId)` - Get cached room agents instantly
-  - `getAvailableAgents(roomId)` - Get cached available agents instantly
+  - `getCachedRoomAgents(roomId)` - Get cached room agents instantly
+  - `getCachedAvailableAgents(roomId)` - Get cached available agents instantly
   - `isAgentInRoom(roomId, agentId)` - Check if agent is in room (cached)
   - `getRoomAgentCount(roomId)` - Get agent count from cache
 

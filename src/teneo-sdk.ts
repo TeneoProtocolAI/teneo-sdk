@@ -1037,7 +1037,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const agents = sdk.getRoomAgents('room-123');
+   * const agents = sdk.getCachedRoomAgents('room-123');
    * if (agents) {
    *   console.log(`${agents.length} agents (cached)`);
    * } else {
@@ -1046,8 +1046,22 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public getCachedRoomAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getCachedRoomAgents(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgents() instead. This method returns cached data only.
+   * Use listRoomAgents() to fetch fresh data from server.
+   *
+   * Gets agents in a room from cache (synchronous).
+   *
+   * @param roomId - ID of the room
+   * @returns Array of agents if cached, undefined otherwise
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getRoomAgents(roomId: string): any[] | undefined {
-    return this.agentRoom.getRoomAgents(roomId);
+    return this.getCachedRoomAgents(roomId);
   }
 
   /**
@@ -1059,15 +1073,29 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const available = sdk.getAvailableAgents('room-123');
+   * const available = sdk.getCachedAvailableAgents('room-123');
    * if (available) {
    *   console.log(`${available.length} agents available (cached)`);
    * }
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public getCachedAvailableAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getCachedAvailableAgents(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedAvailableAgents() instead. This method returns cached data only.
+   * Use listAvailableAgents() to fetch fresh data from server.
+   *
+   * Gets available agents for a room from cache (synchronous).
+   *
+   * @param roomId - ID of the room
+   * @returns Array of available agents if cached, undefined otherwise
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getAvailableAgents(roomId: string): any[] | undefined {
-    return this.agentRoom.getAvailableAgents(roomId);
+    return this.getCachedAvailableAgents(roomId);
   }
 
   /**

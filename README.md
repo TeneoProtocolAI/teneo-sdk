@@ -530,7 +530,7 @@ if (count !== undefined) {
 }
 
 // Get cached room agents (instant)
-const cached = sdk.getRoomAgents("room-123");
+const cached = sdk.getCachedRoomAgents("room-123");
 if (cached) {
   console.log("Agents:", cached.map((a) => a.agent_name).join(", "));
 } else {
@@ -538,7 +538,7 @@ if (cached) {
 }
 
 // Get cached available agents (instant)
-const cachedAvailable = sdk.getAvailableAgents("room-123");
+const cachedAvailable = sdk.getCachedAvailableAgents("room-123");
 ```
 
 ### Cache Management

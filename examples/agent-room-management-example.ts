@@ -306,7 +306,7 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   console.log(`Room agent count: ${count}`);
 
   // Get cached agents (instant)
-  const cachedAgents = sdk.getRoomAgents(roomId);
+  const cachedAgents = sdk.getCachedRoomAgents(roomId);
   if (cachedAgents) {
     const names = cachedAgents.map((a) => a.agent_name || "Unnamed").join(", ");
     console.log(`Cached agents: ${names}`);
@@ -322,7 +322,7 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   }
 
   // Get cached available agents (instant)
-  const cachedAvailable = sdk.getAvailableAgents(roomId);
+  const cachedAvailable = sdk.getCachedAvailableAgents(roomId);
   if (cachedAvailable) {
     console.log(`Cached available agents: ${cachedAvailable.length}`);
   }
