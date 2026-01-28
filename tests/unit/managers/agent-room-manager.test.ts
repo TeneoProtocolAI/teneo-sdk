@@ -402,12 +402,12 @@ describe("AgentRoomManager", () => {
     it("should check if agent is in room", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      expect(manager.isAgentInRoom("room-123", "agent-1")).toBe(true);
-      expect(manager.isAgentInRoom("room-123", "agent-999")).toBe(false);
+      expect(manager.checkAgentInRoom("room-123", "agent-1")).toBe(true);
+      expect(manager.checkAgentInRoom("room-123", "agent-999")).toBe(false);
     });
 
-    it("should return undefined for isAgentInRoom if not cached", () => {
-      expect(manager.isAgentInRoom("room-999", "agent-1")).toBeUndefined();
+    it("should return undefined for checkAgentInRoom if not cached", () => {
+      expect(manager.checkAgentInRoom("room-999", "agent-1")).toBeUndefined();
     });
 
     it("should get room agent count", () => {

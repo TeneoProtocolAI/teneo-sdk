@@ -599,16 +599,34 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const isInRoom = sdk.isAgentInRoom('room-123', 'agent-456');
-   * if (isInRoom === true) {
+   * const inRoom = sdk.checkAgentInRoom('room-123', 'agent-456');
+   * if (inRoom === true) {
    *   console.log('Agent is in this room');
+   * } else if (inRoom === false) {
+   *   console.log('Agent is not in this room');
+   * } else {
+   *   console.log('Cache unavailable - need to fetch');
    * }
    * ```
    */
-  public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+  public checkAgentInRoom(roomId: string, agentId: string): boolean | undefined {
     const agents = this.getCachedRoomAgents(roomId);
     if (!agents) return undefined;
     return agents.some((agent) => agent.agent_id === agentId);
+  }
+
+  /**
+   * @deprecated Use checkAgentInRoom() instead. The 'is*' naming convention implies boolean-only,
+   * but this method returns boolean | undefined to indicate cache validity.
+   *
+   * Checks if an agent is currently in a room (from cache).
+   *
+   * @param roomId - Room ID to check
+   * @param agentId - Agent ID to check
+   * @returns True if agent in room, false if not, undefined if cache invalid
+   */
+  public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    return this.checkAgentInRoom(roomId, agentId);
   }
 
   /**

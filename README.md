@@ -514,10 +514,10 @@ available.forEach((agent) => {
 
 ```typescript
 // Check if specific agent is in room (instant, no network call)
-const isInRoom = sdk.isAgentInRoom("room-123", "agent-456");
-if (isInRoom === true) {
+const inRoom = sdk.checkAgentInRoom("room-123", "agent-456");
+if (inRoom === true) {
   console.log("Agent is in the room");
-} else if (isInRoom === false) {
+} else if (inRoom === false) {
   console.log("Agent is NOT in the room");
 } else {
   console.log("Cache not available - call listRoomAgents() first");

@@ -1108,18 +1108,32 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const inRoom = sdk.isAgentInRoom('room-123', 'weather-agent');
+   * const inRoom = sdk.checkAgentInRoom('room-123', 'weather-agent');
    * if (inRoom === true) {
    *   console.log('Agent is in room');
    * } else if (inRoom === false) {
    *   console.log('Agent is not in room');
    * } else {
-   *   console.log('Room data not cached');
+   *   console.log('Room data not cached - need to fetch');
    * }
    * ```
    */
+  public checkAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    return this.agentRoom.checkAgentInRoom(roomId, agentId);
+  }
+
+  /**
+   * @deprecated Use checkAgentInRoom() instead. The 'is*' naming convention implies boolean-only,
+   * but this method returns boolean | undefined to indicate cache validity.
+   *
+   * Checks if an agent is in a room (synchronous, from cache).
+   *
+   * @param roomId - ID of the room
+   * @param agentId - ID of the agent
+   * @returns True if agent is in room, false if not, undefined if not cached
+   */
   public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
-    return this.agentRoom.isAgentInRoom(roomId, agentId);
+    return this.checkAgentInRoom(roomId, agentId);
   }
 
   /**

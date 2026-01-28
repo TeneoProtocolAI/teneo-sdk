@@ -1004,12 +1004,12 @@ app.get("/api/v2/rooms/:roomId/agents/:agentId/check", (c) => {
 
   const roomId = c.req.param("roomId");
   const agentId = c.req.param("agentId");
-  const isInRoom = sdk.isAgentInRoom(roomId, agentId);
+  const inRoom = sdk.checkAgentInRoom(roomId, agentId);
 
   return c.json({
     roomId,
     agentId,
-    inRoom: isInRoom,
+    inRoom: inRoom,
     cached: true
   });
 });

@@ -315,9 +315,9 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   // Check if specific agent is in room (instant)
   if (agents.length > 0) {
     const firstAgent = agents[0];
-    const isInRoom = sdk.isAgentInRoom(roomId, firstAgent.agent_id);
+    const inRoom = sdk.checkAgentInRoom(roomId, firstAgent.agent_id);
     console.log(
-      `Is "${firstAgent.agent_name}" in room? ${isInRoom === true ? "✅ Yes" : isInRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`
+      `Is "${firstAgent.agent_name}" in room? ${inRoom === true ? "✅ Yes" : inRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`
     );
   }
 

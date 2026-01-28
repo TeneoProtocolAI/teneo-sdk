@@ -228,11 +228,11 @@ export class RoomsController {
 
   @Get(":roomId/agents/:agentId/check")
   checkAgentInRoom(@Param("roomId") roomId: string, @Param("agentId") agentId: string) {
-    const isInRoom = this.teneoService.isAgentInRoom(roomId, agentId);
+    const inRoom = this.teneoService.isAgentInRoom(roomId, agentId);
     return {
       roomId,
       agentId,
-      inRoom: isInRoom,
+      inRoom: inRoom,
       cached: true
     };
   }
