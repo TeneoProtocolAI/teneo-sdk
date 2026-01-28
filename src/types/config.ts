@@ -169,7 +169,13 @@ export const AuthenticationStateSchema = z.object({
   // NEW in v2.0.0: Room categorization
   privateRoomIds: z.array(z.string()).optional(), // IDs of rooms user owns
   sharedRoomIds: z.array(z.string()).optional(), // IDs of rooms user is member of
-  maxPrivateRooms: z.number().optional() // Max rooms user can create
+  maxPrivateRooms: z.number().optional(), // Max rooms user can create
+
+  // Auth enhancement fields (audit #6, #7, #9)
+  jwtToken: z.string().optional(), // JWT token for KeyVault API authentication
+  sessionToken: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+  whitelistVerified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+  userCount: z.number().optional() // Total user count (admin only)
 });
 
 // Webhook config schema

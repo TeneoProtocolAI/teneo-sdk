@@ -618,8 +618,13 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     try {
       // Check for cached authentication first
       if (this.config.walletAddress) {
-        this.logger.debug("Checking cached authentication");
-        await this.sendMessage(createCheckCachedAuth(this.config.walletAddress));
+        const sessionToken = this.authState.sessionToken;
+        this.logger.debug("Checking cached authentication", {
+          hasSessionToken: !!sessionToken
+        });
+        await this.sendMessage(
+          createCheckCachedAuth(this.config.walletAddress, sessionToken)
+        );
 
         // Wait briefly for cached auth response
         await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.CACHED_AUTH_WAIT));
