@@ -615,7 +615,7 @@ app.get("/api/agents/search/capability/:capability", (c) => {
 
   try {
     const capability = c.req.param("capability");
-    const agents = sdk.findAgentsByCapability(capability);
+    const agents = sdk.findAvailableAgentsByCapability(capability);
     return c.json({
       capability,
       count: agents.length,
@@ -634,7 +634,7 @@ app.get("/api/agents/search/name/:name", (c) => {
 
   try {
     const name = c.req.param("name");
-    const agents = sdk.findAgentsByName(name);
+    const agents = sdk.findAvailableAgentsByName(name);
     return c.json({
       query: name,
       count: agents.length,
@@ -653,7 +653,7 @@ app.get("/api/agents/search/status/:status", (c) => {
 
   try {
     const status = c.req.param("status");
-    const agents = sdk.findAgentsByStatus(status);
+    const agents = sdk.findAvailableAgentsByStatus(status);
     return c.json({
       status,
       count: agents.length,

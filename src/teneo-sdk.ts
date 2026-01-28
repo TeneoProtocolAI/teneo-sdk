@@ -533,18 +533,18 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Finds all agents that have a specific capability using O(1) indexed lookup (PERF-3).
+   * Finds all available agents (network-wide) that have a specific capability using O(1) indexed lookup (PERF-3).
    * Much faster than filtering through all agents manually.
    * Uses capability index for constant-time lookups regardless of agent count.
    *
    * @param capability - The capability name to search for (case-insensitive)
-   * @returns Read-only array of agents with the specified capability
+   * @returns Read-only array of available agents with the specified capability
    * @throws {ValidationError} If capability name is invalid
    *
    * @example
    * ```typescript
-   * // Find all weather-capable agents
-   * const weatherAgents = sdk.findAgentsByCapability('weather-forecast');
+   * // Find all weather-capable agents available on the network
+   * const weatherAgents = sdk.findAvailableAgentsByCapability('weather-forecast');
    * console.log(`Found ${weatherAgents.length} weather agents`);
    *
    * weatherAgents.forEach(agent => {
@@ -552,52 +552,88 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public findAgentsByCapability(capability: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByCapability(capability: string): ReadonlyArray<Agent> {
     return this.agents.findByCapability(capability);
   }
 
   /**
-   * Finds agents by name using O(k) token-based search (PERF-3).
+   * @deprecated Use findAvailableAgentsByCapability() instead. This searches all available agents network-wide.
+   * 
+   * Finds all agents that have a specific capability.
+   *
+   * @param capability - The capability name to search for
+   * @returns Read-only array of agents with the specified capability
+   */
+  public findAgentsByCapability(capability: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByCapability(capability);
+  }
+
+  /**
+   * Finds available agents (network-wide) by name using O(k) token-based search (PERF-3).
    * Supports partial matching - searches for tokens within agent names.
    * Tokenizes both the search query and agent names for flexible matching.
    *
    * @param name - Name or partial name to search for (case-insensitive)
-   * @returns Read-only array of agents matching the search
+   * @returns Read-only array of available agents matching the search
    * @throws {ValidationError} If name is invalid
    *
    * @example
    * ```typescript
-   * // Find all agents with "weather" in their name
-   * const agents = sdk.findAgentsByName('weather');
+   * // Find all available agents with "weather" in their name
+   * const agents = sdk.findAvailableAgentsByName('weather');
    * // Matches: "Weather Agent", "Weather Forecast Bot", "Advanced Weather API", etc.
    *
    * console.log(`Found ${agents.length} agents matching 'weather'`);
    * ```
    */
-  public findAgentsByName(name: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByName(name: string): ReadonlyArray<Agent> {
     return this.agents.findByName(name);
   }
 
   /**
-   * Finds all agents with a specific status using O(1) indexed lookup (PERF-3).
+   * @deprecated Use findAvailableAgentsByName() instead. This searches all available agents network-wide.
+   * 
+   * Finds agents by name.
+   *
+   * @param name - Name or partial name to search for
+   * @returns Read-only array of agents matching the search
+   */
+  public findAgentsByName(name: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByName(name);
+  }
+
+  /**
+   * Finds all available agents (network-wide) with a specific status using O(1) indexed lookup (PERF-3).
    * Uses status index for constant-time lookups regardless of agent count.
    *
    * @param status - Agent status: 'online' or 'offline' (case-insensitive)
-   * @returns Read-only array of agents with the specified status
+   * @returns Read-only array of available agents with the specified status
    * @throws {ValidationError} If status is invalid
    *
    * @example
    * ```typescript
-   * // Get all online agents
-   * const onlineAgents = sdk.findAgentsByStatus('online');
+   * // Get all online agents available on the network
+   * const onlineAgents = sdk.findAvailableAgentsByStatus('online');
    * console.log(`${onlineAgents.length} agents are currently online`);
    *
    * // Get offline agents
-   * const offlineAgents = sdk.findAgentsByStatus('offline');
+   * const offlineAgents = sdk.findAvailableAgentsByStatus('offline');
    * ```
    */
-  public findAgentsByStatus(status: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByStatus(status: string): ReadonlyArray<Agent> {
     return this.agents.findByStatus(status);
+  }
+
+  /**
+   * @deprecated Use findAvailableAgentsByStatus() instead. This searches all available agents network-wide.
+   * 
+   * Finds all agents with a specific status.
+   *
+   * @param status - Agent status: 'online' or 'offline'
+   * @returns Read-only array of agents with the specified status
+   */
+  public findAgentsByStatus(status: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByStatus(status);
   }
 
   /**

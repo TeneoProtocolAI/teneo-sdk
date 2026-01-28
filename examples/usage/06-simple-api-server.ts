@@ -182,7 +182,7 @@ app.get("/agents/:id", (req: Request, res: Response) => {
 app.get("/agents/capability/:capability", (req: Request, res: Response) => {
   try {
     const { capability } = req.params;
-    const agents = sdk.findAgentsByCapability(capability);
+    const agents = sdk.findAvailableAgentsByCapability(capability);
 
     res.json({
       success: true,

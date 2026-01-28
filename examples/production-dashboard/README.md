@@ -415,13 +415,13 @@ curl http://localhost:3000/api/agents/search/status/online
 
 ```typescript
 // Fast capability search
-const weatherAgents = sdk.findAgentsByCapability("weather-forecast");
+const weatherAgents = sdk.findAvailableAgentsByCapability("weather-forecast");
 
 // Fast partial name search
-const agentsWithWeather = sdk.findAgentsByName("weather");
+const agentsWithWeather = sdk.findAvailableAgentsByName("weather");
 
 // Fast status filtering
-const onlineAgents = sdk.findAgentsByStatus("online");
+const onlineAgents = sdk.findAvailableAgentsByStatus("online");
 ```
 
 ### Configurable Retry Strategies (REL-3)

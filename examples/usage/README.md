@@ -299,7 +299,7 @@ console.log(response.humanized);
 
 ```typescript
 // Find agent by capability
-const agents = sdk.findAgentsByCapability('weather');
+const agents = sdk.findAvailableAgentsByCapability('weather');
 const weatherAgent = agents[0];
 
 // Send direct command

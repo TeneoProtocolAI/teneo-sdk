@@ -321,21 +321,21 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByCapability(capability);
+    return this.sdk.findAvailableAgentsByCapability(capability);
   }
 
   findAgentsByName(name: string) {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByName(name);
+    return this.sdk.findAvailableAgentsByName(name);
   }
 
   findAgentsByStatus(status: string) {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByStatus(status);
+    return this.sdk.findAvailableAgentsByStatus(status);
   }
 
   getRooms() {

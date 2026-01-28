@@ -78,19 +78,19 @@ async function main() {
     console.log("\n→ Testing indexed agent lookups (PERF-3):");
 
     // Search by capability (O(1))
-    const weatherAgents = sdk.findAgentsByCapability("weather-forecast");
+    const weatherAgents = sdk.findAvailableAgentsByCapability("weather-forecast");
     if (weatherAgents.length > 0) {
       console.log(`  ✓ Found ${weatherAgents.length} agent(s) with weather capability`);
     }
 
     // Search by name (O(k) where k = tokens)
-    const searchResults = sdk.findAgentsByName("agent");
+    const searchResults = sdk.findAvailableAgentsByName("agent");
     if (searchResults.length > 0) {
       console.log(`  ✓ Found ${searchResults.length} agent(s) matching name search`);
     }
 
     // Search by status (O(1))
-    const onlineAgents = sdk.findAgentsByStatus("online");
+    const onlineAgents = sdk.findAvailableAgentsByStatus("online");
     console.log(`  ✓ ${onlineAgents.length} agent(s) currently online`);
 
     // Send message to the room
