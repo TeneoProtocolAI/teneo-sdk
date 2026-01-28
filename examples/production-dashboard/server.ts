@@ -507,7 +507,7 @@ app.post("/webhook", async (c) => {
     return c.json({ status: "ignored" });
   }
 
-  console.log("[WEBHOOK] Received:", payload.event);
+  console.log("[WEBHOOK] Received:", payload.event, "| Data:", JSON.stringify(payload.data).slice(0, 100));
 
   // Store webhook for display
   recentWebhooks.unshift({

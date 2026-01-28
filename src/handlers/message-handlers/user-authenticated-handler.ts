@@ -25,7 +25,7 @@ export class UserAuthenticatedHandler extends BaseMessageHandler<UserAuthenticat
     // Emit presence event
     this.emit(context, "user:authenticated", { wallet });
 
-    // Send webhook
-    this.sendWebhook(context, "user_authenticated", message.data);
+    // Note: user_authenticated is not in the WebhookEventType enum, so no webhook is sent
+    // This is a broadcast event for presence tracking, not typically needed in webhooks
   }
 }

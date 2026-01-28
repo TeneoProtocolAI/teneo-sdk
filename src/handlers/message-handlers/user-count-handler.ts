@@ -28,7 +28,7 @@ export class UserCountHandler extends BaseMessageHandler<UserCountMessage> {
     // Emit admin event
     this.emit(context, "admin:user_count", { count, timestamp });
 
-    // Send webhook
-    this.sendWebhook(context, "user_count", message.data);
+    // Note: user_count is not in the WebhookEventType enum, so no webhook is sent
+    // This is an admin-only broadcast event, not typically needed in webhooks
   }
 }
