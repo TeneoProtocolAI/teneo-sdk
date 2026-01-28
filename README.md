@@ -778,6 +778,111 @@ console.log(NETWORKS.avalanche);
 
 > **Note:** The SDK automatically handles network selection. The payment server determines which network to use based on the agent's configuration. You don't need to manually configure networks unless you're using the `PaymentClient` directly for custom payment operations.
 
+#### Configuring Default Payment Network
+
+You can configure which network to use for all payments in three ways:
+
+**Option 1: Using Environment Variable (Global Default)**
+
+```bash
+# Set default network for all payments
+export TENEO_NETWORK=base
+
+# Or use chain ID
+export TENEO_NETWORK=8453
+
+# Or use CAIP-2 format
+export TENEO_NETWORK=eip155:8453
+```
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+// SDK automatically uses TENEO_NETWORK env var
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .build()
+);
+
+// All payments will use Base network (from TENEO_NETWORK)
+```
+
+**Option 2: Using Config Builder (Per-SDK Instance)**
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+// Configure Base network for this SDK instance
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("base")  // Use Base Mainnet
+    .build()
+);
+
+// All payments from this SDK will use Base network
+```
+
+Or using chain ID:
+
+```typescript
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetworkChainId(43114)  // Use Avalanche (chain ID 43114)
+    .build()
+);
+```
+
+**Network Selection Priority:**
+
+The SDK uses this priority order for network selection:
+1. Per-request network override (if supported by future versions)
+2. Builder `.withNetwork()` or `.withNetworkChainId()` setting
+3. `TENEO_NETWORK` environment variable
+4. Default: PEAQ network (eip155:3338)
+
+**Example: Multiple SDK Instances with Different Networks**
+
+```typescript
+// Production bot uses PEAQ
+const peaqBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PEAQ_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("peaq")
+    .build()
+);
+
+// Experimental bot uses Base
+const baseBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.BASE_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("base")
+    .build()
+);
+
+// High-throughput bot uses Avalanche
+const avalancheBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.AVALANCHE_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("avalanche")
+    .build()
+);
+```
+
 ### Direct Agent Commands
 
 ```typescript
@@ -1021,9 +1126,17 @@ const sdk = new TeneoSDK(config);
 Create `.env`:
 
 ```bash
+# Required
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 PRIVATE_KEY=0xYourPrivateKey
+
+# Optional
 LOG_LEVEL=info
+
+# Payment network (v2.3.0) - Optional, defaults to PEAQ
+TENEO_NETWORK=base                # By name: peaq, base, avalanche
+# Or by chain ID: TENEO_NETWORK=8453
+# Or CAIP-2: TENEO_NETWORK=eip155:8453
 ```
 
 Load them:
@@ -1036,6 +1149,7 @@ const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
   logLevel: (process.env.LOG_LEVEL as any) || "info"
+  // TENEO_NETWORK is automatically used by SDK for payment network
 });
 ```
 
