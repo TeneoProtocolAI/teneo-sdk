@@ -638,15 +638,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const count = sdk.getRoomAgentCount('room-123');
+   * const count = sdk.getCachedRoomAgentCount('room-123');
    * if (count !== undefined) {
    *   console.log(`Room has ${count} agents`);
    * }
    * ```
    */
-  public getRoomAgentCount(roomId: string): number | undefined {
+  public getCachedRoomAgentCount(roomId: string): number | undefined {
     const agents = this.getCachedRoomAgents(roomId);
     return agents ? agents.length : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgentCount() instead. This method returns cached data only.
+   * 
+   * Gets the count of agents in a room (from cache).
+   *
+   * @param roomId - Room ID to count agents for
+   * @returns Number of agents or undefined if cache invalid
+   */
+  public getRoomAgentCount(roomId: string): number | undefined {
+    return this.getCachedRoomAgentCount(roomId);
   }
 
   // ============================================================================

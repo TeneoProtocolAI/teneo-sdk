@@ -1021,7 +1021,7 @@ app.get("/api/v2/rooms/:id/agents/count", (c) => {
   }
 
   const roomId = c.req.param("id");
-  const count = sdk.getRoomAgentCount(roomId);
+  const count = sdk.getCachedRoomAgentCount(roomId);
 
   return c.json({
     roomId,

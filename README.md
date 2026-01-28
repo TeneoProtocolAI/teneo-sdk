@@ -524,7 +524,7 @@ if (inRoom === true) {
 }
 
 // Get room agent count (instant)
-const count = sdk.getRoomAgentCount("room-123");
+const count = sdk.getCachedRoomAgentCount("room-123");
 if (count !== undefined) {
   console.log(`Room has ${count} agents`);
 }

@@ -413,11 +413,11 @@ describe("AgentRoomManager", () => {
     it("should get room agent count", () => {
       manager.cacheRoomAgents("room-123", mockAgents);
 
-      expect(manager.getRoomAgentCount("room-123")).toBe(2);
+      expect(manager.getCachedRoomAgentCount("room-123")).toBe(2);
     });
 
     it("should return undefined for count if not cached", () => {
-      expect(manager.getRoomAgentCount("room-999")).toBeUndefined();
+      expect(manager.getCachedRoomAgentCount("room-999")).toBeUndefined();
     });
   });
 

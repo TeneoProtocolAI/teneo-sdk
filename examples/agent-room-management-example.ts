@@ -302,7 +302,7 @@ async function removeAgentsFromRoom(sdk: TeneoSDK, roomId: string, roomAgents: a
 
 function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   // Get agent count (instant, from cache)
-  const count = sdk.getRoomAgentCount(roomId);
+  const count = sdk.getCachedRoomAgentCount(roomId);
   console.log(`Room agent count: ${count}`);
 
   // Get cached agents (instant)

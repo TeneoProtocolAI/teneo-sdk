@@ -1145,14 +1145,27 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const count = sdk.getRoomAgentCount('room-123');
+   * const count = sdk.getCachedRoomAgentCount('room-123');
    * if (count !== undefined) {
    *   console.log(`Room has ${count} agents`);
    * }
    * ```
    */
+  public getCachedRoomAgentCount(roomId: string): number | undefined {
+    return this.agentRoom.getCachedRoomAgentCount(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgentCount() instead. This method returns cached data only.
+   * Use listRoomAgents() to fetch fresh data from server.
+   *
+   * Gets the count of agents in a room (synchronous, from cache).
+   *
+   * @param roomId - ID of the room
+   * @returns Number of agents in room, or undefined if not cached
+   */
   public getRoomAgentCount(roomId: string): number | undefined {
-    return this.agentRoom.getRoomAgentCount(roomId);
+    return this.getCachedRoomAgentCount(roomId);
   }
 
   /**

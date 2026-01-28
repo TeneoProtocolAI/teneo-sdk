@@ -150,6 +150,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
   - `getCachedRoomAgents(roomId)` - Get cached room agents instantly
   - `getCachedAvailableAgents(roomId)` - Get cached available agents instantly
   - `checkAgentInRoom(roomId, agentId)` - Check if agent is in room (cached)
+  - `getCachedRoomAgentCount(roomId)` - Get agent count from cache
   - `getRoomAgentCount(roomId)` - Get agent count from cache
 
 - **Cache Management**

@@ -441,7 +441,7 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
   }
 
   getRoomAgentCount(roomId: string) {
-    return this.sdk?.getRoomAgentCount(roomId) || 0;
+    return this.sdk?.getCachedRoomAgentCount(roomId) || 0;
   }
 
   invalidateAgentRoomCache(roomId: string) {
