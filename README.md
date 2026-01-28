@@ -229,10 +229,11 @@ Organize agents by context using rooms:
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  autoJoinRooms: ["crawler-room-id", "kol-tracker-room-id"]
+  autoJoinPublicRooms: ["crawler-room-id", "kol-tracker-room-id"] // public rooms only
 });
 
 // Each room may have different agents available
+// Note: Private rooms are automatically available after auth
 await sdk.connect();
 
 // Send to specific room contexts
@@ -852,7 +853,7 @@ sdk.on("room:unsubscribed", (data) => {
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0x...", // Your private key
-  autoJoinRooms: ["room-id-1"],
+  autoJoinPublicRooms: ["room-id-1"],
   reconnect: true,
   logLevel: "info"
 });
@@ -872,7 +873,7 @@ const config = new SDKConfigBuilder()
   .withAuthentication(secureKey) // Encrypted key
 
   // Rooms - auto-join these public rooms on connect
-  .withAutoJoinRooms(["room-id-1", "room-id-2"]) // public room IDs to auto-subscribe
+  .withAutoJoinPublicRooms(["room-id-1", "room-id-2"]) // Public rooms only (private rooms auto-available)
 
   // Reconnection strategy
   .withReconnectionStrategy({

@@ -105,7 +105,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @param config.wsUrl - WebSocket URL to connect to (e.g., 'wss://teneo.example.com')
    * @param config.privateKey - Optional Ethereum private key for wallet-based authentication
    * @param config.walletAddress - Optional wallet address (derived from privateKey if not provided)
-   * @param config.autoJoinRooms - Optional array of room IDs to subscribe to automatically on connection
+   * @param config.autoJoinPublicRooms - Optional array of public room IDs to subscribe to automatically on connection (private rooms are auto-available)
    * @param config.webhookUrl - Optional webhook URL for receiving event notifications
    * @param config.reconnect - Enable automatic reconnection (default: true)
    * @param config.logLevel - Logging level: 'debug', 'info', 'warn', 'error', 'silent' (default: 'info')
@@ -125,7 +125,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * const sdk = new TeneoSDK({
    *   wsUrl: 'wss://teneo.example.com',
    *   privateKey: '0x...',
-   *   autoJoinRooms: ['room-id-1', 'room-id-2'],
+   *   autoJoinPublicRooms: ['public-room-1', 'public-room-2'], // Public rooms only
    *   webhookUrl: 'https://api.example.com/webhooks',
    *   logLevel: 'debug',
    *   responseFormat: 'both',
@@ -137,7 +137,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * const config = TeneoSDK.builder()
    *   .withWebSocketUrl('wss://teneo.example.com')
    *   .withAuthentication('0x...')
-   *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
+   *   .withAutoJoinPublicRooms(['public-room-1', 'public-room-2'])
    *   .build();
    * const sdk = new TeneoSDK(config);
    * ```
@@ -257,9 +257,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.logger.info("Connecting to Teneo Protocol");
       await this.connection.connect();
 
-      // Auto-join rooms if configured
-      if (this.config.autoJoinRooms && this.config.autoJoinRooms.length > 0) {
-        for (const room of this.config.autoJoinRooms) {
+      // Auto-join public rooms if configured
+      if (this.config.autoJoinPublicRooms && this.config.autoJoinPublicRooms.length > 0) {
+        for (const room of this.config.autoJoinPublicRooms) {
           await this.rooms.subscribeToRoom(room);
         }
       }
@@ -2015,7 +2015,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * const config = TeneoSDK.builder()
    *   .withWebSocketUrl('wss://teneo.example.com')
    *   .withAuthentication('0x...')
-   *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
+   *   .withAutoJoinPublicRooms(['public-room-1', 'public-room-2'])
    *   .withLogging('debug')
    *   .withWebhook('https://api.example.com/webhooks')
    *   .build();

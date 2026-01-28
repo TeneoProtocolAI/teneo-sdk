@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   SDKConfigSchema,
+  PartialSDKConfigSchema,
   SDKConfigBuilder,
   validateConfig,
   DEFAULT_CONFIG,
@@ -31,7 +32,7 @@ describe("SDK Configuration", () => {
         messageTimeout: 15000,
         maxMessageSize: 2 * 1024 * 1024,
         logLevel: "debug" as LogLevel,
-        autoJoinRooms: ["room1", "room2"],
+        autoJoinPublicRooms: ["room1", "room2"],
         responseFormat: "humanized" as const,
         includeMetadata: true,
         webhookRetries: 5,
@@ -183,7 +184,7 @@ describe("SDK Configuration", () => {
       expect(config.reconnectDelay).toBe(3000);
       expect(config.maxReconnectAttempts).toBe(15);
       expect(config.logLevel).toBe("debug");
-      expect(config.autoJoinRooms).toEqual(["room1", "room2"]);
+      expect(config.autoJoinPublicRooms).toEqual(["room1", "room2"]);
       expect(config.responseFormat).toBe("humanized");
       expect(config.includeMetadata).toBe(true);
       expect(config.enableCache).toBe(true);
@@ -206,6 +207,25 @@ describe("SDK Configuration", () => {
           .withAuthentication("0x1234567890123456789012345678901234567890123456789012345678901234")
           .build();
       }).not.toThrow(); // Private key is not actually required if wsUrl is set in default
+    });
+
+    it("should handle backward compatibility for autoJoinRooms -> autoJoinPublicRooms", () => {
+      // Test that autoJoinRooms is mapped to autoJoinPublicRooms
+      const config = PartialSDKConfigSchema.parse({
+        wsUrl: "wss://example.com/ws",
+        autoJoinRooms: ["old-room-1", "old-room-2"]
+      });
+
+      expect(config.autoJoinPublicRooms).toEqual(["old-room-1", "old-room-2"]);
+      
+      // Test that new property takes precedence
+      const config2 = PartialSDKConfigSchema.parse({
+        wsUrl: "wss://example.com/ws",
+        autoJoinRooms: ["old-room"],
+        autoJoinPublicRooms: ["new-room"]
+      });
+
+      expect(config2.autoJoinPublicRooms).toEqual(["new-room"]);
     });
 
     it("should merge with default config", () => {
