@@ -558,7 +558,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use findAvailableAgentsByCapability() instead. This searches all available agents network-wide.
-   * 
+   *
    * Finds all agents that have a specific capability.
    *
    * @param capability - The capability name to search for
@@ -592,7 +592,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use findAvailableAgentsByName() instead. This searches all available agents network-wide.
-   * 
+   *
    * Finds agents by name.
    *
    * @param name - Name or partial name to search for
@@ -626,7 +626,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use findAvailableAgentsByStatus() instead. This searches all available agents network-wide.
-   * 
+   *
    * Finds all agents with a specific status.
    *
    * @param status - Agent status: 'online' or 'offline'
@@ -1931,9 +1931,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     });
 
     // Forward message deduplication events from WebSocketClient
-    this.wsClient.on("message:duplicate", (message) =>
-      this.emit("message:duplicate", message)
-    );
+    this.wsClient.on("message:duplicate", (message) => this.emit("message:duplicate", message));
 
     // Forward signature verification events from WebSocketClient
     this.wsClient.on("signature:verified", (messageType, address) =>

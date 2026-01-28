@@ -150,7 +150,7 @@ describe("WebSocket Integration Tests", () => {
       .withWebSocketUrl(`ws://localhost:${serverPort}`)
       .withAuthentication(privateKey)
       .withReconnection(false) // Disable for tests
-      .withAutoJoinRooms(["test-room"]) // Auto-join test room
+      .withAutoJoinPublicRooms(["test-room"]) // Auto-join test room
       .withPayments({ autoApprove: false }) // Use legacy flow for mock server
       .build();
 

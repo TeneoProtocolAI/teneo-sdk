@@ -28,7 +28,6 @@ import type { Request, Response } from "express";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || "3001");
 const WEBHOOK_SINK_PORT = parseInt(process.env.WEBHOOK_SINK_PORT || "3000");
 
@@ -130,7 +129,6 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY)
-    // .withAutoJoinRooms([DEFAULT_ROOM])
     .withResponseFormat({ format: "both", includeMetadata: true })
     .withLogging("info")
     .build();
@@ -206,7 +204,7 @@ async function main() {
         {
           agent: agent.id,
           command: "hello webhook test",
-          room: DEFAULT_ROOM
+          room: "room-id"
         },
         false
       ); // Don't wait for response
@@ -243,7 +241,7 @@ async function main() {
         {
           agent: testAgents[0].id,
           command: "test retry",
-          room: DEFAULT_ROOM
+          room: "room-id"
         },
         false
       );

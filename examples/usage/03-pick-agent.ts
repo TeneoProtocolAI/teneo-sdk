@@ -17,7 +17,6 @@ import { TeneoSDK, SDKConfigBuilder, FormattedResponse } from "../../dist/index.
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 
 async function main() {
   console.log("🚀 Example 3: Pick and Communicate with Specific Agent\n");
@@ -34,7 +33,6 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY)
-    // .withAutoJoinRooms([DEFAULT_ROOM])
     .withResponseFormat({ format: "both", includeMetadata: true })
     .withLogging("info")
     .build();
@@ -143,7 +141,7 @@ async function main() {
       {
         agent: selectedAgent.id,
         command: command,
-        room: DEFAULT_ROOM
+        room: "room-id"
       },
       true
     ); // waitForResponse = true

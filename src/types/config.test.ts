@@ -169,7 +169,7 @@ describe("SDK Configuration", () => {
         })
         .withReconnection(true, 3000, 15)
         .withLogging("debug")
-        .withAutoJoinRooms(["room1", "room2"])
+        .withAutoJoinPublicRooms(["room1", "room2"])
         .withResponseFormat("humanized", true)
         .withCache(true, 300000, 100)
         .build();
@@ -217,7 +217,7 @@ describe("SDK Configuration", () => {
       });
 
       expect(config.autoJoinPublicRooms).toEqual(["old-room-1", "old-room-2"]);
-      
+
       // Test that new property takes precedence
       const config2 = PartialSDKConfigSchema.parse({
         wsUrl: "wss://example.com/ws",

@@ -44,7 +44,7 @@ if (!WS_URL || !PRIVATE_KEY) {
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(PRIVATE_KEY, WALLET_ADDRESS)
-  .withAutoJoinRooms([DEFAULT_ROOM])
+  .withAutoJoinPublicRooms([DEFAULT_ROOM])
   .withReconnection({
     enabled: ENABLE_RECONNECTION,
     delay: RECONNECT_DELAY,

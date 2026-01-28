@@ -51,7 +51,6 @@ app.use(express.json());
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(PRIVATE_KEY, WALLET_ADDRESS) // Wallet auto-derived if not provided
-  .withRoom(DEFAULT_ROOM)
   .withReconnection({
     enabled: ENABLE_RECONNECTION,
     delay: RECONNECT_DELAY,
@@ -121,7 +120,8 @@ app.post("/query", async (req, res) => {
       console.log("📡 Sending message via coordinator");
       response = await teneoSDK.sendMessage(message, {
         waitForResponse: true,
-        timeout
+        timeout,
+        room: DEFAULT_ROOM
       });
     }
 

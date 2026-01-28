@@ -125,7 +125,6 @@ PRIVATE_KEY=0x...your-private-key
 WALLET_ADDRESS=0x...your-wallet-address
 
 # Optional
-DEFAULT_ROOM=your-room-id
 PORT=3000
 
 # Security Features
@@ -147,7 +146,6 @@ const secureKey = new SecurePrivateKey(PRIVATE_KEY);
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(secureKey, WALLET_ADDRESS) // Use encrypted key
-  .withAutoJoinRooms([DEFAULT_ROOM])
   .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 })
   // REL-3: Custom retry strategies for production
   .withReconnectionStrategy({

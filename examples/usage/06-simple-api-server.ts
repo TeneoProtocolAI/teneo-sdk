@@ -23,7 +23,6 @@ import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 const PORT = parseInt(process.env.PORT || "3000");
 
 // Validate configuration
@@ -40,13 +39,11 @@ app.use(express.json());
 console.log("🚀 Initializing Teneo API Server\n");
 console.log("📋 Configuration:");
 console.log(`   WebSocket: ${WS_URL}`);
-console.log(`   Room: ${DEFAULT_ROOM}`);
 console.log(`   Port: ${PORT}\n`);
 
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(PRIVATE_KEY)
-  // .withAutoJoinRooms([DEFAULT_ROOM])
   .withResponseFormat({ format: "both", includeMetadata: true })
   .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 })
   .withLogging("info")
@@ -233,7 +230,7 @@ app.post("/message", async (req: Request, res: Response) => {
         {
           agent,
           command: message,
-          room: DEFAULT_ROOM
+          room: "room-id"
         },
         waitForResponse
       );
@@ -260,7 +257,7 @@ app.post("/message", async (req: Request, res: Response) => {
     } else {
       // Send via coordinator (will auto-select agent)
       const response = await sdk.sendMessage(message, {
-        room: DEFAULT_ROOM,
+        room: "room-id",
         waitForResponse,
         timeout
       });

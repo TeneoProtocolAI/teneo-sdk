@@ -148,10 +148,7 @@ export const SDKConfigSchema = SDKConfigBaseSchema.transform((config) => {
 
 // Partial config for constructor
 export const PartialSDKConfigSchema = SDKConfigBaseSchema.partial()
-  .refine(
-    (config) => config.wsUrl !== undefined,
-    { message: "WebSocket URL is required" }
-  )
+  .refine((config) => config.wsUrl !== undefined, { message: "WebSocket URL is required" })
   .transform((config) => {
     // Handle backward compatibility: map autoJoinRooms to autoJoinPublicRooms
     if (config.autoJoinRooms && !config.autoJoinPublicRooms) {
@@ -326,7 +323,7 @@ export function safeParseConfig(config: unknown): {
  * const config = new SDKConfigBuilder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...', '0xYourWalletAddress')
- *   .withAutoJoinRooms(['room-id-1', 'room-id-2'])
+ *   .withAutoJoinPublicRooms(['room-id-1', 'room-id-2'])
  *   .withWebhook('https://api.example.com/webhooks', {
  *     'Authorization': 'Bearer token'
  *   })
@@ -342,7 +339,7 @@ export function safeParseConfig(config: unknown): {
  * const config = TeneoSDK.builder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...')
- *   .withAutoJoinRooms(['room-id-1'])
+ *   .withAutoJoinPublicRooms(['room-id-1'])
  *   .build();
  * const sdk = new TeneoSDK(config);
  * ```
@@ -948,7 +945,7 @@ export class SDKConfigBuilder {
    * const config = new SDKConfigBuilder()
    *   .withWebSocketUrl('wss://teneo.example.com')
    *   .withAuthentication('0x...')
-   *   .withAutoJoinRooms(['room-id-1'])
+   *   .withAutoJoinPublicRooms(['room-id-1'])
    *   .build();  // Validates and returns final config
    *
    * const sdk = new TeneoSDK(config);

@@ -441,9 +441,8 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     this.validateRoomId(roomId);
 
     // Determine if using pagination options or legacy boolean
-    const isPaginated =
-      typeof useCacheOrOptions === "object" && useCacheOrOptions !== null;
-    const useCache = isPaginated ? false : (useCacheOrOptions as boolean) ?? true;
+    const isPaginated = typeof useCacheOrOptions === "object" && useCacheOrOptions !== null;
+    const useCache = isPaginated ? false : ((useCacheOrOptions as boolean) ?? true);
 
     // Check cache if enabled (only for legacy non-paginated calls)
     if (!isPaginated && useCache) {
@@ -483,12 +482,15 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
         reject(new SDKError("List available agents timeout", ErrorCode.TIMEOUT));
       }, 30000);
 
-      const onSuccess = (agents: AgentRoomInfo[], paginationMeta?: {
-        total?: number;
-        offset?: number;
-        limit?: number;
-        hasMore?: boolean;
-      }) => {
+      const onSuccess = (
+        agents: AgentRoomInfo[],
+        paginationMeta?: {
+          total?: number;
+          offset?: number;
+          limit?: number;
+          hasMore?: boolean;
+        }
+      ) => {
         cleanup();
         if (isPaginated) {
           resolve({
@@ -547,7 +549,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use getCachedRoomAgents() instead. This method returns cached data only.
-   * 
+   *
    * Gets agents currently in a room from cache (synchronous).
    *
    * @param roomId - Room ID to query
@@ -579,7 +581,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use getCachedAvailableAgents() instead. This method returns cached data only.
-   * 
+   *
    * Gets available agents for a room from cache (synchronous).
    *
    * @param roomId - Room ID to query
@@ -651,7 +653,7 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
 
   /**
    * @deprecated Use getCachedRoomAgentCount() instead. This method returns cached data only.
-   * 
+   *
    * Gets the count of agents in a room (from cache).
    *
    * @param roomId - Room ID to count agents for

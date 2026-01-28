@@ -27,7 +27,7 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(secureKey, WALLET_ADDRESS) // Use encrypted key
-    .withAutoJoinRooms([DEFAULT_ROOM]) // Auto-join default room on connect
+    .withAutoJoinPublicRooms([DEFAULT_ROOM]) // Auto-join default room on connect
     .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 }) // Enable reconnection
     .withResponseFormat({ format: "both", includeMetadata: true }) // Get both raw and humanized responses with metadata
     .withLogging("debug") // Enable debug logging

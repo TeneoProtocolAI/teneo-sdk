@@ -16,21 +16,23 @@ Version 3.0 introduces comprehensive naming improvements to make the SDK API mor
 #### Room Subscription Clarity
 
 **Before:**
+
 ```typescript
 const sdk = new TeneoSDK({
-  autoJoinRooms: ['room-1', 'room-2']
+  autoJoinRooms: ["room-1", "room-2"]
 });
-await sdk.subscribeToRoom('room-id');
-await sdk.unsubscribeFromRoom('room-id');
+await sdk.subscribeToRoom("room-id");
+await sdk.unsubscribeFromRoom("room-id");
 ```
 
 **After (v3.0):**
+
 ```typescript
 const sdk = new TeneoSDK({
-  autoJoinPublicRooms: ['room-1', 'room-2']  // Explicit: only public rooms
+  autoJoinPublicRooms: ["room-1", "room-2"] // Explicit: only public rooms
 });
-await sdk.subscribeToPublicRoom('room-id');     // Explicit: only works for public rooms
-await sdk.unsubscribeFromPublicRoom('room-id'); // Private rooms are auto-available
+await sdk.subscribeToPublicRoom("room-id"); // Explicit: only works for public rooms
+await sdk.unsubscribeFromPublicRoom("room-id"); // Private rooms are auto-available
 ```
 
 **Why:** These methods only work with public rooms. Private rooms are automatically available after authentication. The new names make this distinction explicit.
@@ -40,21 +42,23 @@ await sdk.unsubscribeFromPublicRoom('room-id'); // Private rooms are auto-availa
 #### Cache-Only Methods Now Explicit
 
 **Before:**
+
 ```typescript
-const agents = sdk.getRoomAgents('room-123');           // Unclear: cache or fetch?
-const available = sdk.getAvailableAgents('room-123');   // Unclear: cache or fetch?
-const count = sdk.getRoomAgentCount('room-123');        // Returns undefined if not cached
+const agents = sdk.getRoomAgents("room-123"); // Unclear: cache or fetch?
+const available = sdk.getAvailableAgents("room-123"); // Unclear: cache or fetch?
+const count = sdk.getRoomAgentCount("room-123"); // Returns undefined if not cached
 ```
 
 **After (v3.0):**
+
 ```typescript
-const agents = sdk.getCachedRoomAgents('room-123');           // Clear: cache-only
-const available = sdk.getCachedAvailableAgents('room-123');   // Clear: cache-only
-const count = sdk.getCachedRoomAgentCount('room-123');        // Clear: cache-only
+const agents = sdk.getCachedRoomAgents("room-123"); // Clear: cache-only
+const available = sdk.getCachedAvailableAgents("room-123"); // Clear: cache-only
+const count = sdk.getCachedRoomAgentCount("room-123"); // Clear: cache-only
 
 // Async methods unchanged (still fetch from server):
-await sdk.listRoomAgents('room-123');        // Still async fetch
-await sdk.listAvailableAgents('room-123');   // Still async fetch
+await sdk.listRoomAgents("room-123"); // Still async fetch
+await sdk.listAvailableAgents("room-123"); // Still async fetch
 ```
 
 **Why:** Method names now clearly indicate sync (cache-only) vs async (server fetch) behavior.
@@ -64,14 +68,16 @@ await sdk.listAvailableAgents('room-123');   // Still async fetch
 #### Boolean Method Semantic Clarity
 
 **Before:**
+
 ```typescript
-const result = sdk.isAgentInRoom('room-123', 'agent-456');
+const result = sdk.isAgentInRoom("room-123", "agent-456");
 // Returns: boolean | undefined (but 'is*' implies boolean-only)
 ```
 
 **After (v3.0):**
+
 ```typescript
-const result = sdk.checkAgentInRoom('room-123', 'agent-456');
+const result = sdk.checkAgentInRoom("room-123", "agent-456");
 // Returns: boolean | undefined (name doesn't mislead about return type)
 // - true: agent IS in room (verified)
 // - false: agent is NOT in room (verified)
@@ -85,17 +91,19 @@ const result = sdk.checkAgentInRoom('room-123', 'agent-456');
 #### Network-Wide Search Scope Clarity
 
 **Before:**
+
 ```typescript
-const agents = sdk.findAgentsByCapability('weather');  // Unclear: what scope?
-const results = sdk.findAgentsByName('bot');           // All agents? Room agents?
-const online = sdk.findAgentsByStatus('online');       // Which agents?
+const agents = sdk.findAgentsByCapability("weather"); // Unclear: what scope?
+const results = sdk.findAgentsByName("bot"); // All agents? Room agents?
+const online = sdk.findAgentsByStatus("online"); // Which agents?
 ```
 
 **After (v3.0):**
+
 ```typescript
-const agents = sdk.findAvailableAgentsByCapability('weather');  // Clear: all available agents
-const results = sdk.findAvailableAgentsByName('bot');           // Clear: network-wide search
-const online = sdk.findAvailableAgentsByStatus('online');       // Clear: all available agents
+const agents = sdk.findAvailableAgentsByCapability("weather"); // Clear: all available agents
+const results = sdk.findAvailableAgentsByName("bot"); // Clear: network-wide search
+const online = sdk.findAvailableAgentsByStatus("online"); // Clear: all available agents
 ```
 
 **Why:** These methods search ALL available agents network-wide, not just room-specific agents. The new names make this scope explicit.
@@ -144,7 +152,7 @@ const online = sdk.findAvailableAgentsByStatus('online');       // Clear: all av
 
 ## [2.2.1]
 
-### 🐛 Fixed
+### 🐛 Fixed Issues
 
 - Fixed `getRooms()`/`getRoom()` race condition after connect
 - Fixed `room_list_response` message type to match backend
@@ -214,7 +222,7 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 
 ## [2.1.0] - 2025-12-08
 
-### ✨ Added
+### ✨ Added Features
 
 #### Automatic X402 Payment Signing
 
@@ -234,7 +242,7 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 
 Version 2.0 introduces comprehensive room management and per-room agent customization capabilities, enabling developers to create context-specific agent experiences.
 
-### ✨ Added
+### ✨ Added Feature
 
 #### Phase 1: Room Management System
 
@@ -325,13 +333,13 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 - Comprehensive coverage of agent room management
 - All manager and handler tests passing
 
-### 🔄 Changed
+### 🔄 Changed Features
 
 - Message handlers now use `BaseMessageHandler` pattern
 - Enhanced event system with 14 new event types
 - WebSocketClient now manages room and agent-room managers
 
-### 🐛 Fixed
+### 🐛 Fixed Issue
 
 - Schema field names now match backend source of truth
 - Proper defensive copying for cache immutability
@@ -341,7 +349,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 - Room management events now properly forward from WebSocket handlers to SDK instance
 - Room persistence: Private rooms now correctly persist after page refresh via proper initialization of RoomManagementManager from auth state
 
-### 📚 Documentation
+### 📚 Documentation Updates
 
 - Comprehensive README updates with v2.0 features
 - New "What's New in v2.0" section

@@ -55,7 +55,7 @@ async function initSDK() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY, WALLET_ADDRESS)
-    .withAutoJoinRooms([ROOM]) // Auto-join rooms on connect
+    .withAutoJoinPublicRooms([ROOM]) // Auto-join rooms on connect
     .withReconnection(true, 5000, 10) // Enable reconnection
     .withResponseFormat("both", true) // Get both raw and humanized responses with metadata
     .withLogging("debug") // Enable debug logging
