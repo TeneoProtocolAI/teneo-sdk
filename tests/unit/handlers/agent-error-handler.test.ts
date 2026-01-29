@@ -249,11 +249,14 @@ describe("AgentErrorHandler", () => {
       await handler.handle(message, mockContext);
 
       // Should still emit event
-      expect(emitSpy).toHaveBeenCalledWith("agent:error", expect.objectContaining({
-        agentName: "data-agent",
-        content: "Agent error occurred",
-        taskId: "task-fail"
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        "agent:error",
+        expect.objectContaining({
+          agentName: "data-agent",
+          content: "Agent error occurred",
+          taskId: "task-fail"
+        })
+      );
     });
   });
 
@@ -295,10 +298,13 @@ describe("AgentErrorHandler", () => {
       // Should not throw
       await handler.handle(message, mockContext);
 
-      expect(emitSpy).toHaveBeenCalledWith("agent:error", expect.objectContaining({
-        agentName: "extra-agent",
-        content: "Error with extras"
-      }));
+      expect(emitSpy).toHaveBeenCalledWith(
+        "agent:error",
+        expect.objectContaining({
+          agentName: "extra-agent",
+          content: "Error with extras"
+        })
+      );
     });
   });
 

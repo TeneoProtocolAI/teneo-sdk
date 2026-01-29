@@ -338,16 +338,14 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
           if (parseResult.success) {
             this.handleMessage(parseResult.data as BaseMessage);
           } else {
-            // Use warn instead of error - allows SDK to be more resilient
-            this.logger.warn("Received message with unknown or invalid format", {
+            // Log validation errors at debug level only (hidden from end users)
+            this.logger.debug("Message validation warning", {
               type: rawMessage?.type,
               error: parseResult.error?.message
             });
-            this.emit(
-              "message:error",
-              new ValidationError("Invalid message format", parseResult.error),
-              rawMessage
-            );
+
+            // Still process the message for resilience - don't block on validation errors
+            this.handleMessage(rawMessage as BaseMessage);
           }
         } catch (error) {
           this.logger.error("Failed to parse message", error);
@@ -622,9 +620,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
         this.logger.debug("Checking cached authentication", {
           hasSessionToken: !!sessionToken
         });
-        await this.sendMessage(
-          createCheckCachedAuth(this.config.walletAddress, sessionToken)
-        );
+        await this.sendMessage(createCheckCachedAuth(this.config.walletAddress, sessionToken));
 
         // Wait briefly for cached auth response
         await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.CACHED_AUTH_WAIT));

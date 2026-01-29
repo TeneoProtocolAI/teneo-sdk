@@ -324,7 +324,6 @@ export interface SDKEvents {
   "room:unsubscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
 
-
   // Room Ping/Pong events
   "room:pong": (data: { roomId: string; liveCount: number; timestamp: string }) => void;
 
@@ -340,12 +339,15 @@ export interface SDKEvents {
   "agent_room:agent_added": (roomId: string, agentId: string) => void;
   "agent_room:agent_removed": (roomId: string, agentId: string) => void;
   "agent_room:agents_listed": (roomId: string, agents: any[]) => void;
-  "agent_room:available_agents_listed": (agents: any[], paginationMeta?: {
-    total?: number;
-    offset?: number;
-    limit?: number;
-    hasMore?: boolean;
-  }) => void;
+  "agent_room:available_agents_listed": (
+    agents: any[],
+    paginationMeta?: {
+      total?: number;
+      offset?: number;
+      limit?: number;
+      hasMore?: boolean;
+    }
+  ) => void;
   "agent_room:status_update": (data: {
     roomId: string;
     agentId: string;

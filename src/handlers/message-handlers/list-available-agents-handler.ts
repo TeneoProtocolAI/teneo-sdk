@@ -35,7 +35,8 @@ export class ListAvailableAgentsHandler extends BaseMessageHandler<AvailableAgen
     // The AgentRoomManager will cache it with the room context
 
     // Emit success event, with pagination metadata if present
-    const hasPagination = total !== undefined || offset !== undefined || limit !== undefined || has_more !== undefined;
+    const hasPagination =
+      total !== undefined || offset !== undefined || limit !== undefined || has_more !== undefined;
     if (hasPagination) {
       this.emit(context, "agent_room:available_agents_listed", agentList, {
         total,

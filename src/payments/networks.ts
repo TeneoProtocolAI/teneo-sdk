@@ -176,7 +176,12 @@ export function createChainDefinition(network: NetworkConfig): Chain {
     nativeCurrency: {
       decimals: 18,
       name: network.name.split(" ")[0], // Use first word as currency name
-      symbol: network.name === "PEAQ Mainnet" ? "PEAQ" : network.name === "Avalanche Mainnet" ? "AVAX" : "ETH"
+      symbol:
+        network.name === "PEAQ Mainnet"
+          ? "PEAQ"
+          : network.name === "Avalanche Mainnet"
+            ? "AVAX"
+            : "ETH"
     },
     rpcUrls: {
       default: {

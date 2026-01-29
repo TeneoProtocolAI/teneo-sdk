@@ -191,7 +191,6 @@ export {
   type SetUserPreferencesMessage,
   type UserPreferencesUpdatedData,
   type UserPreferencesUpdatedMessage,
-
   type AnyMessage,
 
   // Task Confirmed types

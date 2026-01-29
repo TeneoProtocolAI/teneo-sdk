@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AgentRoomManager, AgentRoomInfo, PaginatedAgentsResult } from "../../../src/managers/agent-room-manager";
+import {
+  AgentRoomManager,
+  AgentRoomInfo,
+  PaginatedAgentsResult
+} from "../../../src/managers/agent-room-manager";
 import { RoomManagementManager } from "../../../src/managers/room-management-manager";
 import { WebSocketClient } from "../../../src/core/websocket-client";
 import { Logger, RoomInfo } from "../../../src/types";
@@ -636,7 +640,7 @@ describe("AgentRoomManager", () => {
 
       // Legacy call returns AgentRoomInfo[], not PaginatedAgentsResult
       expect(Array.isArray(result)).toBe(true);
-      expect((result as AgentRoomInfo[])).toHaveLength(2);
+      expect(result as AgentRoomInfo[]).toHaveLength(2);
       // Should NOT have 'total', 'offset', 'limit', 'hasMore' properties
       expect(result).not.toHaveProperty("total");
       expect(result).not.toHaveProperty("hasMore");

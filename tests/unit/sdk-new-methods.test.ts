@@ -51,9 +51,7 @@ describe("TeneoSDK New Methods", () => {
     it("should throw SDKError when destroyed", async () => {
       (sdk as any).isDestroyed = true;
 
-      await expect(sdk.setApiKeyPreference(true)).rejects.toThrow(
-        "SDK has been destroyed"
-      );
+      await expect(sdk.setApiKeyPreference(true)).rejects.toThrow("SDK has been destroyed");
 
       try {
         await sdk.setApiKeyPreference(true);
