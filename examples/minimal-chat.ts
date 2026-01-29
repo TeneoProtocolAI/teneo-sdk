@@ -80,11 +80,12 @@ async function main() {
     } else {
       console.log(`\nUsing private room "${selectedRoom.name || selectedRoom.id}"...`);
     }
-    console.log("Type messages below (Ctrl+C to exit)\n");
+    console.log("Type messages below (Ctrl+C to exit)");
+    console.log("Tip: Use '@Agent Name command params' for direct commands\n");
 
     // Chat loop
     while (true) {
-      const message = await ask("You: ");
+      const message = await ask("You (or @Agent Name command): ");
       if (!message.trim()) continue;
 
       console.log("Sending...");

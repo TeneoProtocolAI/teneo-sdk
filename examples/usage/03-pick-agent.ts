@@ -3,7 +3,8 @@
  *
  * This example demonstrates:
  * - Finding a specific agent by ID or name
- * - Sending a direct command to an agent (bypassing coordinator)
+ * - Sending a direct command to an agent
+ * - Direct commands work in all environments (required when no coordinator)
  * - Waiting for and receiving agent responses
  * - Handling response formats (raw, humanized, both)
  *

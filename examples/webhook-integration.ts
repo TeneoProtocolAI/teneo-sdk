@@ -112,8 +112,13 @@ async function main() {
     console.log("\n[SDK] Sending test messages...\n");
 
     // These will trigger webhooks
+    // WITH COORDINATOR: Natural language
     await sdk.sendMessage("What is blockchain technology?", { room: process.env.ROOM_ID || "your-room-id" });
     await sdk.sendMessage("Explain quantum computing in simple terms", { room: process.env.ROOM_ID || "your-room-id" });
+
+    // WITHOUT COORDINATOR: Direct command (use @Agent Name syntax)
+    // await sdk.sendMessage("@X Platform Agent search bitcoin 5", { room: process.env.ROOM_ID || "your-room-id" });
+    
     await sdk.sendMessage("How does machine learning work?", { room: process.env.ROOM_ID || "your-room-id" });
 
     // Check webhook queue status

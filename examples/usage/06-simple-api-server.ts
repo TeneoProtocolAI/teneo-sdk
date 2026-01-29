@@ -203,6 +203,13 @@ app.get("/agents/capability/:capability", (req: Request, res: Response) => {
  * POST /message
  * Send a message to an agent
  * Body: { message: string, agent?: string, waitForResponse?: boolean, timeout?: number }
+ *
+ * Two approaches:
+ * 1. WITH AGENT: Direct command (required in non-coordinator environments)
+ *    Example: { "message": "search bitcoin 5", "agent": "X Platform Agent" }
+ *
+ * 2. WITHOUT AGENT: Coordinator routing (only works in coordinator environments)
+ *    Example: { "message": "Get bitcoin info" }
  */
 app.post("/message", async (req: Request, res: Response) => {
   try {
@@ -225,7 +232,7 @@ app.post("/message", async (req: Request, res: Response) => {
     const startTime = Date.now();
 
     if (agent) {
-      // Send to specific agent
+      // Send to specific agent (direct command)
       const response = await sdk.sendDirectCommand(
         {
           agent,

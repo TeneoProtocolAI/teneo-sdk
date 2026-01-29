@@ -71,19 +71,54 @@ const rooms = sdk.getRooms();
 const roomId = rooms[0].id;
 
 // 5. Send a message to a room
+
+// WITH COORDINATOR (when available):
 await sdk.sendMessage("Give me the last 5 tweets from @elonmusk", {
   room: roomId
 });
+// → Coordinator selects best agent automatically
 
-// The coordinator routes to the best agent and delivers the response
+// WITHOUT COORDINATOR (direct command required):
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
+  room: roomId
+});
+// → Direct command to specific agent by name
 ```
 
 **That's it!** After authentication:
 
 1. Your private rooms are automatically available
 2. Send messages to any room by ID
-3. Messages are routed to the appropriate agent (via coordinator when available)
-4. Responses arrive via the event listener
+3. **With coordinator**: Use natural language - coordinator routes to best agent
+4. **Without coordinator**: Use `@Agent Name command params` syntax to target specific agents
+5. Responses arrive via the event listener
+
+### Message Routing Flow
+
+The SDK supports two routing approaches depending on your environment:
+
+```mermaid
+graph TB
+    UserMessage[User Message]
+    CheckEnv{Environment Has<br/>Coordinator?}
+    CoordPath[Coordinator Routing]
+    DirectPath[Direct Routing]
+    CoordSelect[Coordinator Selects<br/>Best Agent]
+    DirectTarget[Direct to<br/>Named Agent]
+    Agent[Agent Processes<br/>Request]
+    
+    UserMessage --> CheckEnv
+    CheckEnv -->|Yes| CoordPath
+    CheckEnv -->|No| DirectPath
+    CoordPath -->|"Natural language<br/>supported"| CoordSelect
+    DirectPath -->|"@Agent Name required"| DirectTarget
+    CoordSelect --> Agent
+    DirectTarget --> Agent
+```
+
+**Key Differences:**
+- **Coordinator environments**: Both natural language and direct commands work
+- **Non-coordinator environments**: Must use `@Agent Name command params` syntax
 
 ---
 
@@ -281,11 +316,20 @@ const sdk = new TeneoSDK({
 await sdk.connect();
 
 // Send to specific room contexts
+
+// WITH COORDINATOR:
 await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "kol-tracker-room-id" });
-// → Routed to X Agent in KOL tracker room
+// → Coordinator routes to best agent in room
 
 await sdk.sendMessage("Crawl this website for data", { room: "crawler-room-id" });
-// → Routed to Crawler Agent in Crawler Room
+// → Coordinator routes to best agent in room
+
+// WITHOUT COORDINATOR (direct commands required):
+await sdk.sendMessage("@X Platform Agent timeline @elonmusk 5", { room: "kol-tracker-room-id" });
+// → Direct to X Platform Agent in room
+
+await sdk.sendMessage("@Web Crawler Agent crawl https://example.com", { room: "crawler-room-id" });
+// → Direct to Web Crawler Agent in room
 
 // Manage rooms dynamically
 const rooms = sdk.getSubscribedRooms();
@@ -712,7 +756,7 @@ const sdk = new TeneoSDK(
 await sdk.connect();
 
 // Send message - payment handled automatically
-const response = await sdk.sendMessage("@x-agent-enterprise-v2 user @elonmusk", {
+const response = await sdk.sendMessage("@X Platform Agent user @elonmusk", {
   room: roomId,
   waitForResponse: true
 });
@@ -909,34 +953,66 @@ const avalancheBot = new TeneoSDK(
 
 ### Direct Agent Commands
 
+#### When to Use Direct Commands
+
+Direct agent commands allow you to target a specific agent by name using the `@Agent Name command params` syntax:
+
+- **Required** in non-coordinator environments (direct commands are the only way to communicate)
+- **Optional** in coordinator environments (gives you explicit control over which agent handles the request)
+
+#### Syntax Options
+
 ```typescript
-// Option 1: Use sendDirectCommand for explicit agent targeting
-await sdk.sendDirectCommand({
-  agent: "x-agent-enterprise-v2",
-  command: "timeline @elonmusk 5",
-  room: roomId
+// Option 1: Use @mention syntax via sendMessage (recommended)
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
+  room: roomId,
+  waitForResponse: true
 });
 
-// Option 2: With wait for response
+// Option 2: Use sendDirectCommand for programmatic control
 const response = await sdk.sendDirectCommand({
-  agent: "x-agent-enterprise-v2",
-  command: "user @elonmusk",
+  agent: "X Platform Agent",
+  command: "timeline @elonmusk 5",
   room: roomId
 }, true); // waitForResponse
 
 console.log(response.humanized);
 
-// Option 3: Use @mention syntax via sendMessage
-await sdk.sendMessage("@x-agent-enterprise-v2 timeline @elonmusk 5", {
-  room: roomId,
-  waitForResponse: true
+// Option 3: Fire-and-forget (no wait for response)
+await sdk.sendDirectCommand({
+  agent: "X Platform Agent",
+  command: "user @elonmusk",
+  room: roomId
 });
+```
 
-// Let the coordinator choose the best agent
+#### Environment-Specific Examples
+
+```typescript
+// IN COORDINATOR ENVIRONMENTS (both work):
+
+// Natural language - coordinator selects best agent
 await sdk.sendMessage("Get me the latest tweets from @elonmusk", {
   room: roomId,
   waitForResponse: true
 });
+
+// Direct command - explicit agent selection
+await sdk.sendMessage("@X Platform Agent timeline @elonmusk 5", {
+  room: roomId,
+  waitForResponse: true
+});
+
+// IN NON-COORDINATOR ENVIRONMENTS (direct commands required):
+
+// Direct command - MUST specify agent name
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
+  room: roomId,
+  waitForResponse: true
+});
+
+// This will NOT work without coordinator:
+// ❌ await sdk.sendMessage("Get bitcoin info", { room: roomId });
 ```
 
 ### Payment Events
@@ -992,7 +1068,7 @@ sdk.on("quote:received", async (quote) => {
 });
 
 // Request triggers quote
-await sdk.sendMessage("@x-agent user @elonmusk", { room: roomId });
+await sdk.sendMessage("@X Platform Agent user @elonmusk", { room: roomId });
 ```
 
 ### Payment Flow Diagram

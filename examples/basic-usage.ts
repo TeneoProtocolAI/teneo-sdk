@@ -107,6 +107,26 @@ async function main() {
       console.log("✓ Response received (no humanized content)");
     }
 
+    // Example: Direct command to specific agent
+    // This syntax is REQUIRED in non-coordinator environments
+    // and OPTIONAL in coordinator environments for explicit agent selection
+    console.log("\n→ Sending direct command to specific agent...");
+    const directResponse = await sdk.sendMessage(
+      "@X Platform Agent search bitcoin 5",
+      {
+        room: DEFAULT_ROOM,
+        waitForResponse: true,
+        timeout: 30000
+      }
+    );
+
+    if (directResponse && directResponse.humanized) {
+      console.log(
+        "✓ Direct command response:",
+        directResponse.humanized.substring(0, 200)
+      );
+    }
+
     // Wait for some messages
     console.log("\n→ Listening for messages (press Ctrl+C to exit)...");
     console.log("  Watch the event logs above for real-time updates");

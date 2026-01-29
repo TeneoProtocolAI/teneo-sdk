@@ -279,6 +279,20 @@ We recommend following this learning path:
 
 ## 🔧 Common Patterns
 
+### Understanding Message Routing
+
+The SDK supports two routing approaches depending on your environment:
+
+**Coordinator Environments:**
+- Natural language messages work: `"Get bitcoin info"`
+- Coordinator automatically selects the best agent
+- Direct commands also work for explicit agent selection
+
+**Non-Coordinator Environments:**
+- Must use direct command syntax: `"@Agent Name command params"`
+- Example: `"@X Platform Agent search bitcoin 5"`
+- Required for all messages in these environments
+
 ### Pattern 1: Basic Message Flow
 
 ```typescript
@@ -297,18 +311,30 @@ console.log(response.humanized);
 
 ### Pattern 2: Direct Agent Command
 
+Direct commands work in all environments and are **required** in non-coordinator environments.
+
 ```typescript
 // Find agent by capability
 const agents = sdk.findAvailableAgentsByCapability('weather');
 const weatherAgent = agents[0];
 
-// Send direct command
+// Option 1: Use @mention syntax (recommended)
+const response = await sdk.sendMessage('@Weather Agent forecast for NYC', {
+  room: roomId,
+  waitForResponse: true
+});
+
+// Option 2: Use sendDirectCommand
 const response = await sdk.sendDirectCommand({
-  agent: weatherAgent.id,
+  agent: weatherAgent.name, // Use full agent name
   command: 'forecast for NYC',
   room: roomId
 }, true);
 ```
+
+**When to use:**
+- **Required** in non-coordinator environments
+- **Optional** in coordinator environments (explicit agent selection)
 
 ### Pattern 3: Event-Driven
 
