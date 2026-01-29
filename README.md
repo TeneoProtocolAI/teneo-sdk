@@ -82,7 +82,7 @@ await sdk.sendMessage("Give me the last 5 tweets from @elonmusk", {
 
 1. Your private rooms are automatically available
 2. Send messages to any room by ID
-3. The coordinator routes to the right agent
+3. Messages are routed to the appropriate agent (via coordinator when available)
 4. Responses arrive via the event listener
 
 ---
@@ -372,7 +372,7 @@ TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 - **URL**: `wss://backend.chatroom.teneo-protocol.ai/ws`
 - **Whitelist**: **Required** - you must be whitelisted to use this endpoint
 - **Use case**: Production applications and B2B integrations
-- **Get access**: Request whitelist access at [https://teneo-protocol.ai/chat-room](https://teneo-protocol.ai/chat-room)
+- **Get access**: Request whitelist access at [https://teneo-protocol.ai/data-access](https://teneo-protocol.ai/data-access)
 
 **Configuration:**
 ```bash
