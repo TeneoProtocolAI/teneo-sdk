@@ -462,7 +462,12 @@ export const PricingInfoSchema = z
 export const RequestTaskMessageSchema = BaseMessageSchema.extend({
   type: z.literal("request_task"),
   content: z.string(),
-  room: z.string()
+  room: z.string(),
+  data: z
+    .object({
+      network: z.string().optional() // Payment network (peaq, base, avalanche)
+    })
+    .optional()
 });
 
 // Task quote message (server response with pricing)
@@ -478,13 +483,14 @@ export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
       command: z.string(),
       pricing: PricingInfoSchema,
       expires_at: z.string(),
-      // x402 v2.5 settlement routing fields
-      client_request_id: z.string().optional(),
-      settlement_router: z.string().optional(),
-      salt: z.string().optional(),
-      facilitator_fee: z.string().optional(),
-      hook: z.string().optional(),
-      hook_data: z.string().optional()
+      // v2.5 Settlement Router fields for x402x-router-settlement extension
+      settlement_router: z.string(),
+      salt: z.string(),
+      facilitator_fee: z.string(),
+      hook: z.string(),
+      hook_data: z.string().optional().default("0x"),
+      // Request correlation
+      client_request_id: z.string().optional()
     })
     .passthrough()
 });
@@ -1302,11 +1308,16 @@ export function createListRooms(): ListRoomsMessage {
 }
 
 // Quote-Approve Flow factory functions (v2.2.0)
-export function createRequestTask(content: string, room: string): RequestTaskMessage {
+export function createRequestTask(
+  content: string,
+  room: string,
+  network?: string
+): RequestTaskMessage {
   return RequestTaskMessageSchema.parse({
     type: "request_task",
     content,
-    room
+    room,
+    ...(network && { data: { network } })
   });
 }
 

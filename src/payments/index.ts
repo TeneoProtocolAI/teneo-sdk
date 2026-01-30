@@ -29,5 +29,9 @@ export {
   getDefaultNetwork,
   createChainDefinition,
   isNetworkSupported,
-  getSupportedNetworks
+  getSupportedNetworks,
+  // Network config fetching (v2.4.0)
+  setNetworkConfigUrl,
+  fetchNetworkConfigs,
+  initializeNetworks
 } from "./networks";

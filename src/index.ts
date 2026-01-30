@@ -248,11 +248,8 @@ export {
   DEFAULT_PAYMENT_TIMEOUT_SECONDS,
   buildX402ResourceUrl,
   usdcToUnits,
-  unitsToUsdc
-} from "./payments";
-
-// Multi-network support (v2.3.0)
-export {
+  unitsToUsdc,
+  // Multi-network support (v2.3.0)
   type NetworkConfig,
   NETWORKS,
   CHAIN_ID_TO_NETWORK,

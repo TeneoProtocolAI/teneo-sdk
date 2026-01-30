@@ -29,7 +29,8 @@ import {
   AgentCommandContentSchema
 } from "../types/validation";
 import { waitForEvent } from "../utils/event-waiter";
-import { PaymentClient, buildX402ResourceUrl } from "../payments/payment-client";
+import { PaymentClient, buildX402ResourceUrl, usdcToUnits } from "../payments/payment-client";
+import { getDefaultNetwork, getNetwork } from "../payments/networks";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
 export interface SendMessageOptions {
@@ -49,6 +50,17 @@ export interface AgentCommand {
 }
 
 /**
+ * Settlement data from backend for x402x-router-settlement extension
+ */
+export interface SettlementData {
+  settlementRouter: string;
+  salt: string;
+  facilitatorFee: string;
+  hook: string;
+  hookData: string;
+}
+
+/**
  * Result of a quote request, containing pricing and agent details.
  */
 export interface QuoteResult {
@@ -59,6 +71,8 @@ export interface QuoteResult {
   command: string;
   pricing: PricingInfo;
   expiresAt: Date;
+  /** Backend-provided settlement data for x402x-router-settlement */
+  settlement: SettlementData;
 }
 
 export interface MessageRouterConfig {
@@ -68,8 +82,9 @@ export interface MessageRouterConfig {
   maxPricePerRequest?: number;
   quoteTimeout?: number;
   wsUrl?: string;
-  paymentNetwork?: string;
+  paymentNetwork?: string; // CAIP-2 format (e.g., "eip155:3338")
   paymentAsset?: string;
+  network?: string; // Network name (e.g., "peaq", "base", "avalanche")
 }
 
 export class MessageRouter extends EventEmitter<SDKEvents> {
@@ -87,8 +102,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private readonly maxPricePerRequest?: number;
   private readonly quoteTimeout: number;
   private readonly wsUrl: string;
-  private readonly paymentNetwork: string;
+  private readonly paymentNetwork: string; // CAIP-2 format if set
   private readonly paymentAsset: string;
+  private readonly networkName: string; // Network name (peaq, base, avalanche)
 
   constructor(
     wsClient: WebSocketClient,
@@ -110,11 +126,47 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.maxPricePerRequest = config.maxPricePerRequest;
     this.quoteTimeout = config.quoteTimeout ?? 30000;
     this.wsUrl = config.wsUrl ?? "";
-    this.paymentNetwork = config.paymentNetwork ?? "eip155:3338";
-    // USDC contract address on PEAQ network
-    this.paymentAsset = config.paymentAsset ?? "0xbbA60da06c2c5424f03f7434542280FCAd453d10";
+
+    // Store config values - dynamic network resolution happens lazily in getPaymentNetwork/Asset()
+    // because networks are only initialized after connect() is called
+    this.paymentNetwork = config.paymentNetwork ?? "";
+    this.paymentAsset = config.paymentAsset ?? "";
+    this.networkName = config.network ?? "";
 
     this.setupEventForwarding();
+  }
+
+  /**
+   * Gets the payment network CAIP-2 identifier, resolving from network name or default.
+   * Only call this after connect() has been called (networks initialized).
+   */
+  private getResolvedPaymentNetwork(): string {
+    // Priority: paymentNetwork (CAIP-2) > networkName > default
+    if (this.paymentNetwork) {
+      return this.paymentNetwork;
+    }
+    if (this.networkName) {
+      const network = getNetwork(this.networkName);
+      return network.caip2;
+    }
+    const defaultNetwork = getDefaultNetwork();
+    return defaultNetwork.caip2;
+  }
+
+  /**
+   * Gets the payment asset, resolving from network name or default.
+   * Only call this after connect() has been called (networks initialized).
+   */
+  private getResolvedPaymentAsset(): string {
+    if (this.paymentAsset) {
+      return this.paymentAsset;
+    }
+    if (this.networkName) {
+      const network = getNetwork(this.networkName);
+      return network.usdcContract;
+    }
+    const defaultNetwork = getDefaultNetwork();
+    return defaultNetwork.usdcContract;
   }
 
   /**
@@ -123,8 +175,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    */
   public setPaymentClient(secureKey: SecurePrivateKey, walletAddress: string): void {
     this.paymentClient = new PaymentClient(secureKey, walletAddress, {
-      network: this.paymentNetwork,
-      asset: this.paymentAsset
+      network: this.getResolvedPaymentNetwork(),
+      asset: this.getResolvedPaymentAsset()
     });
   }
 
@@ -291,8 +343,10 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
 
-    const message = createRequestTask(content, room);
-    this.logger.debug("MessageRouter: Requesting quote", { content, room });
+    // Include payment network in request so backend returns correct contract addresses
+    const resolvedNetwork = this.getResolvedPaymentNetwork();
+    const message = createRequestTask(content, room, resolvedNetwork);
+    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork });
 
     await this.wsClient.sendMessage(message);
 
@@ -308,8 +362,23 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       agentWallet: quote.data.agent_wallet,
       command: quote.data.command,
       pricing: quote.data.pricing,
-      expiresAt: new Date(quote.data.expires_at)
+      expiresAt: new Date(quote.data.expires_at),
+      // Backend-provided settlement data for x402x-router-settlement
+      settlement: {
+        settlementRouter: quote.data.settlement_router,
+        salt: quote.data.salt,
+        facilitatorFee: quote.data.facilitator_fee,
+        hook: quote.data.hook,
+        hookData: quote.data.hook_data ?? "0x"
+      }
     };
+
+    this.logger.debug("MessageRouter: Quote received with settlement data", {
+      taskId: result.taskId,
+      settlementRouter: result.settlement.settlementRouter,
+      salt: result.settlement.salt?.substring(0, 20) + "...",
+      hook: result.settlement.hook
+    });
 
     this.pendingQuotes.set(result.taskId, result);
     return result;
@@ -337,9 +406,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       throw new SDKError("Quote has expired", ErrorCode.QUOTE_EXPIRED);
     }
 
-    // Check price limit
+    // Check price limit (pricePerUnit is in USDC, convert to micro-units)
+    const priceInUnits = usdcToUnits(quote.pricing.pricePerUnit);
     if (this.maxPricePerRequest !== undefined) {
-      const priceInUnits = quote.pricing.pricePerUnit * 1_000_000;
       if (priceInUnits > this.maxPricePerRequest) {
         this.emit("payment:blocked", {
           agentId: quote.agentId,
@@ -359,14 +428,17 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     // Create payment header if payment client is configured and price > 0
     if (this.paymentClient && quote.pricing.pricePerUnit > 0) {
       try {
+        // Pass backend-provided settlement data to payment header creation
         paymentHeader = await this.paymentClient.createPaymentHeader(
-          quote.pricing.pricePerUnit * 1_000_000,
+          priceInUnits,
           quote.agentWallet,
-          buildX402ResourceUrl(this.wsUrl)
+          buildX402ResourceUrl(this.wsUrl),
+          undefined, // No network override
+          quote.settlement // Backend-provided settlement data
         );
         this.emit("payment:attached", {
           agentId: quote.agentId,
-          amount: quote.pricing.pricePerUnit * 1_000_000,
+          amount: priceInUnits,
           command: quote.command
         });
       } catch (error) {
@@ -454,12 +526,12 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         }
 
         // Fallback: If server doesn't support client_request_id,
-        // match the first response from the expected room within 60 seconds
+        // match the first response from the expected room within the time window
         // This handles servers that don't echo back client_request_id
         const timeSinceRequest = Date.now() - requestTimestamp;
         const responseRoom = r.raw?.room;
         const isFromExpectedRoom = responseRoom === message.room;
-        const isWithinTimeWindow = timeSinceRequest < 60000; // 60 second window
+        const isWithinTimeWindow = timeSinceRequest < TIMEOUTS.RESPONSE_MATCH_WINDOW;
 
         if (isFromExpectedRoom && isWithinTimeWindow && !responseRequestId) {
           this.logger.debug("Matching response without client_request_id (server fallback)", {
