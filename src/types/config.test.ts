@@ -309,7 +309,7 @@ describe("SDK Configuration", () => {
       expect(DEFAULT_CONFIG.maxReconnectAttempts).toBe(10);
       expect(DEFAULT_CONFIG.connectionTimeout).toBe(30000);
       expect(DEFAULT_CONFIG.messageTimeout).toBe(30000);
-      expect(DEFAULT_CONFIG.maxMessageSize).toBe(2 * 1024 * 1024);
+      expect(DEFAULT_CONFIG.maxMessageSize).toBe(10 * 1024 * 1024);
       expect(DEFAULT_CONFIG.logLevel).toBe("info");
       expect(DEFAULT_CONFIG.responseFormat).toBe("humanized");
       expect(DEFAULT_CONFIG.includeMetadata).toBe(false);

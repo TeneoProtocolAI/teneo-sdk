@@ -92,7 +92,7 @@ export const SDKConfigSchema = z.object({
 
   // Message settings
   messageTimeout: z.number().min(1000).max(300000).optional(),
-  maxMessageSize: z.number().min(1024).max(10485760).optional(), // 1KB to 10MB
+  maxMessageSize: z.number().min(1024).max(10 * 1024 * 1024).optional(), // 1KB to 10MB
   maxMessagesPerSecond: z.number().min(1).max(1000).optional(), // Rate limiting
 
   // Response formatting
@@ -219,7 +219,7 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
   maxReconnectAttempts: 10,
   connectionTimeout: 30000,
   messageTimeout: 30000,
-  maxMessageSize: 2 * 1024 * 1024, // 2MB
+  maxMessageSize: 10 * 1024 * 1024, // 10MB - sufficient for room history
   maxMessagesPerSecond: 10, // Rate limit: 10 messages per second
   responseFormat: "humanized",
   includeMetadata: false,
@@ -240,9 +240,8 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
 
   // Quote-Approve Payment Flow (v2.2.0)
   autoApproveQuotes: true, // Auto-approve quotes by default
-  quoteTimeout: 30000, // 30 seconds for quote responses
-  paymentNetwork: "eip155:3338", // PEAQ mainnet
-  paymentAsset: "0xbbA60da06c2c5424f03f7434542280FCAd453d10" // USDC on PEAQ
+  quoteTimeout: 30000 // 30 seconds for quote responses
+  // paymentNetwork and paymentAsset are dynamically loaded from backend via initializeNetworks()
 });
 
 // Configuration validation with custom refinements

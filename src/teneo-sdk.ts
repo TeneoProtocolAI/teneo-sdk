@@ -47,6 +47,7 @@ import {
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
 import { SecurePrivateKey } from "./utils/secure-private-key";
+import { setNetworkConfigUrl, initializeNetworks } from "./payments";
 
 // Re-export types for external use
 export type {
@@ -199,20 +200,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           quoteTimeout: this.config.quoteTimeout,
           wsUrl: this.config.wsUrl,
           paymentNetwork: this.config.paymentNetwork,
-          paymentAsset: this.config.paymentAsset
+          paymentAsset: this.config.paymentAsset,
+          network: this.config.network // Network name from withNetwork()
         }
       );
 
-      // Set up payment client if private key is configured (v2.2.0)
-      if (this.config.privateKey) {
-        const secureKey =
-          this.config.privateKey instanceof SecurePrivateKey
-            ? this.config.privateKey
-            : new SecurePrivateKey(this.config.privateKey);
-        const walletAddress =
-          this.config.walletAddress || this.deriveWalletAddress(this.config.privateKey);
-        this.messages.setPaymentClient(secureKey, walletAddress);
-      }
+      // NOTE: Payment client is set up in connect() after networks are initialized
 
       // Set up event forwarding
       this.setupEventForwarding();
@@ -250,6 +243,33 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
     try {
       this.logger.info("Connecting to Teneo Protocol");
+
+      // Initialize network configurations from backend before connecting
+      setNetworkConfigUrl(this.config.wsUrl);
+      await initializeNetworks();
+
+      // Verify networks are fully loaded before payment setup
+      const { NETWORKS } = await import("./payments/networks");
+      if (Object.keys(NETWORKS).length === 0) {
+        throw new SDKError(
+          "Failed to initialize networks from backend",
+          ErrorCode.CONFIG_ERROR,
+          null,
+          true
+        );
+      }
+
+      // Set up payment client now that networks are initialized (v2.2.0)
+      if (this.config.privateKey) {
+        const secureKey =
+          this.config.privateKey instanceof SecurePrivateKey
+            ? this.config.privateKey
+            : new SecurePrivateKey(this.config.privateKey);
+        const walletAddress =
+          this.config.walletAddress || this.deriveWalletAddress(this.config.privateKey);
+        this.messages.setPaymentClient(secureKey, walletAddress);
+      }
+
       await this.connection.connect();
 
       // Auto-join rooms if configured
