@@ -200,11 +200,11 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Fire and forget
-   * await messageRouter.sendMessage('What is the weather?', { room: 'general' });
+   * await messageRouter.sendMessage('What is the weather?', { room: 'room-id' });
    *
    * // Wait for response
    * const response = await messageRouter.sendMessage('Calculate 2+2', {
-   *   room: 'general',
+   *   room: 'room-id',
    *   waitForResponse: true,
    *   timeout: 30000
    * });
@@ -274,7 +274,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * await messageRouter.sendDirectCommand({
    *   agent: 'weather-agent',
    *   command: 'Get forecast for Tokyo',
-   *   room: 'general'
+   *   room: 'room-id'
    * });
    * ```
    */

@@ -150,7 +150,7 @@ describe("WebSocket Integration Tests", () => {
       .withWebSocketUrl(`ws://localhost:${serverPort}`)
       .withAuthentication(privateKey)
       .withReconnection(false) // Disable for tests
-      .withAutoJoinRooms(["test-room"]) // Auto-join test room
+      .withAutoJoinPublicRooms(["test-room"]) // Auto-join test room
       .withPayments({ autoApprove: false }) // Use legacy flow for mock server
       .build();
 
@@ -241,7 +241,7 @@ describe("WebSocket Integration Tests", () => {
         sdk.on("agent:list", resolve);
       });
 
-      await sdk.subscribeToRoom("test-room");
+      await sdk.subscribeToPublicRoom("test-room");
       const agents = await agentsPromise;
 
       expect(agents).toBeDefined();
@@ -258,7 +258,7 @@ describe("WebSocket Integration Tests", () => {
         setTimeout(() => reject(new Error("Event timeout")), 10000);
       });
 
-      await sdk.subscribeToRoom("test-room-2"); // Use different room to avoid auto-join conflicts
+      await sdk.subscribeToPublicRoom("test-room-2"); // Use different room to avoid auto-join conflicts
       await subscribePromise;
 
       expect(sdk.getSubscribedRooms()).toContain("test-room-2");

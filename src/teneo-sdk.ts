@@ -42,7 +42,9 @@ import {
   QuoteResult,
   AdminManager,
   ListAllAgentsOptions,
-  AllAgentsResult
+  AllAgentsResult,
+  ListAvailableAgentsOptions,
+  PaginatedAgentsResult
 } from "./managers";
 import { createPinoLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
@@ -55,7 +57,9 @@ export type {
   AgentCommand,
   QuoteResult,
   ListAllAgentsOptions,
-  AllAgentsResult
+  AllAgentsResult,
+  ListAvailableAgentsOptions,
+  PaginatedAgentsResult
 };
 
 // Zod schemas for SDK-specific interfaces
@@ -102,7 +106,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @param config.wsUrl - WebSocket URL to connect to (e.g., 'wss://teneo.example.com')
    * @param config.privateKey - Optional Ethereum private key for wallet-based authentication
    * @param config.walletAddress - Optional wallet address (derived from privateKey if not provided)
-   * @param config.autoJoinRooms - Optional array of room IDs to subscribe to automatically on connection
+   * @param config.autoJoinPublicRooms - Optional array of public room IDs to subscribe to automatically on connection (private rooms are auto-available)
    * @param config.webhookUrl - Optional webhook URL for receiving event notifications
    * @param config.reconnect - Enable automatic reconnection (default: true)
    * @param config.logLevel - Logging level: 'debug', 'info', 'warn', 'error', 'silent' (default: 'info')
@@ -122,7 +126,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * const sdk = new TeneoSDK({
    *   wsUrl: 'wss://teneo.example.com',
    *   privateKey: '0x...',
-   *   autoJoinRooms: ['general', 'announcements'],
+   *   autoJoinPublicRooms: ['public-room-1', 'public-room-2'], // Public rooms only
    *   webhookUrl: 'https://api.example.com/webhooks',
    *   logLevel: 'debug',
    *   responseFormat: 'both',
@@ -131,11 +135,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    *
    * // Using builder pattern (recommended for complex configs)
-   * const sdk = TeneoSDK.builder()
-   *   .wsUrl('wss://teneo.example.com')
-   *   .privateKey('0x...')
-   *   .withAutoJoinRooms(['general'])
+   * const config = TeneoSDK.builder()
+   *   .withWebSocketUrl('wss://teneo.example.com')
+   *   .withAuthentication('0x...')
+   *   .withAutoJoinPublicRooms(['public-room-1', 'public-room-2'])
    *   .build();
+   * const sdk = new TeneoSDK(config);
    * ```
    *
    * @see {@link SDKConfigBuilder} for fluent configuration API
@@ -272,10 +277,10 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
       await this.connection.connect();
 
-      // Auto-join rooms if configured
-      if (this.config.autoJoinRooms && this.config.autoJoinRooms.length > 0) {
-        for (const room of this.config.autoJoinRooms) {
-          await this.rooms.subscribeToRoom(room);
+      // Auto-join public rooms if configured
+      if (this.config.autoJoinPublicRooms && this.config.autoJoinPublicRooms.length > 0) {
+        for (const room of this.config.autoJoinPublicRooms) {
+          await this.rooms.subscribeToPublicRoom(room);
         }
       }
 
@@ -358,7 +363,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * await sdk.sendDirectCommand({
    *   agent: 'weather-agent',
    *   command: 'Get forecast for New York',
-   *   room: 'general'
+   *   room: 'room-id'
    * });
    * ```
    */
@@ -409,14 +414,27 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Subscribe to a public room
-   * await sdk.subscribeToRoom('public-announcements');
+   * await sdk.subscribeToPublicRoom('public-room-id');
    * console.log('Subscribed to public room');
    *
    * // Note: Private rooms don't need subscription - you're always subscribed
    * ```
    */
+  public async subscribeToPublicRoom(roomId: string): Promise<void> {
+    return this.rooms.subscribeToPublicRoom(roomId);
+  }
+
+  /**
+   * @deprecated Use subscribeToPublicRoom() instead. This method only affects public rooms.
+   * Private rooms are automatically available after authentication without subscription.
+   *
+   * Subscribes to a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to subscribe to
+   * @returns Promise that resolves when the room has been subscribed
+   */
   public async subscribeToRoom(roomId: string): Promise<void> {
-    return this.rooms.subscribeToRoom(roomId);
+    return this.subscribeToPublicRoom(roomId);
   }
 
   /**
@@ -433,12 +451,25 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await sdk.unsubscribeFromRoom('public-announcements');
+   * await sdk.unsubscribeFromPublicRoom('public-room-id');
    * console.log('Unsubscribed from public room');
    * ```
    */
+  public async unsubscribeFromPublicRoom(roomId: string): Promise<void> {
+    return this.rooms.unsubscribeFromPublicRoom(roomId);
+  }
+
+  /**
+   * @deprecated Use unsubscribeFromPublicRoom() instead. This method only affects public rooms.
+   * Private rooms cannot be unsubscribed from.
+   *
+   * Unsubscribes from a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
+   * @returns Promise that resolves when the room has been unsubscribed
+   */
   public async unsubscribeFromRoom(roomId: string): Promise<void> {
-    return this.rooms.unsubscribeFromRoom(roomId);
+    return this.unsubscribeFromPublicRoom(roomId);
   }
 
   /**
@@ -472,7 +503,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```typescript
    * const rooms = sdk.getSubscribedRooms();
    * console.log(`Subscribed to ${rooms.length} rooms:`, rooms);
-   * // Example output: Subscribed to 3 rooms: ['general', 'support', 'trading']
+   * // Example output: Subscribed to 3 rooms: ['room-id-1', 'room-id-2', 'room-id-3']
    * ```
    */
   public getSubscribedRooms(): string[] {
@@ -522,18 +553,18 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Finds all agents that have a specific capability using O(1) indexed lookup (PERF-3).
+   * Finds all available agents (network-wide) that have a specific capability using O(1) indexed lookup (PERF-3).
    * Much faster than filtering through all agents manually.
    * Uses capability index for constant-time lookups regardless of agent count.
    *
    * @param capability - The capability name to search for (case-insensitive)
-   * @returns Read-only array of agents with the specified capability
+   * @returns Read-only array of available agents with the specified capability
    * @throws {ValidationError} If capability name is invalid
    *
    * @example
    * ```typescript
-   * // Find all weather-capable agents
-   * const weatherAgents = sdk.findAgentsByCapability('weather-forecast');
+   * // Find all weather-capable agents available on the network
+   * const weatherAgents = sdk.findAvailableAgentsByCapability('weather-forecast');
    * console.log(`Found ${weatherAgents.length} weather agents`);
    *
    * weatherAgents.forEach(agent => {
@@ -541,52 +572,88 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * });
    * ```
    */
-  public findAgentsByCapability(capability: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByCapability(capability: string): ReadonlyArray<Agent> {
     return this.agents.findByCapability(capability);
   }
 
   /**
-   * Finds agents by name using O(k) token-based search (PERF-3).
+   * @deprecated Use findAvailableAgentsByCapability() instead. This searches all available agents network-wide.
+   *
+   * Finds all agents that have a specific capability.
+   *
+   * @param capability - The capability name to search for
+   * @returns Read-only array of agents with the specified capability
+   */
+  public findAgentsByCapability(capability: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByCapability(capability);
+  }
+
+  /**
+   * Finds available agents (network-wide) by name using O(k) token-based search (PERF-3).
    * Supports partial matching - searches for tokens within agent names.
    * Tokenizes both the search query and agent names for flexible matching.
    *
    * @param name - Name or partial name to search for (case-insensitive)
-   * @returns Read-only array of agents matching the search
+   * @returns Read-only array of available agents matching the search
    * @throws {ValidationError} If name is invalid
    *
    * @example
    * ```typescript
-   * // Find all agents with "weather" in their name
-   * const agents = sdk.findAgentsByName('weather');
+   * // Find all available agents with "weather" in their name
+   * const agents = sdk.findAvailableAgentsByName('weather');
    * // Matches: "Weather Agent", "Weather Forecast Bot", "Advanced Weather API", etc.
    *
    * console.log(`Found ${agents.length} agents matching 'weather'`);
    * ```
    */
-  public findAgentsByName(name: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByName(name: string): ReadonlyArray<Agent> {
     return this.agents.findByName(name);
   }
 
   /**
-   * Finds all agents with a specific status using O(1) indexed lookup (PERF-3).
+   * @deprecated Use findAvailableAgentsByName() instead. This searches all available agents network-wide.
+   *
+   * Finds agents by name.
+   *
+   * @param name - Name or partial name to search for
+   * @returns Read-only array of agents matching the search
+   */
+  public findAgentsByName(name: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByName(name);
+  }
+
+  /**
+   * Finds all available agents (network-wide) with a specific status using O(1) indexed lookup (PERF-3).
    * Uses status index for constant-time lookups regardless of agent count.
    *
    * @param status - Agent status: 'online' or 'offline' (case-insensitive)
-   * @returns Read-only array of agents with the specified status
+   * @returns Read-only array of available agents with the specified status
    * @throws {ValidationError} If status is invalid
    *
    * @example
    * ```typescript
-   * // Get all online agents
-   * const onlineAgents = sdk.findAgentsByStatus('online');
+   * // Get all online agents available on the network
+   * const onlineAgents = sdk.findAvailableAgentsByStatus('online');
    * console.log(`${onlineAgents.length} agents are currently online`);
    *
    * // Get offline agents
-   * const offlineAgents = sdk.findAgentsByStatus('offline');
+   * const offlineAgents = sdk.findAvailableAgentsByStatus('offline');
    * ```
    */
-  public findAgentsByStatus(status: string): ReadonlyArray<Agent> {
+  public findAvailableAgentsByStatus(status: string): ReadonlyArray<Agent> {
     return this.agents.findByStatus(status);
+  }
+
+  /**
+   * @deprecated Use findAvailableAgentsByStatus() instead. This searches all available agents network-wide.
+   *
+   * Finds all agents with a specific status.
+   *
+   * @param status - Agent status: 'online' or 'offline'
+   * @returns Read-only array of agents with the specified status
+   */
+  public findAgentsByStatus(status: string): ReadonlyArray<Agent> {
+    return this.findAvailableAgentsByStatus(status);
   }
 
   /**
@@ -703,7 +770,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const room = sdk.getRoom('general');
+   * const room = sdk.getRoom('room-id');
    * if (room) {
    *   console.log(`Found room: ${room.name}`);
    *   console.log(`Members: ${room.members?.length ?? 0}`);
@@ -990,13 +1057,31 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
+   * // Simple usage (cached)
    * const available = await sdk.listAvailableAgents('room-123');
    * console.log(`${available.length} agents available to add`);
+   *
+   * // With pagination options
+   * const result = await sdk.listAvailableAgents('room-123', {
+   *   limit: 20,
+   *   offset: 0,
+   *   sortBy: 'a-z'
+   * });
+   * console.log(`${result.total} total agents, showing ${result.agents.length}`);
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async listAvailableAgents(roomId: string, useCache: boolean = true): Promise<any[]> {
-    return this.agentRoom.listAvailableAgents(roomId, useCache);
+  public async listAvailableAgents(roomId: string, useCache?: boolean): Promise<any[]>;
+  public async listAvailableAgents(
+    roomId: string,
+    options: ListAvailableAgentsOptions
+  ): Promise<PaginatedAgentsResult>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async listAvailableAgents(
+    roomId: string,
+    useCacheOrOptions?: boolean | ListAvailableAgentsOptions
+  ): Promise<any[] | PaginatedAgentsResult> {
+    return this.agentRoom.listAvailableAgents(roomId, useCacheOrOptions as any);
   }
 
   /**
@@ -1008,7 +1093,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const agents = sdk.getRoomAgents('room-123');
+   * const agents = sdk.getCachedRoomAgents('room-123');
    * if (agents) {
    *   console.log(`${agents.length} agents (cached)`);
    * } else {
@@ -1017,8 +1102,22 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public getCachedRoomAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getCachedRoomAgents(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgents() instead. This method returns cached data only.
+   * Use listRoomAgents() to fetch fresh data from server.
+   *
+   * Gets agents in a room from cache (synchronous).
+   *
+   * @param roomId - ID of the room
+   * @returns Array of agents if cached, undefined otherwise
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getRoomAgents(roomId: string): any[] | undefined {
-    return this.agentRoom.getRoomAgents(roomId);
+    return this.getCachedRoomAgents(roomId);
   }
 
   /**
@@ -1030,15 +1129,29 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const available = sdk.getAvailableAgents('room-123');
+   * const available = sdk.getCachedAvailableAgents('room-123');
    * if (available) {
    *   console.log(`${available.length} agents available (cached)`);
    * }
    * ```
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public getCachedAvailableAgents(roomId: string): any[] | undefined {
+    return this.agentRoom.getCachedAvailableAgents(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedAvailableAgents() instead. This method returns cached data only.
+   * Use listAvailableAgents() to fetch fresh data from server.
+   *
+   * Gets available agents for a room from cache (synchronous).
+   *
+   * @param roomId - ID of the room
+   * @returns Array of available agents if cached, undefined otherwise
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public getAvailableAgents(roomId: string): any[] | undefined {
-    return this.agentRoom.getAvailableAgents(roomId);
+    return this.getCachedAvailableAgents(roomId);
   }
 
   /**
@@ -1051,18 +1164,32 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const inRoom = sdk.isAgentInRoom('room-123', 'weather-agent');
+   * const inRoom = sdk.checkAgentInRoom('room-123', 'weather-agent');
    * if (inRoom === true) {
    *   console.log('Agent is in room');
    * } else if (inRoom === false) {
    *   console.log('Agent is not in room');
    * } else {
-   *   console.log('Room data not cached');
+   *   console.log('Room data not cached - need to fetch');
    * }
    * ```
    */
+  public checkAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    return this.agentRoom.checkAgentInRoom(roomId, agentId);
+  }
+
+  /**
+   * @deprecated Use checkAgentInRoom() instead. The 'is*' naming convention implies boolean-only,
+   * but this method returns boolean | undefined to indicate cache validity.
+   *
+   * Checks if an agent is in a room (synchronous, from cache).
+   *
+   * @param roomId - ID of the room
+   * @param agentId - ID of the agent
+   * @returns True if agent is in room, false if not, undefined if not cached
+   */
   public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
-    return this.agentRoom.isAgentInRoom(roomId, agentId);
+    return this.checkAgentInRoom(roomId, agentId);
   }
 
   /**
@@ -1074,14 +1201,27 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const count = sdk.getRoomAgentCount('room-123');
+   * const count = sdk.getCachedRoomAgentCount('room-123');
    * if (count !== undefined) {
    *   console.log(`Room has ${count} agents`);
    * }
    * ```
    */
+  public getCachedRoomAgentCount(roomId: string): number | undefined {
+    return this.agentRoom.getCachedRoomAgentCount(roomId);
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgentCount() instead. This method returns cached data only.
+   * Use listRoomAgents() to fetch fresh data from server.
+   *
+   * Gets the count of agents in a room (synchronous, from cache).
+   *
+   * @param roomId - ID of the room
+   * @returns Number of agents in room, or undefined if not cached
+   */
   public getRoomAgentCount(roomId: string): number | undefined {
-    return this.agentRoom.getRoomAgentCount(roomId);
+    return this.getCachedRoomAgentCount(roomId);
   }
 
   /**
@@ -1174,6 +1314,126 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         reject(error);
       });
     });
+  }
+
+  /**
+   * Sends the result of an on-chain transaction back to the server.
+   * Used in response to a "wallet:tx_requested" event after the user
+   * has confirmed, rejected, or encountered a failure with the transaction.
+   *
+   * @param taskId - The task ID from the wallet:tx_requested event
+   * @param status - Transaction result: "confirmed", "rejected", or "failed"
+   * @param txHash - The on-chain transaction hash (required for "confirmed" status)
+   * @param error - Error message (optional, for "failed" status)
+   * @throws {SDKError} If the SDK has been destroyed or not connected
+   *
+   * @example
+   * ```typescript
+   * sdk.on("wallet:tx_requested", async (data) => {
+   *   try {
+   *     const txHash = await wallet.sendTransaction(data.tx);
+   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash);
+   *   } catch (err) {
+   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message);
+   *   }
+   * });
+   * ```
+   */
+  public async sendTxResult(
+    taskId: string,
+    status: "confirmed" | "rejected" | "failed",
+    txHash?: string,
+    error?: string
+  ): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "tx_result" as const,
+      data: {
+        task_id: taskId,
+        status,
+        ...(txHash && { tx_hash: txHash }),
+        ...(error && { error })
+      }
+    };
+
+    await this.wsClient.sendMessage(message);
+  }
+
+  /**
+   * Sets the API key preference for the current user.
+   * Controls whether custom API keys are used for agent interactions.
+   *
+   * @param useCustomKeys - Whether to use custom API keys
+   * @throws {SDKError} If the SDK has been destroyed or not connected
+   *
+   * @example
+   * ```typescript
+   * // Enable custom API keys
+   * await sdk.setApiKeyPreference(true);
+   *
+   * // Disable custom API keys
+   * await sdk.setApiKeyPreference(false);
+   * ```
+   */
+  public async setApiKeyPreference(useCustomKeys: boolean): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "set_api_key_preference" as const,
+      data: {
+        use_custom_keys: useCustomKeys
+      }
+    };
+
+    await this.wsClient.sendMessage(message);
+  }
+
+  /**
+   * Send a room ping to get live user count
+   * Server responds with room_pong message containing current live user count
+   *
+   * @param roomId - The room ID to ping
+   * @throws {SDKError} If not connected or SDK is destroyed
+   *
+   * @example
+   * ```typescript
+   * // Ping a room to get live user count
+   * await sdk.sendRoomPing("my-room");
+   *
+   * // Listen for the response
+   * sdk.on("room:pong", (data) => {
+   *   console.log(`Room ${data.roomId} has ${data.liveCount} live users`);
+   * });
+   * ```
+   */
+  public async sendRoomPing(roomId: string): Promise<void> {
+    if (this.isDestroyed) {
+      throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
+    }
+
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
+    }
+
+    const message = {
+      type: "room_ping" as const,
+      room_id: roomId
+    };
+
+    await this.wsClient.sendMessage(message);
   }
 
   /**
@@ -1575,9 +1835,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
     // Destroy other components
     this.webhookHandler.destroy();
-    this.removeAllListeners();
 
     this.emit("destroy");
+    this.removeAllListeners();
   }
 
   /**
@@ -1662,7 +1922,47 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Handle agent list updates from WebSocketClient
     this.wsClient.on("agent:list", (agents) => {
       this.agents.updateAgents(agents);
+      this.emit("agent:list", agents);
     });
+
+    // Forward task confirmed events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("task:confirmed", (data) => {
+      this.emit("task:confirmed", data);
+    });
+
+    // Forward agent error events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("agent:error", (data) => {
+      this.emit("agent:error", data);
+    });
+
+    // Forward wallet transaction events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("wallet:tx_requested", (data) => {
+      this.emit("wallet:tx_requested", data);
+    });
+
+    // Forward room pong events from WebSocketClient (emitted by pong handler)
+    this.wsClient.on("room:pong", (data) => {
+      this.emit("room:pong", data);
+    });
+
+    // Forward success events from WebSocketClient (emitted by handlers)
+    this.wsClient.on("success", (message) => {
+      this.emit("success", message);
+    });
+
+    // Forward message deduplication events from WebSocketClient
+    this.wsClient.on("message:duplicate", (message) => this.emit("message:duplicate", message));
+
+    // Forward signature verification events from WebSocketClient
+    this.wsClient.on("signature:verified", (messageType, address) =>
+      this.emit("signature:verified", messageType, address)
+    );
+    this.wsClient.on("signature:failed", (messageType, reason, address) =>
+      this.emit("signature:failed", messageType, reason, address)
+    );
+    this.wsClient.on("signature:missing", (messageType, required) =>
+      this.emit("signature:missing", messageType, required)
+    );
 
     // Forward room events from WebSocketClient (emitted by room subscription handlers)
     this.wsClient.on("room:subscribed", (data) => this.emit("room:subscribed", data));
@@ -1735,11 +2035,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Emit on SDK for external listeners
       this.emit("agent_room:agents_listed", roomId, agents);
     });
-    this.wsClient.on("agent_room:available_agents_listed", (agents) => {
+    this.wsClient.on("agent_room:available_agents_listed", (agents, paginationMeta) => {
       // Emit on AgentRoomManager for promise resolution
-      this.agentRoom.emit("agent_room:available_agents_listed", agents);
+      this.agentRoom.emit("agent_room:available_agents_listed", agents, paginationMeta);
       // Emit on SDK for external listeners
-      this.emit("agent_room:available_agents_listed", agents);
+      this.emit("agent_room:available_agents_listed", agents, paginationMeta);
     });
     this.wsClient.on("agent_room:status_update", (data) => {
       // Emit on SDK for external listeners
@@ -1847,13 +2147,14 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const sdk = TeneoSDK.builder()
-   *   .wsUrl('wss://teneo.example.com')
-   *   .privateKey('0x...')
-   *   .withAutoJoinRooms(['general'])
-   *   .logLevel('debug')
-   *   .webhookUrl('https://api.example.com/webhooks')
+   * const config = TeneoSDK.builder()
+   *   .withWebSocketUrl('wss://teneo.example.com')
+   *   .withAuthentication('0x...')
+   *   .withAutoJoinPublicRooms(['public-room-1', 'public-room-2'])
+   *   .withLogging('debug')
+   *   .withWebhook('https://api.example.com/webhooks')
    *   .build();
+   * const sdk = new TeneoSDK(config);
    *
    * await sdk.connect();
    * ```

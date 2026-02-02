@@ -47,7 +47,7 @@ app.use(express.json());
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(PRIVATE_KEY, WALLET_ADDRESS) // Wallet auto-derived if not provided
-  .withAutoJoinRooms([DEFAULT_ROOM])
+  .withAutoJoinPublicRooms([DEFAULT_ROOM])
   .withReconnection({
     enabled: ENABLE_RECONNECTION,
     delay: RECONNECT_DELAY,

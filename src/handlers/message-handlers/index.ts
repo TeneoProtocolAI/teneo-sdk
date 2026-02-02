@@ -18,6 +18,7 @@ export { AuthErrorHandler } from "./auth-error-handler";
 export { AuthRequiredHandler } from "./auth-required-handler";
 export { AgentsListHandler } from "./agents-list-handler";
 export { ErrorMessageHandler } from "./error-message-handler";
+export { SuccessHandler } from "./success-handler";
 export { RegularMessageHandler } from "./regular-message-handler";
 export { PingHandler, PongHandler } from "./ping-pong-handler";
 export { SubscribeResponseHandler } from "./subscribe-response-handler";
@@ -39,6 +40,15 @@ export { RateLimitNotificationHandler } from "./rate-limit-notification-handler"
 export { AllAgentsResponseHandler } from "./all-agents-response-handler";
 export { UserCountHandler } from "./user-count-handler";
 
+// Agent Error handler
+export { AgentErrorHandler } from "./agent-error-handler";
+
+// Task Confirmed handler
+export { TaskConfirmedHandler } from "./task-confirmed-handler";
+
+// Wallet Transaction handler
+export { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
+
 // Presence handler
 export { UserAuthenticatedHandler } from "./user-authenticated-handler";
 
@@ -53,6 +63,7 @@ import { AuthErrorHandler } from "./auth-error-handler";
 import { AuthRequiredHandler } from "./auth-required-handler";
 import { AgentsListHandler } from "./agents-list-handler";
 import { ErrorMessageHandler } from "./error-message-handler";
+import { SuccessHandler } from "./success-handler";
 import { RegularMessageHandler } from "./regular-message-handler";
 import { PingHandler, PongHandler } from "./ping-pong-handler";
 import { SubscribeResponseHandler } from "./subscribe-response-handler";
@@ -67,6 +78,9 @@ import { AgentDetailsResponseHandler } from "./agent-details-response-handler";
 import { RateLimitNotificationHandler } from "./rate-limit-notification-handler";
 import { AllAgentsResponseHandler } from "./all-agents-response-handler";
 import { UserCountHandler } from "./user-count-handler";
+import { AgentErrorHandler } from "./agent-error-handler";
+import { TaskConfirmedHandler } from "./task-confirmed-handler";
+import { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
 import { UserAuthenticatedHandler } from "./user-authenticated-handler";
 import { MessageHandler } from "./types";
 
@@ -95,6 +109,7 @@ export function getDefaultHandlers(
     // Message handlers
     new RegularMessageHandler(),
     new ErrorMessageHandler(),
+    new SuccessHandler(),
 
     // Room handlers
     new SubscribeResponseHandler(),
@@ -119,6 +134,15 @@ export function getDefaultHandlers(
     // Admin handlers
     new AllAgentsResponseHandler(),
     new UserCountHandler(),
+
+    // Agent Error handler
+    new AgentErrorHandler(),
+
+    // Task Confirmed handler
+    new TaskConfirmedHandler(),
+
+    // Wallet Transaction handler
+    new TriggerWalletTxHandler(),
 
     // Presence handler
     new UserAuthenticatedHandler(),

@@ -48,11 +48,7 @@ export class ListRoomAgentsHandler extends BaseMessageHandler<RoomAgentsResponse
     // Emit success event
     this.emit(context, "agent_room:agents_listed", room_id, agentList);
 
-    // Send webhook
-    this.sendWebhook(context, "room_agents_listed", {
-      room_id,
-      agents: agentList,
-      count: agentList.length
-    });
+    // Note: This is a query response, not sent via webhook
+    // Users can listen to the 'agent_room:agents_listed' event if needed
   }
 }

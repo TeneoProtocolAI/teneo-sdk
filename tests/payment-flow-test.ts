@@ -100,7 +100,7 @@ async function testPaymentFlow() {
     // Subscribe to test room
     console.log("Subscribing to room:", TEST_ROOM);
     try {
-      await sdk.subscribeToRoom(TEST_ROOM);
+      await sdk.subscribeToPublicRoom(TEST_ROOM);
       console.log("Subscribed!\n");
     } catch {
       console.log("Room subscription skipped (private room)\n");

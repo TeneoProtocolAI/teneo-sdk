@@ -41,12 +41,7 @@ export class AgentStatusUpdateHandler extends BaseMessageHandler<AgentStatusUpda
       agent
     });
 
-    // Send webhook
-    this.sendWebhook(context, "agent_status_update", {
-      room_id,
-      agent_id,
-      status,
-      agent
-    });
+    // Note: Agent status updates fire constantly and would spam webhooks
+    // Users can listen to the 'agent_room:status_update' event if needed
   }
 }

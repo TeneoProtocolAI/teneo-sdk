@@ -199,7 +199,7 @@ curl -X POST http://localhost:3002/api/messages \
   -H "Content-Type: application/json" \
   -d '{
     "content": "What is the weather?",
-    "room": "general",
+    "room": "your-room-id",
     "waitForResponse": true
   }'
 

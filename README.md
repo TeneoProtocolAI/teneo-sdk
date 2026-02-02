@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-2.2.2-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.0.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -12,6 +12,30 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
 - 🔐 **Web3-native authentication** using Ethereum wallet signatures (no API keys!)
+
+---
+
+## 🎉 What's New in v3.0
+
+Version 3.0 introduces **API Naming Improvements** for better clarity and consistency:
+
+### 📝 Clearer Method Names
+
+All method names have been improved to be more explicit and intuitive:
+
+- **Room subscriptions** - `subscribeToPublicRoom()` makes it clear these only work for public rooms
+- **Cache-only methods** - `getCached*()` prefix makes sync vs async operations obvious
+- **Boolean semantics** - `checkAgentInRoom()` clearly indicates it may return `undefined`
+- **Search scope** - `findAvailableAgentsBy*()` clarifies network-wide search
+
+### 🔄 Fully Backward Compatible
+
+**All old method names still work!** They're deprecated with helpful aliases:
+- Old names forward to new implementations
+- TypeScript shows deprecation warnings
+- Migrate at your convenience
+
+[Jump to Migration Guide](#v300-migration-guide) | [See Full CHANGELOG](CHANGELOG.md#300---2026-01-28)
 
 ---
 
@@ -47,63 +71,54 @@ const rooms = sdk.getRooms();
 const roomId = rooms[0].id;
 
 // 5. Send a message to a room
+
+// WITH COORDINATOR (when available):
 await sdk.sendMessage("Give me the last 5 tweets from @elonmusk", {
   room: roomId
 });
+// → Coordinator selects best agent automatically
 
-// The coordinator routes to the best agent and delivers the response
+// WITHOUT COORDINATOR (direct command required):
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
+  room: roomId
+});
+// → Direct command to specific agent by name
 ```
 
 **That's it!** After authentication:
 
 1. Your private rooms are automatically available
 2. Send messages to any room by ID
-3. The coordinator routes to the right agent
-4. Responses arrive via the event listener
+3. **With coordinator**: Use natural language - coordinator routes to best agent
+4. **Without coordinator**: Use `@Agent Name command params` syntax to target specific agents
+5. Responses arrive via the event listener
 
----
+### Message Routing Flow
 
-## ✨ What's New in v2.2
+The SDK supports two routing approaches depending on your environment:
 
-Version 2.2 introduces the **Quote-Approve Payment Flow** with x402 protocol support:
+```mermaid
+graph TB
+    UserMessage[User Message]
+    CheckEnv{Environment Has<br/>Coordinator?}
+    CoordPath[Coordinator Routing]
+    DirectPath[Direct Routing]
+    CoordSelect[Coordinator Selects<br/>Best Agent]
+    DirectTarget[Direct to<br/>Named Agent]
+    Agent[Agent Processes<br/>Request]
+    
+    UserMessage --> CheckEnv
+    CheckEnv -->|Yes| CoordPath
+    CheckEnv -->|No| DirectPath
+    CoordPath -->|"Natural language<br/>supported"| CoordSelect
+    DirectPath -->|"@Agent Name required"| DirectTarget
+    CoordSelect --> Agent
+    DirectTarget --> Agent
+```
 
-### 💰 Payment Flow (Quote-Approve)
-
-- **Automatic payment handling** - SDK handles the full quote → confirm → pay cycle
-- **x402 Protocol** - Industry-standard payment headers (Coinbase x402)
-- **USDC on PEAQ** - Payments settle on PEAQ network (Chain ID 3338)
-- **Price limits** - Set maximum price per request for safety
-
-[Jump to Payment Flow API](#-payment-flow-api)
-
----
-
-## ✨ What's New in v2.0
-
-Version 2.0 introduces powerful **room management** and **agent customization** capabilities:
-
-### 🏠 Multi-Room Management
-
-- **Create multiple rooms** for different contexts (crypto, gaming, research, etc.)
-- **Update and delete** your owned rooms
-- **Track room limits** based on your subscription tier
-- **Invite members** to your rooms (coming soon)
-
-### 🤖 Agent Room Management
-
-- **Customize which agents** are available in each room
-- **Add/remove agents** from your owned rooms
-- **List room agents** with caching for performance
-- **Real-time agent status updates** for room availability
-
-### 📊 Enhanced APIs
-
-- 8 new room management methods
-- 8 new agent-room management methods
-- 14 new events for room and agent operations
-- Intelligent caching with 5-minute TTL
-
-[Jump to Room Management API](#-room-management-api) | [Jump to Agent Room Management API](#-agent-room-management-api)
+**Key Differences:**
+- **Coordinator environments**: Both natural language and direct commands work
+- **Non-coordinator environments**: Must use `@Agent Name command params` syntax
 
 ---
 
@@ -229,23 +244,33 @@ Organize agents by context using rooms:
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  autoJoinRooms: ["Crawler Room", "KOL tracker"]
+  autoJoinPublicRooms: ["crawler-room-id", "kol-tracker-room-id"] // public rooms only
 });
 
 // Each room may have different agents available
+// Note: Private rooms are automatically available after auth
 await sdk.connect();
 
 // Send to specific room contexts
-await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "KOL tracker" });
-// → Routed to X Agent in KOL tracker room
 
-await sdk.sendMessage("Crawl this website for data", { room: "Crawler Room" });
-// → Routed to Crawler Agent in Crawler Room
+// WITH COORDINATOR:
+await sdk.sendMessage("Get latest tweets from @elonmusk", { room: "kol-tracker-room-id" });
+// → Coordinator routes to best agent in room
+
+await sdk.sendMessage("Crawl this website for data", { room: "crawler-room-id" });
+// → Coordinator routes to best agent in room
+
+// WITHOUT COORDINATOR (direct commands required):
+await sdk.sendMessage("@X Platform Agent timeline @elonmusk 5", { room: "kol-tracker-room-id" });
+// → Direct to X Platform Agent in room
+
+await sdk.sendMessage("@Web Crawler Agent crawl https://example.com", { room: "crawler-room-id" });
+// → Direct to Web Crawler Agent in room
 
 // Manage rooms dynamically
 const rooms = sdk.getSubscribedRooms();
 console.log("Active rooms:", rooms);
-// Output: Active rooms: ['Crawler Room', 'KOL tracker']
+// Output: Active rooms: ['crawler-room-id', 'kol-tracker-room-id']
 ```
 
 ### Example 3: Webhook Integration
@@ -300,8 +325,8 @@ await sdk.connect();
 
 // Check webhook health
 const status = sdk.getWebhookStatus();
-console.log("Queue size:", status.queueSize);
-console.log("Circuit state:", status.circuitState); // OPEN/CLOSED/HALF_OPEN
+console.log("Pending:", status.queue.pending);
+console.log("Circuit state:", status.queue.circuitState); // OPEN/CLOSED/HALF_OPEN
 ```
 
 ---
@@ -327,7 +352,7 @@ TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 - **URL**: `wss://backend.chatroom.teneo-protocol.ai/ws`
 - **Whitelist**: **Required** - you must be whitelisted to use this endpoint
 - **Use case**: Production applications and B2B integrations
-- **Get access**: Request whitelist access at [https://teneo-protocol.ai/chat-room](https://teneo-protocol.ai/chat-room)
+- **Get access**: Request whitelist access at [https://teneo-protocol.ai/data-access](https://teneo-protocol.ai/data-access)
 
 **Configuration:**
 ```bash
@@ -380,7 +405,7 @@ const allRooms = sdk.getAllRooms();
 console.log(`Total rooms accessible: ${allRooms.length}`);
 
 // Get specific room by ID
-const room = sdk.getRoomById("room-123");
+const room = sdk.getRoom("room-123");
 if (room) {
   console.log(`Room: ${room.name}`);
   console.log(`Created by: ${room.created_by}`);
@@ -513,23 +538,23 @@ available.forEach((agent) => {
 
 ```typescript
 // Check if specific agent is in room (instant, no network call)
-const isInRoom = sdk.isAgentInRoom("room-123", "agent-456");
-if (isInRoom === true) {
+const inRoom = sdk.checkAgentInRoom("room-123", "agent-456");
+if (inRoom === true) {
   console.log("Agent is in the room");
-} else if (isInRoom === false) {
+} else if (inRoom === false) {
   console.log("Agent is NOT in the room");
 } else {
   console.log("Cache not available - call listRoomAgents() first");
 }
 
 // Get room agent count (instant)
-const count = sdk.getRoomAgentCount("room-123");
+const count = sdk.getCachedRoomAgentCount("room-123");
 if (count !== undefined) {
   console.log(`Room has ${count} agents`);
 }
 
 // Get cached room agents (instant)
-const cached = sdk.getRoomAgents("room-123");
+const cached = sdk.getCachedRoomAgents("room-123");
 if (cached) {
   console.log("Agents:", cached.map((a) => a.agent_name).join(", "));
 } else {
@@ -537,7 +562,7 @@ if (cached) {
 }
 
 // Get cached available agents (instant)
-const cachedAvailable = sdk.getAvailableAgents("room-123");
+const cachedAvailable = sdk.getCachedAvailableAgents("room-123");
 ```
 
 ### Cache Management
@@ -593,8 +618,8 @@ sdk.on("agent_room:list_error", (error, roomId) => {
   console.error(`Failed to list agents in ${roomId}: ${error.message}`);
 });
 
-sdk.on("agent_room:list_available_error", (error, roomId) => {
-  console.error(`Failed to list available agents for ${roomId}: ${error.message}`);
+sdk.on("agent_room:list_available_error", (error) => {
+  console.error(`Failed to list available agents: ${error.message}`);
 });
 ```
 
@@ -667,7 +692,7 @@ const sdk = new TeneoSDK(
 await sdk.connect();
 
 // Send message - payment handled automatically
-const response = await sdk.sendMessage("@x-agent-enterprise-v2 user @elonmusk", {
+const response = await sdk.sendMessage("@X Platform Agent user @elonmusk", {
   room: roomId,
   waitForResponse: true
 });
@@ -676,20 +701,295 @@ console.log(response.humanized);
 // Output: User profile for @elonmusk...
 ```
 
-### Direct Agent Commands
+> **Note:** The builder uses `withPayments({ autoApprove: true })` while the plain config object uses `autoApproveQuotes: true`. Both control the same behavior. The builder also accepts `maxPricePerRequest` and `quoteTimeout`.
+
+### Multi-Network Support (v2.3)
+
+The SDK supports USDC payments across multiple EVM networks with **dynamic configuration**. Network configurations are automatically fetched from the backend during `connect()`, enabling the protocol to add new networks without requiring SDK updates.
+
+#### Dynamic Network Configuration
+
+Networks are initialized automatically when you connect:
 
 ```typescript
-// Target a specific agent directly
-await sdk.sendMessage("@x-agent-enterprise-v2 timeline @elonmusk 5", {
+import { TeneoSDK, NETWORKS, getSupportedNetworks } from "@teneo-protocol/sdk";
+
+const sdk = new TeneoSDK({
+  wsUrl: "wss://teneo.network/ws",
+  privateKey: "0x..."
+});
+
+// Before connect: NETWORKS is empty
+console.log(NETWORKS); // {}
+
+// Networks fetched during connect from backend /api/networks
+await sdk.connect();
+
+// After connect: NETWORKS populated with backend configuration
+console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...} }
+const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche"]
+```
+
+**Key Features:**
+- 🔄 **Automatic fetch** from backend `/api/networks` endpoint during `connect()`
+- ⚡ **60-minute cache** with automatic refresh
+- 🛡️ **Offline resilience** - falls back to cached configs if backend temporarily unavailable
+- 🚀 **Future-proof** - new networks can be added server-side without SDK updates
+
+#### Querying Network Information
+
+```typescript
+import {
+  NETWORKS,
+  getNetwork,
+  getDefaultNetwork,
+  getSupportedNetworks,
+  isNetworkSupported,
+  createChainDefinition
+} from "@teneo-protocol/sdk";
+
+// Must be called after connect()
+await sdk.connect();
+
+// Get all supported networks (dynamically loaded from backend)
+const networks = getSupportedNetworks();
+console.log(networks); // e.g., ["peaq", "base", "avalanche"]
+
+// Get network by name
+const baseNetwork = getNetwork("base");
+
+// Get network by chain ID
+const peaqNetwork = getNetwork(3338);
+
+// Get network by CAIP-2 identifier
+const avaxNetwork = getNetwork("eip155:43114");
+
+console.log(baseNetwork);
+// {
+//   chainId: 8453,
+//   name: "Base Mainnet",
+//   caip2: "eip155:8453",
+//   rpcUrl: "https://mainnet.base.org",
+//   usdcContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+//   settlementRouter: "0x73fc659Cd5494E69852bE8D9D23FE05Aab14b29B",
+//   transferHook: "0x081258287F692D61575387ee2a4075f34dd7Aef7",
+//   eip712: { name: "USD Coin", version: "2" }
+// }
+
+// Check if a network is supported
+if (isNetworkSupported("base")) {
+  // Create a viem chain definition
+  const baseChain = createChainDefinition(baseNetwork);
+  // Use with PaymentClient or other viem-based operations
+}
+
+// Get default network (prefers PEAQ, falls back to first available)
+const defaultNetwork = getDefaultNetwork();
+```
+
+#### Current Networks
+
+These networks are currently supported (fetched dynamically from backend):
+
+**PEAQ Mainnet (chainId: 3338)**
+- Original Teneo network
+- USDC contract, settlement router, transfer hook configured via backend
+
+**Base Mainnet (chainId: 8453)**
+- Layer 2 scaling solution
+- Lower gas fees, faster transactions
+
+**Avalanche Mainnet (chainId: 43114)**
+- High-throughput blockchain
+- Sub-second finality
+
+> **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
+
+#### Settlement Router Integration (x402 v2.5)
+
+Payment quotes now include settlement router information for enhanced payment routing:
+
+```typescript
+// Request a quote
+const quote = await sdk.requestQuote("Analyze this data", "room-id");
+
+// Quote includes settlement router fields (x402 v2.5)
+console.log(quote.data.settlement_router); // Router contract address
+console.log(quote.data.salt); // Unique transaction salt
+console.log(quote.data.facilitator_fee); // Facilitator fee amount
+console.log(quote.data.hook); // Transfer hook address
+console.log(quote.data.hook_data); // Optional hook data (default: "0x")
+```
+
+> **Note:** The SDK automatically handles network selection. The payment server determines which network to use based on the agent's configuration. You don't need to manually configure networks unless you're using the `PaymentClient` directly for custom payment operations.
+
+#### Configuring Default Payment Network
+
+You can configure which network to use for all payments in three ways:
+
+**Option 1: Using Environment Variable (Global Default)**
+
+```bash
+# Set default network for all payments
+export TENEO_NETWORK=base
+
+# Or use chain ID
+export TENEO_NETWORK=8453
+
+# Or use CAIP-2 format
+export TENEO_NETWORK=eip155:8453
+```
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+// SDK automatically uses TENEO_NETWORK env var
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .build()
+);
+
+// All payments will use Base network (from TENEO_NETWORK)
+```
+
+**Option 2: Using Config Builder (Per-SDK Instance)**
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+// Configure Base network for this SDK instance
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("base")  // Use Base Mainnet
+    .build()
+);
+
+// All payments from this SDK will use Base network
+```
+
+Or using chain ID:
+
+```typescript
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetworkChainId(43114)  // Use Avalanche (chain ID 43114)
+    .build()
+);
+```
+
+**Network Selection Priority:**
+
+The SDK uses this priority order for network selection:
+1. Per-request network override (if supported by future versions)
+2. Builder `.withNetwork()` or `.withNetworkChainId()` setting
+3. `TENEO_NETWORK` environment variable
+4. Default: PEAQ network (eip155:3338)
+
+**Example: Multiple SDK Instances with Different Networks**
+
+```typescript
+// Production bot uses PEAQ
+const peaqBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PEAQ_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("peaq")
+    .build()
+);
+
+// Experimental bot uses Base
+const baseBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.BASE_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("base")
+    .build()
+);
+
+// High-throughput bot uses Avalanche
+const avalancheBot = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.AVALANCHE_PRIVATE_KEY!)
+    .withPayments({ autoApprove: true })
+    .withNetwork("avalanche")
+    .build()
+);
+```
+
+### Direct Agent Commands
+
+#### When to Use Direct Commands
+
+Direct agent commands allow you to target a specific agent by name using the `@Agent Name command params` syntax:
+
+- **Required** in non-coordinator environments (direct commands are the only way to communicate)
+- **Optional** in coordinator environments (gives you explicit control over which agent handles the request)
+
+#### Syntax Options
+
+```typescript
+// Option 1: Use @mention syntax via sendMessage (recommended)
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
   room: roomId,
   waitForResponse: true
 });
 
-// Let the coordinator choose the best agent
+// Option 2: Use sendDirectCommand for programmatic control
+const response = await sdk.sendDirectCommand({
+  agent: "X Platform Agent",
+  command: "timeline @elonmusk 5",
+  room: roomId
+}, true); // waitForResponse
+
+console.log(response.humanized);
+
+// Option 3: Fire-and-forget (no wait for response)
+await sdk.sendDirectCommand({
+  agent: "X Platform Agent",
+  command: "user @elonmusk",
+  room: roomId
+});
+```
+
+#### Environment-Specific Examples
+
+```typescript
+// IN COORDINATOR ENVIRONMENTS (both work):
+
+// Natural language - coordinator selects best agent
 await sdk.sendMessage("Get me the latest tweets from @elonmusk", {
   room: roomId,
   waitForResponse: true
 });
+
+// Direct command - explicit agent selection
+await sdk.sendMessage("@X Platform Agent timeline @elonmusk 5", {
+  room: roomId,
+  waitForResponse: true
+});
+
+// IN NON-COORDINATOR ENVIRONMENTS (direct commands required):
+
+// Direct command - MUST specify agent name
+await sdk.sendMessage("@X Platform Agent search bitcoin 5", {
+  room: roomId,
+  waitForResponse: true
+});
+
+// This will NOT work without coordinator:
+// ❌ await sdk.sendMessage("Get bitcoin info", { room: roomId });
 ```
 
 ### Payment Events
@@ -705,6 +1005,11 @@ sdk.on("quote:received", (quote) => {
 // Payment attached to request
 sdk.on("payment:attached", (data) => {
   console.log(`Paid ${data.amount / 1_000_000} USDC to ${data.agentId}`);
+});
+
+// Payment blocked (price exceeds maxPricePerRequest)
+sdk.on("payment:blocked", (data) => {
+  console.warn(`Payment blocked: agent ${data.agentId} charges ${data.agentPrice} but max is ${data.maxPrice}`);
 });
 
 // Payment errors
@@ -740,7 +1045,7 @@ sdk.on("quote:received", async (quote) => {
 });
 
 // Request triggers quote
-await sdk.sendMessage("@x-agent user @elonmusk", { room: roomId });
+await sdk.sendMessage("@X Platform Agent user @elonmusk", { room: roomId });
 ```
 
 ### Payment Flow Diagram
@@ -783,7 +1088,7 @@ sdk.on("auth:success", (state) => {
   console.log(`✅ Authenticated as ${state.walletAddress}`);
   console.log(`Whitelisted: ${state.isWhitelisted}`);
 });
-sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error.message));
+sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error));
 ```
 
 ### Agent Events
@@ -792,7 +1097,6 @@ sdk.on("auth:error", (error) => console.error("❌ Auth failed:", error.message)
 sdk.on("agent:selected", (selection) => {
   console.log(`🤖 ${selection.agentName} was selected by coordinator`);
   console.log(`Reasoning: ${selection.reasoning}`);
-  console.log(`Confidence: ${selection.confidence}`);
 });
 
 sdk.on("agent:response", (response) => {
@@ -802,7 +1106,7 @@ sdk.on("agent:response", (response) => {
 sdk.on("agent:list", (agents) => {
   console.log(`📋 Agent list updated: ${agents.length} agents available`);
   agents.forEach((agent) => {
-    console.log(`  - ${agent.name}: ${agent.capabilities?.join(", ")}`);
+    console.log(`  - ${agent.name}: ${agent.capabilities?.map(c => c.name).join(", ")}`);
   });
 });
 ```
@@ -830,7 +1134,7 @@ sdk.on("room:unsubscribed", (data) => {
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0x...", // Your private key
-  defaultRoom: "general",
+  autoJoinPublicRooms: ["room-id-1"],
   reconnect: true,
   logLevel: "info"
 });
@@ -849,8 +1153,8 @@ const config = new SDKConfigBuilder()
   .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
   .withAuthentication(secureKey) // Encrypted key
 
-  // Rooms
-  .withRoom("general", ["announcements", "support"]) // default + auto-join
+  // Rooms - auto-join these public rooms on connect
+  .withAutoJoinPublicRooms(["room-id-1", "room-id-2"]) // Public rooms only (private rooms auto-available)
 
   // Reconnection strategy
   .withReconnectionStrategy({
@@ -886,7 +1190,6 @@ const config = new SDKConfigBuilder()
   })
 
   // Performance
-  .withRateLimit(10, 20) // 10 msg/sec, burst 20
   .withMessageDeduplication(true, 60000, 10000)
   .withLogging("debug")
 
@@ -900,11 +1203,17 @@ const sdk = new TeneoSDK(config);
 Create `.env`:
 
 ```bash
+# Required
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
 PRIVATE_KEY=0xYourPrivateKey
-WALLET_ADDRESS=0xYourWalletAddress
-DEFAULT_ROOM=general
+
+# Optional
 LOG_LEVEL=info
+
+# Payment network (v2.3.0) - Optional, defaults to PEAQ
+TENEO_NETWORK=base                # By name: peaq, base, avalanche
+# Or by chain ID: TENEO_NETWORK=8453
+# Or CAIP-2: TENEO_NETWORK=eip155:8453
 ```
 
 Load them:
@@ -916,11 +1225,61 @@ dotenv.config();
 const sdk = new TeneoSDK({
   wsUrl: process.env.TENEO_WS_URL!,
   privateKey: process.env.PRIVATE_KEY!,
-  walletAddress: process.env.WALLET_ADDRESS,
-  defaultRoom: process.env.DEFAULT_ROOM,
   logLevel: (process.env.LOG_LEVEL as any) || "info"
+  // TENEO_NETWORK is automatically used by SDK for payment network
 });
 ```
+
+---
+
+## 🔄 v3.0.0 Migration Guide
+
+All v3.0.0 changes are **backward compatible**. Old method names still work via deprecated aliases.
+
+### Quick Migration (Optional)
+
+Search and replace across your codebase to use the new, clearer names:
+
+```bash
+# Config property
+autoJoinRooms: → autoJoinPublicRooms:
+
+# Room subscription methods
+.subscribeToRoom( → .subscribeToPublicRoom(
+.unsubscribeFromRoom( → .unsubscribeFromPublicRoom(
+
+# Cache-only methods (sync)
+.getRoomAgents( → .getCachedRoomAgents(
+.getAvailableAgents( → .getCachedAvailableAgents(
+.getRoomAgentCount( → .getCachedRoomAgentCount(
+
+# Boolean check methods
+.isAgentInRoom( → .checkAgentInRoom(
+
+# Network-wide search methods
+.findAgentsByCapability( → .findAvailableAgentsByCapability(
+.findAgentsByName( → .findAvailableAgentsByName(
+.findAgentsByStatus( → .findAvailableAgentsByStatus(
+```
+
+### Why These Changes?
+
+**Room Subscriptions**: `subscribeToPublicRoom()` clarifies that only public rooms need subscription. Private rooms are automatically available after authentication.
+
+**Cache Methods**: The `getCached*` prefix makes it obvious these are synchronous, cache-only operations. Async methods like `listRoomAgents()` still fetch from server.
+
+**Boolean Checks**: `checkAgentInRoom()` returns `boolean | undefined`, not just boolean. The name clarifies this uncertainty.
+
+**Search Scope**: `findAvailableAgentsBy*()` methods search ALL available agents network-wide, not just room-specific agents.
+
+### No Rush!
+
+- ✅ Old names work indefinitely
+- ✅ TypeScript/JSDoc shows deprecation hints
+- ✅ Migrate on your schedule
+- ✅ Zero functional changes
+
+See [CHANGELOG.md](CHANGELOG.md#300---2026-01-28) for detailed explanations and examples.
 
 ---
 
@@ -955,7 +1314,7 @@ Prevents cascading failures in webhook delivery:
 ```typescript
 const status = sdk.getWebhookStatus();
 
-console.log("Circuit state:", status.circuitState);
+console.log("Circuit state:", status.queue.circuitState);
 // CLOSED = Normal operation, webhooks being delivered
 // OPEN = Too many failures, failing fast (60s timeout)
 // HALF_OPEN = Testing recovery (2 successes → CLOSED)
@@ -1041,12 +1400,11 @@ sdk.on("signature:failed", (type, reason) => {
 const health = sdk.getHealth();
 
 console.log("Status:", health.status); // 'healthy' | 'degraded' | 'unhealthy'
-console.log("Connected:", health.connection.connected);
+console.log("Connected:", health.connection.status);
 console.log("Authenticated:", health.connection.authenticated);
-console.log("Uptime:", health.uptime);
 
 if (health.webhook) {
-  console.log("Webhook queue:", health.webhook.queueSize);
+  console.log("Webhook pending:", health.webhook.pending);
   console.log("Circuit state:", health.webhook.circuitState);
 }
 
@@ -1069,12 +1427,12 @@ console.log("Reconnect attempts:", state.reconnectAttempts);
 ### Performance Metrics
 
 ```typescript
-// Rate limiter status
-const rateLimit = sdk.getRateLimiterStatus();
-if (rateLimit) {
-  console.log("Available:", rateLimit.availableTokens);
-  console.log("Rate:", rateLimit.tokensPerSecond, "/sec");
-  console.log("Burst capacity:", rateLimit.maxBurst);
+// Rate limiter status (via health check)
+const health = sdk.getHealth();
+if (health.rateLimit) {
+  console.log("Available:", health.rateLimit.availableTokens);
+  console.log("Rate:", health.rateLimit.tokensPerSecond, "/sec");
+  console.log("Burst capacity:", health.rateLimit.maxBurst);
 }
 
 // Deduplication cache
@@ -1190,7 +1548,7 @@ RateLimitError: Rate limit exceeded
 3. **Check circuit breaker:**
    ```typescript
    const status = sdk.getWebhookStatus();
-   if (status.circuitState === "OPEN") {
+   if (status.queue.circuitState === "OPEN") {
      console.log("Circuit open, will retry in 60s");
    }
    ```

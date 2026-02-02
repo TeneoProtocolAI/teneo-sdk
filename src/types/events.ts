@@ -311,12 +311,21 @@ export interface SDKEvents {
   "agent:response": (response: AgentResponse) => void;
   "agent:list": (agents: z.infer<typeof AgentSchema>[]) => void;
   "agent:status": (agentId: string, status: "online" | "offline") => void;
+  "agent:error": (data: {
+    agentName?: string;
+    content?: string;
+    taskId?: string;
+    clientRequestId?: string;
+    room?: string;
+  }) => void;
 
   // Room events
   "room:subscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:unsubscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;
-  "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;
+
+  // Room Ping/Pong events
+  "room:pong": (data: { roomId: string; liveCount: number; timestamp: string }) => void;
 
   // Room Management events (v2.0.0)
   "room:created": (room: z.infer<typeof RoomInfoSchema>) => void;
@@ -330,7 +339,15 @@ export interface SDKEvents {
   "agent_room:agent_added": (roomId: string, agentId: string) => void;
   "agent_room:agent_removed": (roomId: string, agentId: string) => void;
   "agent_room:agents_listed": (roomId: string, agents: any[]) => void;
-  "agent_room:available_agents_listed": (agents: any[]) => void;
+  "agent_room:available_agents_listed": (
+    agents: any[],
+    paginationMeta?: {
+      total?: number;
+      offset?: number;
+      limit?: number;
+      hasMore?: boolean;
+    }
+  ) => void;
   "agent_room:status_update": (data: {
     roomId: string;
     agentId: string;
@@ -350,6 +367,12 @@ export interface SDKEvents {
   // Quote-Approve Payment events (v2.2.0)
   "quote:received": (quote: any) => void;
   "quote:expired": (taskId: string) => void;
+  "task:confirmed": (data: {
+    taskId: string;
+    agentId?: string;
+    agentName?: string;
+    clientRequestId?: string;
+  }) => void;
   "payment:blocked": (data: { agentId: string; agentPrice: number; maxPrice: number }) => void;
   "payment:attached": (data: { agentId: string; amount: number; command: string }) => void;
   "payment:error": (error: Error, agentId?: string) => void;
@@ -375,6 +398,16 @@ export interface SDKEvents {
   // User Preferences events
   "preferences:updated": (data: { maxPricePerRequest?: number | null }) => void;
 
+  // Wallet Transaction events
+  "wallet:tx_requested": (data: {
+    taskId: string;
+    agentName?: string;
+    tx: { to: string; value: string; data?: string; chainId: number };
+    description?: string;
+    optional?: boolean;
+    room?: string;
+  }) => void;
+
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;
   "webhook:success": (response: any, url: string) => void;
@@ -383,6 +416,7 @@ export interface SDKEvents {
 
   // Error events
   error: (error: SDKError) => void;
+  success: (message: string) => void;
   warning: (warning: string) => void;
 
   // Lifecycle events

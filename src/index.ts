@@ -264,7 +264,7 @@ export {
 /**
  * SDK version string
  */
-export const VERSION = "2.2.2";
+export const VERSION = "3.0.0";
 
 /**
  * Convenience type re-exports for message operations
@@ -283,7 +283,7 @@ export type { SendMessageOptions, AgentCommand } from "./teneo-sdk";
  * const sdk = await createTeneoSDK({
  *   wsUrl: 'ws://localhost:8080/ws',
  *   privateKey: 'your-private-key',
- *   autoJoinRooms: ['general']
+ *   autoJoinPublicRooms: ['room-id-1']
  * });
  * ```
  */

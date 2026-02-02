@@ -219,9 +219,7 @@ export class PaymentClient {
     const amountStr = Math.round(amountMicroUnits).toString();
 
     // Resolve network for this payment (allows per-request override)
-    const network = networkOverride
-      ? getNetwork(networkOverride)
-      : this.networkConfig;
+    const network = networkOverride ? getNetwork(networkOverride) : this.networkConfig;
 
     const asset = this.assetOverride ?? network.usdcContract;
     const chain = createChainDefinition(network);

@@ -114,7 +114,7 @@ sdk.on("auth:success", (state) => {
 });
 
 sdk.on("auth:error", (error) => {
-  console.error("Authentication failed:", error.message);
+  console.error("Authentication failed:", error);
 });
 ```
 
@@ -129,13 +129,13 @@ Rooms are isolated spaces where you send messages and receive responses from age
 | Type | Subscription | Ownership | Use Case |
 |------|-------------|-----------|----------|
 | **Private** | Automatic | You own it | Personal workspace, private conversations |
-| **Public** | Manual (`subscribeToRoom()`) | System/shared | Community channels, announcements |
+| **Public** | Manual (`subscribeToPublicRoom()`) | System/shared | Community channels, announcements |
 | **Shared** | Automatic | Someone invited you | Collaboration, team rooms |
 
 ### Private Rooms
 
 - **You create them** with `createRoom()`
-- **You're always subscribed** - no need to call `subscribeToRoom()`
+- **You're always subscribed** - no need to call `subscribeToPublicRoom()`
 - **You control agents** - add/remove agents as needed
 - **Subject to limits** - typically 1-10 rooms based on your plan
 
@@ -161,10 +161,10 @@ console.log(`Rooms: ${sdk.getOwnedRoomCount()}/${sdk.getRoomLimit()}`);
 
 ```typescript
 // Subscribe to a public room
-await sdk.subscribeToRoom("public-announcements");
+await sdk.subscribeToPublicRoom("public-room-id");
 
 // Unsubscribe when done
-await sdk.unsubscribeFromRoom("public-announcements");
+await sdk.unsubscribeFromPublicRoom("public-room-id");
 ```
 
 ### Room Lifecycle
@@ -239,7 +239,7 @@ Your Message: "What's the weather in Tokyo?"
 sdk.on("agent:selected", (selection) => {
   console.log(`Selected: ${selection.agentName}`);
   console.log(`Reason: ${selection.reasoning}`);
-  console.log(`Capabilities: ${selection.capabilities.join(", ")}`);
+  console.log(`Capabilities: ${selection.capabilities?.map(c => c.name).join(", ")}`);
 });
 ```
 
@@ -312,13 +312,15 @@ details.capabilities?.forEach(cap => {
 
 // Commands
 details.commands?.forEach(cmd => {
-  console.log(`- ${cmd.name}: ${cmd.description}`);
+  console.log(`- ${cmd.trigger}: ${cmd.description}`);
 });
 
-// Pricing (if paid agent)
-if (details.pricing) {
-  console.log(`Price: $${details.pricing.price_per_unit} per ${details.pricing.task_unit}`);
-}
+// Pricing (per command, if paid agent)
+details.commands?.forEach(cmd => {
+  if (cmd.pricePerUnit) {
+    console.log(`${cmd.trigger}: ${cmd.pricePerUnit} per ${cmd.taskUnit}`);
+  }
+});
 ```
 
 ### Agent Events
@@ -354,7 +356,7 @@ Understanding how messages flow through the system helps you debug and optimize 
 ### Complete Flow: sendMessage to Response
 
 ```
-sdk.sendMessage("What's 2+2?", { room: "math-room" })
+sdk.sendMessage("What's 2+2?", { room: roomId })
          │
          ▼
 ┌─────────────────────────────────────┐
@@ -370,7 +372,7 @@ sdk.sendMessage("What's 2+2?", { room: "math-room" })
 │    {                                │
 │      type: "message",               │
 │      content: "What's 2+2?",        │
-│      room: "math-room",             │
+│      room: roomId,                  │
 │      from: "0xYourWallet"           │
 │    }                                │
 └─────────────────┬───────────────────┘
@@ -451,9 +453,21 @@ Some agents charge for their services using the X402 payment protocol. The flow 
 
 The SDK includes a `PaymentSigner` that **automatically creates x402 payment headers** when you confirm a task. No manual payment encoding needed!
 
-- Uses **PEAQ chain** with **USDC** stablecoin
-- Payment headers are signed using your private key
+- Supports **multiple EVM networks** with **USDC** stablecoin (PEAQ, Base, Avalanche, and more)
+- **Dynamic network configuration** fetched from backend automatically
+- Payment headers are signed using your private key with **x402 v2.5 settlement router** integration
 - The SDK handles all the complexity for you
+
+### Multi-Network Support
+
+Networks are configured dynamically from the backend, enabling payments across multiple chains:
+
+- **PEAQ Mainnet** (chainId: 3338) - Original network
+- **Base Mainnet** (chainId: 8453) - Layer 2 with lower fees
+- **Avalanche Mainnet** (chainId: 43114) - High-throughput chain
+- **Future networks** added server-side without SDK updates
+
+The SDK automatically fetches network configurations during `connect()` and selects the appropriate network based on the agent's requirements. See the [Multi-Network Support](#) section in the README for more details.
 
 ### Payment Flow
 
@@ -485,54 +499,177 @@ The SDK includes a `PaymentSigner` that **automatically creates x402 payment hea
    "Here's your analysis..."
 ```
 
-### Code Example
+### API Reference
+
+#### `requestQuote(content, room)` → `Promise<QuoteResult>`
+
+Requests a price quote from the coordinator without auto-approval.
 
 ```typescript
+const quote = await sdk.requestQuote(
+  "Analyze Bitcoin trends for the past week",
+  roomId
+);
+```
+
+**Returns `QuoteResult`:**
+```typescript
+{
+  taskId: string;       // Unique task identifier
+  agentId: string;      // Selected agent ID
+  agentName: string;    // Agent display name
+  agentWallet: string;  // Agent's payment wallet address
+  command: string;      // The command to be executed
+  pricing: {
+    pricePerUnit: number;  // Price in micro-USDC
+    priceType: string;     // e.g., "per_request"
+    currency: string;      // e.g., "USDC"
+    timeUnit?: string;     // e.g., "hour", "day"
+    network?: string;      // e.g., "peaq", "base", "avalanche"
+  };
+  expiresAt: Date;      // Quote expiration time
+  // x402 v2.5 Settlement Router fields
+  settlementRouter: string;   // Router contract address
+  salt: string;               // Unique transaction salt
+  facilitatorFee: string;     // Facilitator fee amount
+  hook: string;               // Transfer hook address
+  hookData?: string;          // Optional hook data (default: "0x")
+}
+```
+
+#### `confirmQuote(taskId, options?)` → `Promise<FormattedResponse | void>`
+
+Confirms a pending quote and executes the task with payment. The SDK auto-signs the x402 payment header.
+
+```typescript
+// Fire and forget
+await sdk.confirmQuote(quote.taskId);
+
+// Wait for the agent's response
+const response = await sdk.confirmQuote(quote.taskId, {
+  waitForResponse: true,  // Block until agent responds
+  timeout: 30000          // Timeout in ms (default: 30000)
+});
+
+console.log(response.humanized);
+```
+
+#### `getPendingQuote(taskId)` → `QuoteResult | undefined`
+
+Retrieves a pending quote that hasn't been confirmed yet.
+
+```typescript
+const quote = sdk.getPendingQuote("task-123");
+if (quote) {
+  console.log(`Pending: ${quote.agentName} at ${quote.pricing.pricePerUnit} USDC`);
+}
+```
+
+### Complete Payment Example
+
+```typescript
+import { TeneoSDK } from "@teneo-protocol/sdk";
+
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({
+      autoApprove: false,          // Manual approval
+      maxPricePerRequest: 1000000  // Max 1 USDC (in micro-units)
+    })
+    .build()
+);
+
+await sdk.connect();
+
+// Get a room to work with
+const rooms = sdk.getRooms();
+const roomId = rooms[0].id;
+
 // 1. Request a quote
-const quote = await sdk.requestQuote({
-  content: "Analyze Bitcoin trends for the past week",
-  room: roomId
-});
+const quote = await sdk.requestQuote(
+  "Analyze Bitcoin trends for the past week",
+  roomId
+);
 
-console.log(`Agent: ${quote.agent_name}`);
-console.log(`Price: $${quote.pricing.price_per_unit}`);
-console.log(`Expires: ${quote.expires_at}`);
+console.log(`Agent: ${quote.agentName}`);
+console.log(`Price: ${quote.pricing.pricePerUnit} micro-USDC`);
+console.log(`Expires: ${quote.expiresAt}`);
 
-// 2. Confirm the task - SDK auto-signs the payment!
-await sdk.confirmTask({ taskId: quote.task_id });
+// 2. Check price and confirm
+if (quote.pricing.pricePerUnit <= 500000) {
+  // Confirm and wait for the response
+  const response = await sdk.confirmQuote(quote.taskId, {
+    waitForResponse: true,
+    timeout: 30000
+  });
 
-// 3. Response comes via event
-sdk.on("agent:response", (response) => {
-  if (response.taskId === quote.task_id) {
-    console.log("Analysis complete:", response.content);
-  }
-});
+  console.log("Result:", response.humanized);
+} else {
+  console.log("Too expensive, skipping");
+}
+
+sdk.disconnect();
 ```
 
 ### Payment Events
 
 ```typescript
-sdk.on("payment:quote", (quote) => {
-  console.log(`Quote received: $${quote.pricing.price_per_unit}`);
-  console.log(`Expires: ${quote.expires_at}`);
+// Quote received from agent
+sdk.on("quote:received", (quote) => {
+  console.log(`Quote: ${quote.data.pricing.pricePerUnit} USDC`);
+  console.log(`Expires: ${quote.data.expires_at}`);
 });
 
-sdk.on("payment:confirmed", (taskId) => {
-  console.log(`Payment confirmed for task ${taskId}`);
-  console.log("Agent is now processing your request...");
+// Payment attached to request
+sdk.on("payment:attached", (data) => {
+  console.log(`Paid ${data.amount} to agent ${data.agentId}`);
 });
 
+// Payment blocked by price limit
+sdk.on("payment:blocked", (data) => {
+  console.warn(`Blocked: agent charges ${data.agentPrice}, max is ${data.maxPrice}`);
+});
+
+// Payment errors
 sdk.on("payment:error", (error) => {
   console.error(`Payment failed: ${error.message}`);
 });
 ```
+
+### Configuration
+
+Payment behavior can be configured two ways:
+
+```typescript
+// Builder pattern
+TeneoSDK.builder()
+  .withPayments({
+    autoApprove: true,           // Auto-confirm quotes
+    maxPricePerRequest: 1000000, // Max 1 USDC per request
+    quoteTimeout: 30000          // 30s timeout for quotes
+  })
+  .build();
+
+// Plain config object
+new TeneoSDK({
+  wsUrl: "wss://...",
+  privateKey: "0x...",
+  autoApproveQuotes: true,       // Same as autoApprove in builder
+  maxPricePerRequest: 1000000,
+  quoteTimeout: 30000
+});
+```
+
+> **Note:** `autoApprove` (builder) and `autoApproveQuotes` (config object) control the same behavior.
 
 ### Free vs Paid Tasks
 
 - **Free**: Message → Coordinator → Agent → Response (direct)
 - **Paid**: Message → Coordinator → Quote → Confirm → Agent → Response
 
-You'll know it's a paid task when you receive a `payment:quote` event instead of going directly to `agent:response`.
+You'll know it's a paid task when you receive a `quote:received` event instead of going directly to `agent:response`.
 
 ---
 
@@ -588,8 +725,9 @@ The SDK is fully event-driven. Here's the complete event reference:
 
 | Event | When | Data |
 |-------|------|------|
-| `payment:quote` | Quote received | `(quote)` |
-| `payment:confirmed` | Payment confirmed | `(taskId)` |
+| `quote:received` | Quote received | `(quote)` |
+| `payment:attached` | Payment attached to request | `(data)` |
+| `payment:blocked` | Payment blocked (price too high) | `(data)` |
 | `payment:error` | Payment error | `(error)` |
 
 ### Lifecycle Events
@@ -623,9 +761,9 @@ The SDK is fully event-driven. Here's the complete event reference:
 ```
 1. message:sent        ─── Your message sent
 2. agent:selected      ─── Coordinator picked agent
-3. payment:quote       ─── Quote received
+3. quote:received      ─── Quote received
    ... user confirms payment ...
-4. payment:confirmed   ─── Payment validated
+4. payment:attached    ─── Payment attached and validated
 5. agent:response      ─── Agent responded
 ```
 
@@ -705,7 +843,7 @@ const sdk = new TeneoSDK({
 const sdk = new TeneoSDK({
   wsUrl: "...",
   privateKey: "...",
-  reconnectionStrategy: {
+  reconnectStrategy: {
     type: "exponential",
     baseDelay: 3000,                  // 3s initial
     maxDelay: 120000,                 // 2 minute max
@@ -728,7 +866,7 @@ sdk.on("connection:reconnected", () => {
 
 ```typescript
 // Disconnect cleanly
-await sdk.disconnect();
+sdk.disconnect();
 
 // Or destroy completely (removes all listeners)
 sdk.destroy();

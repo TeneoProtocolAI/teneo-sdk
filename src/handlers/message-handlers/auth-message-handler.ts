@@ -65,7 +65,13 @@ export class AuthMessageHandler extends BaseMessageHandler<AuthMessage> {
         // v2.0.0: New fields
         privateRoomIds, // Rooms user owns
         sharedRoomIds, // Rooms user is member of
-        maxPrivateRooms: message.data?.max_private_rooms // Max rooms user can create
+        maxPrivateRooms: message.data?.max_private_rooms, // Max rooms user can create
+
+        // Auth enhancement fields (audit #6, #7, #9)
+        jwtToken: message.data?.jwt_token, // JWT token for KeyVault API
+        sessionToken: message.data?.session_token, // Session token for fast re-auth
+        whitelistVerified: message.data?.whitelist_verified, // Whitelist verification status
+        userCount: message.data?.user_count // Total user count (admin only)
       });
 
       // Initialize room management manager with room data (v2.0.0)

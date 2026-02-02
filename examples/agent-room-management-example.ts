@@ -302,11 +302,11 @@ async function removeAgentsFromRoom(sdk: TeneoSDK, roomId: string, roomAgents: a
 
 function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   // Get agent count (instant, from cache)
-  const count = sdk.getRoomAgentCount(roomId);
+  const count = sdk.getCachedRoomAgentCount(roomId);
   console.log(`Room agent count: ${count}`);
 
   // Get cached agents (instant)
-  const cachedAgents = sdk.getRoomAgents(roomId);
+  const cachedAgents = sdk.getCachedRoomAgents(roomId);
   if (cachedAgents) {
     const names = cachedAgents.map((a) => a.agent_name || "Unnamed").join(", ");
     console.log(`Cached agents: ${names}`);
@@ -315,14 +315,14 @@ function demonstrateCacheQueries(sdk: TeneoSDK, roomId: string, agents: any[]) {
   // Check if specific agent is in room (instant)
   if (agents.length > 0) {
     const firstAgent = agents[0];
-    const isInRoom = sdk.isAgentInRoom(roomId, firstAgent.agent_id);
+    const inRoom = sdk.checkAgentInRoom(roomId, firstAgent.agent_id);
     console.log(
-      `Is "${firstAgent.agent_name}" in room? ${isInRoom === true ? "✅ Yes" : isInRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`
+      `Is "${firstAgent.agent_name}" in room? ${inRoom === true ? "✅ Yes" : inRoom === false ? "❌ No" : "❓ Unknown (no cache)"}`
     );
   }
 
   // Get cached available agents (instant)
-  const cachedAvailable = sdk.getAvailableAgents(roomId);
+  const cachedAvailable = sdk.getCachedAvailableAgents(roomId);
   if (cachedAvailable) {
     console.log(`Cached available agents: ${cachedAvailable.length}`);
   }

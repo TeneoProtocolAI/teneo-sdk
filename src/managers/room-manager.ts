@@ -27,18 +27,20 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * Validates room ID and sends subscribe message to the server.
    * The actual subscription state is updated when the server confirms via room:subscribed event.
    *
-   * @param roomId - The ID of the room to subscribe to
-   * @returns Promise that resolves when subscribed
+   * Note: This only applies to public rooms. Private rooms are automatically available after authentication.
+   *
+   * @param roomId - The ID of the public room to subscribe to
+   * @returns Promise that resolves when subscription request is sent
    * @throws {SDKError} If not connected to the network
    * @throws {ValidationError} If roomId is empty or invalid
    *
    * @example
    * ```typescript
-   * await roomManager.subscribeToRoom('general');
-   * console.log('Subscription request sent to general room');
+   * await roomManager.subscribeToPublicRoom('room-id');
+   * console.log('Subscription request sent');
    * ```
    */
-  public async subscribeToRoom(roomId: string): Promise<void> {
+  public async subscribeToPublicRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
@@ -46,10 +48,23 @@ export class RoomManager extends EventEmitter<SDKEvents> {
     // Validate room ID
     const validatedRoomId = RoomIdSchema.parse(roomId);
 
-    this.logger.info("RoomManager: Subscribing to room", { roomId: validatedRoomId });
+    this.logger.info("RoomManager: Subscribing to public room", { roomId: validatedRoomId });
 
     const message = createSubscribe(validatedRoomId);
     await this.wsClient.sendMessage(message);
+  }
+
+  /**
+   * @deprecated Use subscribeToPublicRoom() instead. This method only affects public rooms.
+   * Private rooms are automatically available after authentication without subscription.
+   *
+   * Subscribes to a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to subscribe to
+   * @returns Promise that resolves when subscription request is sent
+   */
+  public async subscribeToRoom(roomId: string): Promise<void> {
+    return this.subscribeToPublicRoom(roomId);
   }
 
   /**
@@ -66,11 +81,11 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * await roomManager.unsubscribeFromRoom('public-announcements');
+   * await roomManager.unsubscribeFromPublicRoom('public-room-id');
    * console.log('Unsubscription request sent for public room');
    * ```
    */
-  public async unsubscribeFromRoom(roomId: string): Promise<void> {
+  public async unsubscribeFromPublicRoom(roomId: string): Promise<void> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
@@ -78,10 +93,23 @@ export class RoomManager extends EventEmitter<SDKEvents> {
     // Validate room ID
     const validatedRoomId = RoomIdSchema.parse(roomId);
 
-    this.logger.info("RoomManager: Unsubscribing from room", { roomId: validatedRoomId });
+    this.logger.info("RoomManager: Unsubscribing from public room", { roomId: validatedRoomId });
 
     const message = createUnsubscribe(validatedRoomId);
     await this.wsClient.sendMessage(message);
+  }
+
+  /**
+   * @deprecated Use unsubscribeFromPublicRoom() instead. This method only affects public rooms.
+   * Private rooms cannot be unsubscribed from.
+   *
+   * Unsubscribes from a public room in the Teneo Protocol.
+   *
+   * @param roomId - The ID of the public room to unsubscribe from
+   * @returns Promise that resolves when unsubscribed
+   */
+  public async unsubscribeFromRoom(roomId: string): Promise<void> {
+    return this.unsubscribeFromPublicRoom(roomId);
   }
 
   /**
@@ -95,7 +123,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    * @example
    * ```typescript
    * // Internal SDK usage
-   * roomManager.updateSubscriptions(['general', 'support', 'trading']);
+   * roomManager.updateSubscriptions(['room-id-1', 'room-id-2', 'room-id-3']);
    * ```
    */
   public updateSubscriptions(subscriptions: string[]): void {
@@ -150,7 +178,7 @@ export class RoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const room = roomManager.getRoom('general');
+   * const room = roomManager.getRoom('room-id');
    * if (room) {
    *   console.log(`Room: ${room.name}`);
    *   console.log(`Members: ${room.members?.length ?? 0}`);

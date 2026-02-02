@@ -13,7 +13,7 @@ export class AgentsController {
   @Get("search/capability/:capability")
   findAgentsByCapability(@Param("capability") capability: string) {
     try {
-      const agents = this.teneoService.findAgentsByCapability(capability);
+      const agents = this.teneoService.findAvailableAgentsByCapability(capability);
       return {
         capability,
         count: agents.length,
@@ -27,7 +27,7 @@ export class AgentsController {
   @Get("search/name/:name")
   findAgentsByName(@Param("name") name: string) {
     try {
-      const agents = this.teneoService.findAgentsByName(name);
+      const agents = this.teneoService.findAvailableAgentsByName(name);
       return {
         query: name,
         count: agents.length,
@@ -41,7 +41,7 @@ export class AgentsController {
   @Get("search/status/:status")
   findAgentsByStatus(@Param("status") status: string) {
     try {
-      const agents = this.teneoService.findAgentsByStatus(status);
+      const agents = this.teneoService.findAvailableAgentsByStatus(status);
       return {
         status,
         count: agents.length,

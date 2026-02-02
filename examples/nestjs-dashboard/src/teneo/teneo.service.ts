@@ -321,21 +321,21 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByCapability(capability);
+    return this.sdk.findAvailableAgentsByCapability(capability);
   }
 
   findAgentsByName(name: string) {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByName(name);
+    return this.sdk.findAvailableAgentsByName(name);
   }
 
   findAgentsByStatus(status: string) {
     if (!this.sdk) {
       throw new Error("SDK not initialized");
     }
-    return this.sdk.findAgentsByStatus(status);
+    return this.sdk.findAvailableAgentsByStatus(status);
   }
 
   getRooms() {
@@ -365,14 +365,14 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
     if (!this.sdk?.isConnected) {
       throw new Error("SDK not connected");
     }
-    return await this.sdk.subscribeToRoom(roomId);
+    return await this.sdk.subscribeToPublicRoom(roomId);
   }
 
   async unsubscribeFromRoom(roomId: string) {
     if (!this.sdk?.isConnected) {
       throw new Error("SDK not connected");
     }
-    return await this.sdk.unsubscribeFromRoom(roomId);
+    return await this.sdk.unsubscribeFromPublicRoom(roomId);
   }
 
   async createRoom(name: string, description?: string) {
@@ -437,14 +437,14 @@ export class TeneoService implements OnModuleInit, OnModuleDestroy {
   }
 
   isAgentInRoom(roomId: string, agentId: string) {
-    return this.sdk?.isAgentInRoom(roomId, agentId) || false;
+    return this.sdk?.checkAgentInRoom(roomId, agentId) || false;
   }
 
   getRoomAgentCount(roomId: string) {
-    return this.sdk?.getRoomAgentCount(roomId) || 0;
+    return this.sdk?.getCachedRoomAgentCount(roomId) || 0;
   }
 
-  invalidateAgentRoomCache(roomId?: string) {
+  invalidateAgentRoomCache(roomId: string) {
     this.sdk?.invalidateAgentRoomCache(roomId);
   }
 
