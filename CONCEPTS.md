@@ -453,9 +453,21 @@ Some agents charge for their services using the X402 payment protocol. The flow 
 
 The SDK includes a `PaymentSigner` that **automatically creates x402 payment headers** when you confirm a task. No manual payment encoding needed!
 
-- Uses **PEAQ chain** with **USDC** stablecoin
-- Payment headers are signed using your private key
+- Supports **multiple EVM networks** with **USDC** stablecoin (PEAQ, Base, Avalanche, and more)
+- **Dynamic network configuration** fetched from backend automatically
+- Payment headers are signed using your private key with **x402 v2.5 settlement router** integration
 - The SDK handles all the complexity for you
+
+### Multi-Network Support
+
+Networks are configured dynamically from the backend, enabling payments across multiple chains:
+
+- **PEAQ Mainnet** (chainId: 3338) - Original network
+- **Base Mainnet** (chainId: 8453) - Layer 2 with lower fees
+- **Avalanche Mainnet** (chainId: 43114) - High-throughput chain
+- **Future networks** added server-side without SDK updates
+
+The SDK automatically fetches network configurations during `connect()` and selects the appropriate network based on the agent's requirements. See the [Multi-Network Support](#) section in the README for more details.
 
 ### Payment Flow
 
@@ -513,9 +525,15 @@ const quote = await sdk.requestQuote(
     priceType: string;     // e.g., "per_request"
     currency: string;      // e.g., "USDC"
     timeUnit?: string;     // e.g., "hour", "day"
-    network?: string;      // e.g., "peaq"
+    network?: string;      // e.g., "peaq", "base", "avalanche"
   };
   expiresAt: Date;      // Quote expiration time
+  // x402 v2.5 Settlement Router fields
+  settlementRouter: string;   // Router contract address
+  salt: string;               // Unique transaction salt
+  facilitatorFee: string;     // Facilitator fee amount
+  hook: string;               // Transfer hook address
+  hookData?: string;          // Optional hook data (default: "0x")
 }
 ```
 

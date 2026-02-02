@@ -124,18 +124,22 @@ graph TB
 
 ## ✨ What's New in v2.3
 
-Version 2.3 introduces **Multi-Network Payment Support**:
+Version 2.3 introduces **Multi-Network Payment Support with Dynamic Configuration**:
 
 ### 🌐 Multi-Network Support
 
-- **Multiple EVM chains** - PEAQ, Base, and Avalanche networks supported
-- **Automatic network detection** - SDK automatically uses the correct network configuration
+- **Dynamic network configuration** - Networks fetched from backend automatically during `connect()`
+- **Multiple EVM chains** - PEAQ, Base, Avalanche, and future networks supported
+- **Automatic initialization** - No manual network configuration needed
+- **Offline resilience** - 60-minute cache with fallback to cached configs
+- **Settlement router integration** - x402 v2.5 protocol with enhanced payment routing
 - **Network utilities** - Query supported networks, get network configs, validate chains
+- **Future-proof** - New networks can be added server-side without SDK updates
 - **Backward compatible** - Existing code continues to work without changes
 
-Supported networks:
+Current networks (dynamically configured):
 - **PEAQ Mainnet** (chainId: 3338) - Original network
-- **Base Mainnet** (chainId: 8453) - Layer 2 scaling solution  
+- **Base Mainnet** (chainId: 8453) - Layer 2 scaling solution
 - **Avalanche Mainnet** (chainId: 43114) - High-throughput blockchain
 
 [Jump to Multi-Network Configuration](#multi-network-support-v23)
@@ -769,7 +773,36 @@ console.log(response.humanized);
 
 ### Multi-Network Support (v2.3)
 
-The SDK supports USDC payments across multiple EVM networks. Each network has its own USDC contract, settlement router, and transfer hook addresses.
+The SDK supports USDC payments across multiple EVM networks with **dynamic configuration**. Network configurations are automatically fetched from the backend during `connect()`, enabling the protocol to add new networks without requiring SDK updates.
+
+#### Dynamic Network Configuration
+
+Networks are initialized automatically when you connect:
+
+```typescript
+import { TeneoSDK, NETWORKS, getSupportedNetworks } from "@teneo-protocol/sdk";
+
+const sdk = new TeneoSDK({
+  wsUrl: "wss://teneo.network/ws",
+  privateKey: "0x..."
+});
+
+// Before connect: NETWORKS is empty
+console.log(NETWORKS); // {}
+
+// Networks fetched during connect from backend /api/networks
+await sdk.connect();
+
+// After connect: NETWORKS populated with backend configuration
+console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...} }
+const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche"]
+```
+
+**Key Features:**
+- 🔄 **Automatic fetch** from backend `/api/networks` endpoint during `connect()`
+- ⚡ **60-minute cache** with automatic refresh
+- 🛡️ **Offline resilience** - falls back to cached configs if backend temporarily unavailable
+- 🚀 **Future-proof** - new networks can be added server-side without SDK updates
 
 #### Querying Network Information
 
@@ -783,12 +816,22 @@ import {
   createChainDefinition
 } from "@teneo-protocol/sdk";
 
-// Get all supported networks
-const networks = getSupportedNetworks();
-console.log(networks); // ["peaq", "base", "avalanche"]
+// Must be called after connect()
+await sdk.connect();
 
-// Get specific network config
+// Get all supported networks (dynamically loaded from backend)
+const networks = getSupportedNetworks();
+console.log(networks); // e.g., ["peaq", "base", "avalanche"]
+
+// Get network by name
 const baseNetwork = getNetwork("base");
+
+// Get network by chain ID
+const peaqNetwork = getNetwork(3338);
+
+// Get network by CAIP-2 identifier
+const avaxNetwork = getNetwork("eip155:43114");
+
 console.log(baseNetwork);
 // {
 //   chainId: 8453,
@@ -804,44 +847,46 @@ console.log(baseNetwork);
 // Check if a network is supported
 if (isNetworkSupported("base")) {
   // Create a viem chain definition
-  const baseChain = createChainDefinition("base");
+  const baseChain = createChainDefinition(baseNetwork);
   // Use with PaymentClient or other viem-based operations
 }
 
-// Get default network (PEAQ)
+// Get default network (prefers PEAQ, falls back to first available)
 const defaultNetwork = getDefaultNetwork();
 ```
 
-#### Network Details
+#### Current Networks
 
-All supported networks with their contract addresses:
+These networks are currently supported (fetched dynamically from backend):
+
+**PEAQ Mainnet (chainId: 3338)**
+- Original Teneo network
+- USDC contract, settlement router, transfer hook configured via backend
+
+**Base Mainnet (chainId: 8453)**
+- Layer 2 scaling solution
+- Lower gas fees, faster transactions
+
+**Avalanche Mainnet (chainId: 43114)**
+- High-throughput blockchain
+- Sub-second finality
+
+> **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
+
+#### Settlement Router Integration (x402 v2.5)
+
+Payment quotes now include settlement router information for enhanced payment routing:
 
 ```typescript
-import { NETWORKS } from "@teneo-protocol/sdk";
+// Request a quote
+const quote = await sdk.requestQuote("Analyze this data", "room-id");
 
-// PEAQ Mainnet (chainId: 3338)
-console.log(NETWORKS.peaq);
-// {
-//   usdcContract: "0xbbA60da06c2c5424f03f7434542280FCAd453d10",
-//   settlementRouter: "0xCD57f4596f70b18a0fd0c42daa4F3066d3adc8d4",
-//   transferHook: "0xf45FA7713a58eBd0C353186F9e49A7C39a0eD34E"
-// }
-
-// Base Mainnet (chainId: 8453)
-console.log(NETWORKS.base);
-// {
-//   usdcContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-//   settlementRouter: "0x73fc659Cd5494E69852bE8D9D23FE05Aab14b29B",
-//   transferHook: "0x081258287F692D61575387ee2a4075f34dd7Aef7"
-// }
-
-// Avalanche Mainnet (chainId: 43114)
-console.log(NETWORKS.avalanche);
-// {
-//   usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
-//   settlementRouter: "0xF38709cFd3f89734c231dd8E59Ff1d44caCddEe8",
-//   transferHook: "0x6D21298950dC58a984664B12Cdf4DeBA143889aa"
-// }
+// Quote includes settlement router fields (x402 v2.5)
+console.log(quote.data.settlement_router); // Router contract address
+console.log(quote.data.salt); // Unique transaction salt
+console.log(quote.data.facilitator_fee); // Facilitator fee amount
+console.log(quote.data.hook); // Transfer hook address
+console.log(quote.data.hook_data); // Optional hook data (default: "0x")
 ```
 
 > **Note:** The SDK automatically handles network selection. The payment server determines which network to use based on the agent's configuration. You don't need to manually configure networks unless you're using the `PaymentClient` directly for custom payment operations.

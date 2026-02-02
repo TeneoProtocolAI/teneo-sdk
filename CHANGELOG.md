@@ -11,11 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.3.0] - 2026-01-28
 
-### ✨ Multi-Network Payment Support
+### ✨ Multi-Network Payment Support with Dynamic Configuration
 
-The SDK now supports USDC payments across multiple EVM networks, not just PEAQ! This enables agents to accept payments on Base, Avalanche, and other supported chains.
+The SDK now supports USDC payments across multiple EVM networks with **dynamic configuration fetched from the backend**. Network configurations are no longer hardcoded, enabling the protocol to add new networks without SDK updates.
+
+#### 🔄 Dynamic Network Configuration
+
+Networks are now fetched from the backend API during SDK initialization:
+
+- **Automatic Initialization**: Networks loaded during `connect()` via backend `/api/networks` endpoint
+- **60-Minute Cache**: Network configs cached locally with automatic refresh
+- **Offline Resilience**: Falls back to cached configs if backend temporarily unavailable
+- **Future-Proof**: New networks can be added server-side without SDK changes
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: "wss://teneo.network/ws",
+  privateKey: "0x..."
+});
+
+// Networks automatically initialized during connect
+await sdk.connect();
+
+// Now network utilities are ready
+const networks = getSupportedNetworks();
+console.log(networks); // Backend-provided network list
+```
 
 #### 🌐 Supported Networks
+
+Current networks include (dynamically configured from backend):
 
 - **PEAQ Mainnet** (chainId: 3338) - Original network
 - **Base Mainnet** (chainId: 8453) - Layer 2 scaling solution
@@ -23,7 +48,7 @@ The SDK now supports USDC payments across multiple EVM networks, not just PEAQ! 
 
 Each network includes:
 - Network-specific USDC contract addresses
-- Settlement router contracts for x402 payments
+- Settlement router contracts for x402 v2.5 payments
 - Transfer hook contracts for payment verification
 - EIP-712 signing parameters
 
@@ -31,7 +56,7 @@ Each network includes:
 
 ```typescript
 import {
-  // Network utilities
+  // Network utilities (dynamic, populated after connect)
   NETWORKS,
   CHAIN_ID_TO_NETWORK,
   CAIP2_TO_NETWORK,
@@ -52,38 +77,89 @@ const peaq = getNetwork("peaq");
 const base = getNetwork("base");
 const avalanche = getNetwork("avalanche");
 
-// Get default network (PEAQ)
+// Get network by chain ID
+const baseNetwork = getNetwork(8453);
+
+// Get network by CAIP-2 identifier
+const avaxNetwork = getNetwork("eip155:43114");
+
+// Get default network (prefers PEAQ, falls back to first available)
 const defaultNetwork = getDefaultNetwork();
 
 // Check if network is supported
 if (isNetworkSupported("base")) {
   // Create chain definition for viem
-  const baseChain = createChainDefinition("base");
+  const baseChain = createChainDefinition(base);
 }
 
 // Get all supported networks
 const allNetworks = getSupportedNetworks();
-console.log(allNetworks); // ["peaq", "base", "avalanche"]
+console.log(allNetworks); // e.g., ["peaq", "base", "avalanche"]
+```
+
+#### 🔐 Settlement Router Integration (x402 v2.5)
+
+Payment quotes now include settlement router fields for enhanced transaction routing:
+
+```typescript
+// Request a quote
+const quote = await sdk.requestQuote("Analyze this data", "room-id");
+
+// Quote includes settlement router information
+console.log(quote.data.settlement_router); // Router contract address
+console.log(quote.data.salt); // Unique salt for transaction
+console.log(quote.data.facilitator_fee); // Facilitator fee amount
+console.log(quote.data.hook); // Transfer hook address
 ```
 
 #### 💰 Network-Aware Payment Configuration
 
-The `PaymentClient` now automatically uses the correct network configuration:
+The `PaymentClient` automatically uses the correct network configuration:
 
 ```typescript
 import { PaymentClient, getNetwork } from "@teneo-protocol/sdk";
 
-// Use Base network for payments
-const baseNetwork = getNetwork("base");
+// Payment client uses dynamically configured networks
 const paymentClient = new PaymentClient({
   privateKey: "0x...",
   wsUrl: "wss://teneo.network/ws"
 });
+
+// Network selection happens automatically based on agent capabilities
 ```
+
+#### 🛠️ New Diagnostic Scripts
+
+Four new diagnostic scripts added to help debug network and payment issues:
+
+- `scripts/diagnose-connection.ts` - Connection health diagnostics
+- `scripts/investigate-payload.ts` - Payment payload inspection
+- `scripts/list-agents.ts` - List all available agents
+- `scripts/live-multi-network-test.ts` - Multi-network payment testing
+
+#### ⚠️ Breaking Changes
+
+- **Network initialization required**: `NETWORKS` is empty until `connect()` completes
+- **Backend dependency**: SDK requires backend to be reachable during `connect()` (falls back to cache for subsequent reconnects)
+- **Settlement router fields**: TaskQuote messages now have required `settlement_router`, `salt`, `facilitator_fee`, and `hook` fields
 
 #### 🔄 Backward Compatibility
 
 All existing code continues to work! The SDK defaults to PEAQ network if no network is specified. Legacy exports like `PEAQ_CHAIN_ID` and `USDC_CONTRACT` are maintained for backward compatibility.
+
+#### 📚 Migration Notes
+
+No code changes required for most users. Networks are initialized automatically during `connect()`. If you were accessing `NETWORKS` directly before `connect()`, ensure you do so after:
+
+```typescript
+// ❌ Before connect - NETWORKS is empty
+console.log(NETWORKS); // {}
+
+await sdk.connect();
+
+// ✅ After connect - NETWORKS is populated
+console.log(NETWORKS); // { peaq: {...}, base: {...}, ... }
+```
 
 ---
 
