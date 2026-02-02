@@ -1,12 +1,13 @@
 /**
  * Payment Flow Example - Quote-Approve payment flow with Teneo SDK
  * Demonstrates manual quote approval: request a quote, inspect pricing, then confirm.
+ * Shows multi-network payment support with x402 v2.5 settlement router integration.
  *
  * Usage:
  *   PRIVATE_KEY=0x... pnpm tsx examples/payment-flow.ts
  */
 
-import { TeneoSDK, SDKConfigBuilder, SecurePrivateKey } from "../src";
+import { TeneoSDK, SDKConfigBuilder, SecurePrivateKey, getSupportedNetworks } from "../src";
 
 const WS_URL = process.env.WS_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
@@ -64,6 +65,10 @@ async function main() {
     await sdk.connect();
     console.log("Connected!\n");
 
+    // Show supported networks (dynamically loaded from backend)
+    const networks = getSupportedNetworks();
+    console.log(`Supported payment networks: ${networks.join(", ")}\n`);
+
     // Pick a room
     const rooms = sdk.getRooms();
     if (!rooms.length) {
@@ -85,7 +90,18 @@ async function main() {
     console.log(`  Task ID:  ${quote.taskId}`);
     console.log(`  Agent:    ${quote.agentName} (${quote.agentId})`);
     console.log(`  Price:    ${quote.pricing.pricePerUnit} micro-USDC (${quote.pricing.priceType})`);
+    console.log(`  Network:  ${quote.pricing.network || "default"}`);
     console.log(`  Expires:  ${quote.expiresAt}`);
+
+    // Show x402 v2.5 settlement router fields
+    if (quote.raw?.data) {
+      const data = quote.raw.data as any;
+      console.log("\nSettlement Router (x402 v2.5):");
+      console.log(`  Router:   ${data.settlement_router || "N/A"}`);
+      console.log(`  Salt:     ${data.salt || "N/A"}`);
+      console.log(`  Fee:      ${data.facilitator_fee || "N/A"}`);
+      console.log(`  Hook:     ${data.hook || "N/A"}`);
+    }
 
     // --- Step 2: Decide whether to confirm ---
     const MAX_ACCEPTABLE = 500000; // 0.5 USDC in micro-units
