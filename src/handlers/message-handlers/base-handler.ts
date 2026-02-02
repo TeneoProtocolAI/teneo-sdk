@@ -46,8 +46,17 @@ export abstract class BaseMessageHandler<T extends BaseMessage = BaseMessage>
       // Use validated data if available, otherwise use raw message
       const messageToProcess = result.success ? result.data : (message as T);
 
-      // Call subclass implementation
-      await this.handleValidated(messageToProcess, context);
+      // Call subclass implementation with additional error protection
+      try {
+        await this.handleValidated(messageToProcess, context);
+      } catch (handlerError) {
+        // Catch errors from handlers accessing malformed data
+        context.logger.warn(`Handler ${this.type} failed to process message`, {
+          error: handlerError instanceof Error ? handlerError.message : String(handlerError),
+          messageType: message.type
+        });
+        // Don't re-throw - resilient processing continues
+      }
     } catch (error) {
       context.logger.error(`Error handling ${this.type} message`, error);
       this.onError(error, message, context);

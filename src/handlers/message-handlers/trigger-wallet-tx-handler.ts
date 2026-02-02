@@ -14,6 +14,17 @@ export class TriggerWalletTxHandler extends BaseMessageHandler<TriggerWalletTxMe
   protected handleValidated(message: TriggerWalletTxMessage, context: HandlerContext): void {
     const { from, data, room } = message;
 
+    // Defensive: Check for required fields
+    if (!data?.task_id || !data?.tx) {
+      context.logger.warn("Invalid trigger_wallet_tx message: missing required fields", {
+        from,
+        hasData: !!data,
+        hasTaskId: !!data?.task_id,
+        hasTx: !!data?.tx
+      });
+      return;
+    }
+
     context.logger.debug("Handling trigger_wallet_tx", {
       from,
       taskId: data.task_id,
