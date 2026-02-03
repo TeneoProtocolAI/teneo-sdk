@@ -47,6 +47,7 @@ export interface AgentCommand {
   agent: string;
   command: string;
   room: string;
+  network?: string | number; // Per-request network override (v2.3.0)
 }
 
 /**
@@ -73,6 +74,8 @@ export interface QuoteResult {
   expiresAt: Date;
   /** Backend-provided settlement data for x402x-router-settlement */
   settlement: SettlementData;
+  /** Per-request network override, carried from requestQuote to confirmQuote (v2.3.0) */
+  networkOverride?: string | number;
 }
 
 export interface MessageRouterConfig {
@@ -140,8 +143,12 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * Gets the payment network CAIP-2 identifier, resolving from network name or default.
    * Only call this after connect() has been called (networks initialized).
    */
-  private getResolvedPaymentNetwork(): string {
-    // Priority: paymentNetwork (CAIP-2) > networkName > default
+  private getResolvedPaymentNetwork(networkOverride?: string | number): string {
+    // Priority: per-request override > paymentNetwork (CAIP-2) > networkName > default
+    if (networkOverride) {
+      const network = getNetwork(networkOverride);
+      return network.caip2;
+    }
     if (this.paymentNetwork) {
       return this.paymentNetwork;
     }
@@ -227,11 +234,13 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
+      const networkOverride = options.network || options.networkChainId;
       this.logger.debug("MessageRouter: Using quote-approve flow", {
         content: validatedContent,
-        room
+        room,
+        network: networkOverride
       });
-      const quote = await this.requestQuote(validatedContent, room);
+      const quote = await this.requestQuote(validatedContent, room, networkOverride);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse: options.waitForResponse,
         timeout: options.timeout ?? this.messageTimeout
@@ -265,17 +274,28 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * @param command.agent - Agent ID or name to send command to
    * @param command.command - Command text to send
    * @param command.room - Room to send in (required)
-   * @returns Promise that resolves when command is sent
+   * @param command.network - Optional per-request network override (name like "base" or chain ID like 8453)
+   * @param waitForResponse - Whether to wait for agent response (default: false)
+   * @returns Promise resolving to FormattedResponse if waiting, void otherwise
    * @throws {SDKError} If not connected
    * @throws {ValidationError} If agent/command empty or room not specified
    *
    * @example
    * ```typescript
+   * // Basic usage
    * await messageRouter.sendDirectCommand({
    *   agent: 'weather-agent',
    *   command: 'Get forecast for Tokyo',
    *   room: 'room-id'
    * });
+   *
+   * // With per-request network override
+   * await messageRouter.sendDirectCommand({
+   *   agent: 'x-agent-enterprise-v2',
+   *   command: 'user @elonmusk',
+   *   room: 'room-id',
+   *   network: 'base'
+   * }, true);
    * ```
    */
   public async sendDirectCommand(
@@ -298,8 +318,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
-      this.logger.debug("MessageRouter: Using quote-approve flow", { content, room });
-      const quote = await this.requestQuote(content, room);
+      this.logger.debug("MessageRouter: Using quote-approve flow", { content, room, network: command.network });
+      const quote = await this.requestQuote(content, room, command.network);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse,
         timeout: this.messageTimeout
@@ -338,13 +358,13 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * Requests a quote for a task without auto-approval.
    * Returns the quote data for manual confirmation.
    */
-  public async requestQuote(content: string, room: string): Promise<QuoteResult> {
+  public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
 
     // Include payment network in request so backend returns correct contract addresses
-    const resolvedNetwork = this.getResolvedPaymentNetwork();
+    const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
     const message = createRequestTask(content, room, resolvedNetwork);
     this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork });
 
@@ -370,7 +390,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         facilitatorFee: quote.data.facilitator_fee,
         hook: quote.data.hook,
         hookData: quote.data.hook_data ?? "0x"
-      }
+      },
+      networkOverride
     };
 
     this.logger.debug("MessageRouter: Quote received with settlement data", {
@@ -433,7 +454,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
           priceInUnits,
           quote.agentWallet,
           buildX402ResourceUrl(this.wsUrl),
-          undefined, // No network override
+          quote.networkOverride, // Per-request network override (v2.3.0)
           quote.settlement // Backend-provided settlement data
         );
         this.emit("payment:attached", {

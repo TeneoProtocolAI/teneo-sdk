@@ -221,7 +221,8 @@ export class PaymentClient {
     // Resolve network for this payment (allows per-request override)
     const network = networkOverride ? getNetwork(networkOverride) : this.networkConfig;
 
-    const asset = this.assetOverride ?? network.usdcContract;
+    // When using a per-request network override, always use that network's asset contract
+    const asset = networkOverride ? network.usdcContract : (this.assetOverride ?? network.usdcContract);
     const chain = createChainDefinition(network);
 
     // Create payment header using the secure key

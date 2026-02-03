@@ -15,6 +15,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The SDK now supports USDC payments across multiple EVM networks with **dynamic configuration fetched from the backend**. Network configurations are no longer hardcoded, enabling the protocol to add new networks without SDK updates.
 
+#### 🎯 Per-Request Network Override
+
+Send commands to different chains from a single SDK instance using the `network` field:
+
+```typescript
+// Pay on Base for this specific command
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "base",  // Per-request network override
+}, true);
+
+// Pay on Avalanche for this one
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "avalanche",
+}, true);
+
+// Also works with sendMessage
+await sdk.sendMessage("@X Platform Agent user @elonmusk", {
+  room: roomId,
+  network: "peaq",
+  waitForResponse: true,
+});
+```
+
+Accepts network name (`"peaq"`, `"base"`, `"avalanche"`) or chain ID (`3338`, `8453`, `43114`). When omitted, falls back to `.withNetwork()` setting, then `TENEO_NETWORK` env var, then PEAQ default.
+
 #### 🔄 Dynamic Network Configuration
 
 Networks are now fetched from the backend API during SDK initialization:
