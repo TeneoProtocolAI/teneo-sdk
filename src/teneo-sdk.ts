@@ -353,7 +353,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @param command.agent - The agent ID or name to send the command to
    * @param command.command - The command text to send to the agent
    * @param command.room - Room to send command to (defaults to configured default room)
-   * @returns Promise that resolves when the command is sent
+   * @param command.network - Optional per-request network override (e.g., "base", "avalanche", or chain ID 8453)
+   * @param waitForResponse - Whether to wait for the agent's response (default: false)
+   * @returns Promise resolving to FormattedResponse if waitForResponse is true, void otherwise
    * @throws {SDKError} If not connected to the network (ErrorCode.NOT_CONNECTED)
    * @throws {ValidationError} If agent or command are empty, or room is not configured
    *
@@ -365,6 +367,14 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    *   command: 'Get forecast for New York',
    *   room: 'room-id'
    * });
+   *
+   * // With per-request network override
+   * const response = await sdk.sendDirectCommand({
+   *   agent: 'x-agent-enterprise-v2',
+   *   command: 'user @elonmusk',
+   *   room: 'room-id',
+   *   network: 'base'  // Pay on Base for this request
+   * }, true);
    * ```
    */
   public async sendDirectCommand(
@@ -379,8 +389,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * The quote includes agent selection, pricing, and expiration.
    * Does NOT auto-approve - use confirmQuote() to execute.
    */
-  public async requestQuote(content: string, room: string): Promise<QuoteResult> {
-    return this.messages.requestQuote(content, room);
+  public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
+    return this.messages.requestQuote(content, room, networkOverride);
   }
 
   /**

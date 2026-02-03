@@ -680,7 +680,7 @@ import { TeneoSDK } from "@teneo-protocol/sdk";
 // Enable payments with auto-approve
 const sdk = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.PRIVATE_KEY!)
     .withPayments({
       autoApprove: true,           // Automatically approve quotes
@@ -846,7 +846,7 @@ import { TeneoSDK } from "@teneo-protocol/sdk";
 // SDK automatically uses TENEO_NETWORK env var
 const sdk = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .build()
@@ -863,7 +863,7 @@ import { TeneoSDK } from "@teneo-protocol/sdk";
 // Configure Base network for this SDK instance
 const sdk = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .withNetwork("base")  // Use Base Mainnet
@@ -878,7 +878,7 @@ Or using chain ID:
 ```typescript
 const sdk = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .withNetworkChainId(43114)  // Use Avalanche (chain ID 43114)
@@ -889,18 +889,82 @@ const sdk = new TeneoSDK(
 **Network Selection Priority:**
 
 The SDK uses this priority order for network selection:
-1. Per-request network override (if supported by future versions)
+1. **Per-request network override** via `sendDirectCommand({ network: "base" })` or `sendMessage({ network: "base" })`
 2. Builder `.withNetwork()` or `.withNetworkChainId()` setting
 3. `TENEO_NETWORK` environment variable
 4. Default: PEAQ network (eip155:3338)
 
+**Example: Per-Request Network Override (Recommended)**
+
+Send commands to different chains from a single SDK instance:
+
+```typescript
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withPayments({ autoApprove: true, maxPricePerRequest: 1000000 })
+    .build()
+);
+
+await sdk.connect();
+const roomId = sdk.getRooms()[0].id;
+
+// Pay on PEAQ
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "peaq",       // Per-request network override
+}, true);
+
+// Pay on Base
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "base",       // Per-request network override
+}, true);
+
+// Pay on Avalanche
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "avalanche",  // Per-request network override
+}, true);
+```
+
+You can also pass a chain ID instead of a name:
+
+```typescript
+await sdk.sendDirectCommand({
+  agent: "x-agent-enterprise-v2",
+  command: "user @elonmusk",
+  room: roomId,
+  network: 8453,  // Base by chain ID
+}, true);
+```
+
+The same works with `sendMessage`:
+
+```typescript
+await sdk.sendMessage("@X Platform Agent user @elonmusk", {
+  room: roomId,
+  waitForResponse: true,
+  network: "avalanche",  // Per-request network override
+});
+```
+
 **Example: Multiple SDK Instances with Different Networks**
+
+For cases where you want a fixed default per SDK instance:
 
 ```typescript
 // Production bot uses PEAQ
 const peaqBot = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.PEAQ_PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .withNetwork("peaq")
@@ -910,7 +974,7 @@ const peaqBot = new TeneoSDK(
 // Experimental bot uses Base
 const baseBot = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.BASE_PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .withNetwork("base")
@@ -920,7 +984,7 @@ const baseBot = new TeneoSDK(
 // High-throughput bot uses Avalanche
 const avalancheBot = new TeneoSDK(
   TeneoSDK.builder()
-    .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
     .withAuthentication(process.env.AVALANCHE_PRIVATE_KEY!)
     .withPayments({ autoApprove: true })
     .withNetwork("avalanche")
@@ -955,7 +1019,15 @@ const response = await sdk.sendDirectCommand({
 
 console.log(response.humanized);
 
-// Option 3: Fire-and-forget (no wait for response)
+// Option 3: With per-request network override
+const response = await sdk.sendDirectCommand({
+  agent: "X Platform Agent",
+  command: "user @elonmusk",
+  room: roomId,
+  network: "base",  // Per-request network override (peaq, base, avalanche, or chain ID)
+}, true);
+
+// Option 4: Fire-and-forget (no wait for response)
 await sdk.sendDirectCommand({
   agent: "X Platform Agent",
   command: "user @elonmusk",
@@ -1150,7 +1222,7 @@ const secureKey = new SecurePrivateKey(process.env.PRIVATE_KEY!);
 
 const config = new SDKConfigBuilder()
   // Required
-  .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+  .withWebSocketUrl(process.env.TENEO_WS_URL!)
   .withAuthentication(secureKey) // Encrypted key
 
   // Rooms - auto-join these public rooms on connect
