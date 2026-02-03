@@ -306,14 +306,17 @@ describe("AgentRoomOperationResponseHandler", () => {
 
       await handler.handle(invalidMessage, mockContext);
 
-      // Should log error
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Error handling agent_room_operation_response"),
-        expect.any(Error)
+      // Should log validation warning at debug level (resilience pattern)
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("agent_room_operation_response message validation warning"),
+        expect.any(Object)
       );
 
-      // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
+      // Should log handler processing failure at warn level
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Handler agent_room_operation_response failed to process message"),
+        expect.any(Object)
+      );
     });
 
     it("should accept valid message with extra fields", async () => {

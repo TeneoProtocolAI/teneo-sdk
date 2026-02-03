@@ -321,14 +321,21 @@ describe("TriggerWalletTxHandler", () => {
 
       await handler.handle(invalidMessage, mockContext);
 
-      // Should log error
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Error handling trigger_wallet_tx"),
-        expect.any(Error)
+      // Should log validation warning at debug level (resilience pattern)
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("trigger_wallet_tx message validation warning"),
+        expect.any(Object)
       );
 
-      // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
+      // Handler validates and logs specific warning message
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        "Invalid trigger_wallet_tx message: missing required fields",
+        expect.objectContaining({
+          hasData: false,
+          hasTaskId: false,
+          hasTx: false
+        })
+      );
     });
 
     it("should accept valid message with extra fields via passthrough", async () => {

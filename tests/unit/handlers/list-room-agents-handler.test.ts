@@ -94,15 +94,8 @@ describe("ListRoomAgentsHandler", () => {
       // Should emit event
       expect(emitSpy).toHaveBeenCalledWith("agent_room:agents_listed", "room-123", agents);
 
-      // Should send webhook
-      expect(sendWebhookSpy).toHaveBeenCalledWith(
-        "room_agents_listed",
-        expect.objectContaining({
-          room_id: "room-123",
-          agents
-        }),
-        undefined
-      );
+      // Should NOT send webhook (this is a query response)
+      expect(sendWebhookSpy).not.toHaveBeenCalled();
 
       // Should log
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -233,14 +226,17 @@ describe("ListRoomAgentsHandler", () => {
 
       await handler.handle(invalidMessage, mockContext);
 
-      // Should log error
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Error handling room_agents_response"),
-        expect.any(Error)
+      // Should log validation warning at debug level (resilience pattern)
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("room_agents_response message validation warning"),
+        expect.any(Object)
       );
 
-      // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
+      // Should log handler processing failure at warn level
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Handler room_agents_response failed to process message"),
+        expect.any(Object)
+      );
     });
 
     it("should accept valid message with extra fields", async () => {
