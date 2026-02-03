@@ -99,16 +99,8 @@ describe("AgentStatusUpdateHandler", () => {
         agent: undefined
       });
 
-      // Should send webhook
-      expect(sendWebhookSpy).toHaveBeenCalledWith(
-        "agent_status_update",
-        expect.objectContaining({
-          room_id: "room-123",
-          agent_id: "agent-456",
-          status: "offline"
-        }),
-        undefined
-      );
+      // Should NOT send webhook (deliberately disabled to avoid spam)
+      expect(sendWebhookSpy).not.toHaveBeenCalled();
 
       // Should log
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -253,14 +245,17 @@ describe("AgentStatusUpdateHandler", () => {
 
       await handler.handle(invalidMessage, mockContext);
 
-      // Should log error
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining("Error handling agent_status_update"),
-        expect.any(Error)
+      // Should log validation warning at debug level (resilience pattern)
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("agent_status_update message validation warning"),
+        expect.any(Object)
       );
 
-      // Should emit message:error event
-      expect(emitSpy).toHaveBeenCalledWith("message:error", expect.any(Error), invalidMessage);
+      // Should log handler processing failure at warn level
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Handler agent_status_update failed to process message"),
+        expect.any(Object)
+      );
     });
 
     it("should accept valid message with extra fields", async () => {
