@@ -15,7 +15,9 @@ export const TIMEOUTS = {
   /** Webhook delivery timeout */
   WEBHOOK_TIMEOUT: 10_000,
   /** Auth state polling interval */
-  AUTH_POLL_INTERVAL: 100
+  AUTH_POLL_INTERVAL: 100,
+  /** Time window for matching responses without client_request_id (fallback) */
+  RESPONSE_MATCH_WINDOW: 60_000
 } as const;
 
 /**
@@ -36,8 +38,8 @@ export const RETRY = {
  * Limits and constraints
  */
 export const LIMITS = {
-  /** Maximum message size (2MB) */
-  MAX_MESSAGE_SIZE: 2 * 1024 * 1024,
+  /** Maximum message size (10MB - sufficient for room history) */
+  MAX_MESSAGE_SIZE: 10 * 1024 * 1024,
   /** Random jitter for reconnection */
   MAX_JITTER: 1000
 } as const;

@@ -32,13 +32,31 @@ export const ResponseFormatSchema = z.enum(["raw", "humanized", "both"]);
 
 // Webhook event type schema
 export const WebhookEventTypeSchema = z.enum([
+  // Core events
   "message",
   "task",
   "task_response",
   "agent_selected",
   "error",
   "connection_state",
-  "auth_state"
+  "auth_state",
+
+  // Error events
+  "agent_error",
+  "room_operation_error",
+  "agent_room_operation_error",
+
+  // Payment flow events
+  "task_quote",
+  "task_confirmed",
+  "wallet_tx_requested",
+
+  // State change events
+  "room_subscribed",
+  "room_unsubscribed",
+  "room_deleted",
+  "room_operation",
+  "agent_room_operation"
 ]);
 
 // Custom Zod schema for SecurePrivateKey or string
@@ -55,8 +73,8 @@ const PrivateKeySchema = z.union([
   )
 ]);
 
-// SDK Configuration schema
-export const SDKConfigSchema = z.object({
+// SDK Configuration base schema (without transform)
+const SDKConfigBaseSchema = z.object({
   // WebSocket configuration
   wsUrl: z
     .string()
@@ -74,6 +92,8 @@ export const SDKConfigSchema = z.object({
   clientName: z.string().optional(),
 
   // Room configuration
+  autoJoinPublicRooms: z.array(z.string()).optional(),
+  /** @deprecated Use autoJoinPublicRooms instead */
   autoJoinRooms: z.array(z.string()).optional(),
 
   // Webhook configuration
@@ -92,7 +112,7 @@ export const SDKConfigSchema = z.object({
 
   // Message settings
   messageTimeout: z.number().min(1000).max(300000).optional(),
-  maxMessageSize: z.number().min(1024).max(10485760).optional(), // 1KB to 10MB
+  maxMessageSize: z.number().min(1024).max(10 * 1024 * 1024).optional(), // 1KB to 10MB
   maxMessagesPerSecond: z.number().min(1).max(1000).optional(), // Rate limiting
 
   // Response formatting
@@ -135,11 +155,25 @@ export const SDKConfigSchema = z.object({
   networkChainId: z.number().optional() // Or chain ID directly
 });
 
+// SDK Configuration schema with transform for backward compatibility
+export const SDKConfigSchema = SDKConfigBaseSchema.transform((config) => {
+  // Handle backward compatibility: map autoJoinRooms to autoJoinPublicRooms
+  if (config.autoJoinRooms && !config.autoJoinPublicRooms) {
+    config.autoJoinPublicRooms = config.autoJoinRooms;
+  }
+  return config;
+});
+
 // Partial config for constructor
-export const PartialSDKConfigSchema = SDKConfigSchema.partial().refine(
-  (config) => config.wsUrl !== undefined,
-  { message: "WebSocket URL is required" }
-);
+export const PartialSDKConfigSchema = SDKConfigBaseSchema.partial()
+  .refine((config) => config.wsUrl !== undefined, { message: "WebSocket URL is required" })
+  .transform((config) => {
+    // Handle backward compatibility: map autoJoinRooms to autoJoinPublicRooms
+    if (config.autoJoinRooms && !config.autoJoinPublicRooms) {
+      config.autoJoinPublicRooms = config.autoJoinRooms;
+    }
+    return config;
+  });
 
 // Connection state schema
 export const ConnectionStateSchema = z.object({
@@ -169,7 +203,13 @@ export const AuthenticationStateSchema = z.object({
   // NEW in v2.0.0: Room categorization
   privateRoomIds: z.array(z.string()).optional(), // IDs of rooms user owns
   sharedRoomIds: z.array(z.string()).optional(), // IDs of rooms user is member of
-  maxPrivateRooms: z.number().optional() // Max rooms user can create
+  maxPrivateRooms: z.number().optional(), // Max rooms user can create
+
+  // Auth enhancement fields (audit #6, #7, #9)
+  jwtToken: z.string().optional(), // JWT token for KeyVault API authentication
+  sessionToken: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+  whitelistVerified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+  userCount: z.number().optional() // Total user count (admin only)
 });
 
 // Webhook config schema
@@ -211,7 +251,7 @@ export type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;
 export type { RetryStrategy };
 
 // Default configuration with validation
-export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse({
+export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigBaseSchema.partial().parse({
   wsUrl: "ws://localhost:8080/ws",
   clientType: "user",
   reconnect: true,
@@ -219,7 +259,7 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
   maxReconnectAttempts: 10,
   connectionTimeout: 30000,
   messageTimeout: 30000,
-  maxMessageSize: 2 * 1024 * 1024, // 2MB
+  maxMessageSize: 10 * 1024 * 1024, // 10MB - sufficient for room history
   maxMessagesPerSecond: 10, // Rate limit: 10 messages per second
   responseFormat: "humanized",
   includeMetadata: false,
@@ -240,9 +280,8 @@ export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigSchema.partial().parse(
 
   // Quote-Approve Payment Flow (v2.2.0)
   autoApproveQuotes: true, // Auto-approve quotes by default
-  quoteTimeout: 30000, // 30 seconds for quote responses
-  paymentNetwork: "eip155:3338", // PEAQ mainnet
-  paymentAsset: "0xbbA60da06c2c5424f03f7434542280FCAd453d10" // USDC on PEAQ
+  quoteTimeout: 30000 // 30 seconds for quote responses
+  // paymentNetwork and paymentAsset are dynamically loaded from backend via initializeNetworks()
 });
 
 // Configuration validation with custom refinements
@@ -301,7 +340,7 @@ export function safeParseConfig(config: unknown): {
  * const config = new SDKConfigBuilder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...', '0xYourWalletAddress')
- *   .withAutoJoinRooms(['general', 'announcements'])
+ *   .withAutoJoinPublicRooms(['room-id-1', 'room-id-2'])
  *   .withWebhook('https://api.example.com/webhooks', {
  *     'Authorization': 'Bearer token'
  *   })
@@ -314,11 +353,12 @@ export function safeParseConfig(config: unknown): {
  * const sdk = new TeneoSDK(config);
  *
  * // Using via TeneoSDK.builder() (recommended)
- * const sdk = TeneoSDK.builder()
+ * const config = TeneoSDK.builder()
  *   .withWebSocketUrl('wss://teneo.example.com')
  *   .withAuthentication('0x...')
- *   .withAutoJoinRooms(['general'])
+ *   .withAutoJoinPublicRooms(['room-id-1'])
  *   .build();
+ * const sdk = new TeneoSDK(config);
  * ```
  *
  * @see {@link TeneoSDK} for the main SDK class
@@ -420,21 +460,35 @@ export class SDKConfigBuilder {
   }
 
   /**
-   * Configures rooms to automatically subscribe to after authentication.
-   * These rooms will be subscribed to automatically when connection is established.
+   * Configures public rooms to automatically subscribe to after authentication.
+   * These PUBLIC rooms will be subscribed to automatically when connection is established.
+   * Note: Private rooms are automatically available after auth without needing subscription.
    *
-   * @param rooms - Array of room IDs to auto-subscribe to on connection
+   * @param rooms - Array of public room IDs to auto-subscribe to on connection
    * @returns this builder for method chaining
    * @throws {z.ZodError} If room IDs are invalid
    *
    * @example
    * ```typescript
-   * builder.withAutoJoinRooms(['general', 'announcements', 'support'])
+   * builder.withAutoJoinPublicRooms(['public-room-1', 'public-room-2'])
    * ```
    */
-  withAutoJoinRooms(rooms: string[]): this {
-    this.config.autoJoinRooms = z.array(z.string()).parse(rooms);
+  withAutoJoinPublicRooms(rooms: string[]): this {
+    this.config.autoJoinPublicRooms = z.array(z.string()).parse(rooms);
     return this;
+  }
+
+  /**
+   * @deprecated Use withAutoJoinPublicRooms() instead. This method only affects public rooms.
+   * Private rooms are automatically available after authentication without subscription.
+   *
+   * Configures public rooms to automatically subscribe to after authentication.
+   *
+   * @param rooms - Array of public room IDs to auto-subscribe to on connection
+   * @returns this builder for method chaining
+   */
+  withAutoJoinRooms(rooms: string[]): this {
+    return this.withAutoJoinPublicRooms(rooms);
   }
 
   /**
@@ -908,7 +962,7 @@ export class SDKConfigBuilder {
    * const config = new SDKConfigBuilder()
    *   .withWebSocketUrl('wss://teneo.example.com')
    *   .withAuthentication('0x...')
-   *   .withAutoJoinRooms(['general'])
+   *   .withAutoJoinPublicRooms(['room-id-1'])
    *   .build();  // Validates and returns final config
    *
    * const sdk = new TeneoSDK(config);

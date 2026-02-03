@@ -24,6 +24,40 @@ export interface AgentRoomInfo {
   added_at?: string;
 }
 
+/**
+ * Options for listing available agents with pagination
+ */
+export interface ListAvailableAgentsOptions {
+  /** Number of agents to return (default: server decides) */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+  /** Include full agent details */
+  includeDetails?: boolean;
+  /** Return minimal agent info only */
+  minimal?: boolean;
+  /** Sort order: alphabetical or by other criteria */
+  sortBy?: "a-z" | "requests";
+  /** Include agents already in the room */
+  includeInRoom?: boolean;
+}
+
+/**
+ * Paginated result from listAvailableAgents with options
+ */
+export interface PaginatedAgentsResult {
+  /** List of agents */
+  agents: AgentRoomInfo[];
+  /** Total number of matching agents */
+  total: number;
+  /** Current offset */
+  offset: number;
+  /** Page size */
+  limit: number;
+  /** Whether there are more agents to load */
+  hasMore: boolean;
+}
+
 // Cache TTL: 5 minutes
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -380,17 +414,25 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * @param useCache - Whether to use cached data (default: true)
    * @returns Promise that resolves with array of available agents
    * @throws {SDKError} If not connected or operation fails
+   */
+  public async listAvailableAgents(roomId: string, useCache?: boolean): Promise<AgentRoomInfo[]>;
+  /**
+   * Lists agents available to add to a room with pagination and filtering options.
+   * Does not use cache when called with options.
    *
-   * @example
-   * ```typescript
-   * const availableAgents = await sdk.listAvailableAgents('room-123');
-   * console.log(`${availableAgents.length} agents can be added`);
-   * ```
+   * @param roomId - ID of the room to check available agents for
+   * @param options - Pagination and filter options
+   * @returns Promise that resolves with paginated agents result
+   * @throws {SDKError} If not connected or operation fails
    */
   public async listAvailableAgents(
     roomId: string,
-    useCache: boolean = true
-  ): Promise<AgentRoomInfo[]> {
+    options: ListAvailableAgentsOptions
+  ): Promise<PaginatedAgentsResult>;
+  public async listAvailableAgents(
+    roomId: string,
+    useCacheOrOptions?: boolean | ListAvailableAgentsOptions
+  ): Promise<AgentRoomInfo[] | PaginatedAgentsResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
@@ -398,8 +440,12 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     // Validate input
     this.validateRoomId(roomId);
 
-    // Check cache if enabled
-    if (useCache) {
+    // Determine if using pagination options or legacy boolean
+    const isPaginated = typeof useCacheOrOptions === "object" && useCacheOrOptions !== null;
+    const useCache = isPaginated ? false : ((useCacheOrOptions as boolean) ?? true);
+
+    // Check cache if enabled (only for legacy non-paginated calls)
+    if (!isPaginated && useCache) {
       const cached = this.availableAgentsCache.get(roomId);
       if (cached) {
         this.logger.debug("AgentRoomManager: Returning cached available agents", {
@@ -410,13 +456,24 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
       }
     }
 
-    this.logger.debug("AgentRoomManager: Listing available agents", { roomId });
+    this.logger.debug("AgentRoomManager: Listing available agents", { roomId, isPaginated });
+
+    // Build message data with optional pagination params
+    const data: Record<string, unknown> = { room_id: roomId };
+
+    if (isPaginated) {
+      const options = useCacheOrOptions as ListAvailableAgentsOptions;
+      if (options.limit !== undefined) data.limit = options.limit;
+      if (options.offset !== undefined) data.offset = options.offset;
+      if (options.includeDetails !== undefined) data.include_details = options.includeDetails;
+      if (options.minimal !== undefined) data.minimal = options.minimal;
+      if (options.sortBy !== undefined) data.sort_by = options.sortBy;
+      if (options.includeInRoom !== undefined) data.include_in_room = options.includeInRoom;
+    }
 
     const message = {
       type: "list_available_agents" as const,
-      data: {
-        room_id: roomId
-      }
+      data
     };
 
     return new Promise((resolve, reject) => {
@@ -425,9 +482,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
         reject(new SDKError("List available agents timeout", ErrorCode.TIMEOUT));
       }, 30000);
 
-      const onSuccess = (agents: AgentRoomInfo[]) => {
+      const onSuccess = (
+        agents: AgentRoomInfo[],
+        paginationMeta?: {
+          total?: number;
+          offset?: number;
+          limit?: number;
+          hasMore?: boolean;
+        }
+      ) => {
         cleanup();
-        resolve(agents);
+        if (isPaginated) {
+          resolve({
+            agents,
+            total: paginationMeta?.total ?? agents.length,
+            offset: paginationMeta?.offset ?? 0,
+            limit: paginationMeta?.limit ?? agents.length,
+            hasMore: paginationMeta?.hasMore ?? false
+          });
+        } else {
+          resolve(agents);
+        }
       };
 
       const onError = (error: Error) => {
@@ -461,15 +536,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const agents = sdk.getRoomAgents('room-123');
+   * const agents = sdk.getCachedRoomAgents('room-123');
    * if (agents) {
    *   console.log(`Found ${agents.length} agents in cache`);
    * }
    * ```
    */
-  public getRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
+  public getCachedRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
     const cached = this.roomAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgents() instead. This method returns cached data only.
+   *
+   * Gets agents currently in a room from cache (synchronous).
+   *
+   * @param roomId - Room ID to query
+   * @returns Array of agents or undefined if not cached
+   */
+  public getRoomAgents(roomId: string): AgentRoomInfo[] | undefined {
+    return this.getCachedRoomAgents(roomId);
   }
 
   /**
@@ -481,15 +568,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const available = sdk.getAvailableAgents('room-123');
+   * const available = sdk.getCachedAvailableAgents('room-123');
    * if (available) {
    *   console.log(`${available.length} agents can be added`);
    * }
    * ```
    */
-  public getAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
+  public getCachedAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
     const cached = this.availableAgentsCache.get(roomId);
     return cached ? cached.map((agent) => ({ ...agent })) : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedAvailableAgents() instead. This method returns cached data only.
+   *
+   * Gets available agents for a room from cache (synchronous).
+   *
+   * @param roomId - Room ID to query
+   * @returns Array of available agents or undefined if not cached
+   */
+  public getAvailableAgents(roomId: string): AgentRoomInfo[] | undefined {
+    return this.getCachedAvailableAgents(roomId);
   }
 
   /**
@@ -502,16 +601,34 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const isInRoom = sdk.isAgentInRoom('room-123', 'agent-456');
-   * if (isInRoom === true) {
+   * const inRoom = sdk.checkAgentInRoom('room-123', 'agent-456');
+   * if (inRoom === true) {
    *   console.log('Agent is in this room');
+   * } else if (inRoom === false) {
+   *   console.log('Agent is not in this room');
+   * } else {
+   *   console.log('Cache unavailable - need to fetch');
    * }
    * ```
    */
-  public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
-    const agents = this.getRoomAgents(roomId);
+  public checkAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    const agents = this.getCachedRoomAgents(roomId);
     if (!agents) return undefined;
     return agents.some((agent) => agent.agent_id === agentId);
+  }
+
+  /**
+   * @deprecated Use checkAgentInRoom() instead. The 'is*' naming convention implies boolean-only,
+   * but this method returns boolean | undefined to indicate cache validity.
+   *
+   * Checks if an agent is currently in a room (from cache).
+   *
+   * @param roomId - Room ID to check
+   * @param agentId - Agent ID to check
+   * @returns True if agent in room, false if not, undefined if cache invalid
+   */
+  public isAgentInRoom(roomId: string, agentId: string): boolean | undefined {
+    return this.checkAgentInRoom(roomId, agentId);
   }
 
   /**
@@ -523,15 +640,27 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    *
    * @example
    * ```typescript
-   * const count = sdk.getRoomAgentCount('room-123');
+   * const count = sdk.getCachedRoomAgentCount('room-123');
    * if (count !== undefined) {
    *   console.log(`Room has ${count} agents`);
    * }
    * ```
    */
-  public getRoomAgentCount(roomId: string): number | undefined {
-    const agents = this.getRoomAgents(roomId);
+  public getCachedRoomAgentCount(roomId: string): number | undefined {
+    const agents = this.getCachedRoomAgents(roomId);
     return agents ? agents.length : undefined;
+  }
+
+  /**
+   * @deprecated Use getCachedRoomAgentCount() instead. This method returns cached data only.
+   *
+   * Gets the count of agents in a room (from cache).
+   *
+   * @param roomId - Room ID to count agents for
+   * @returns Number of agents or undefined if cache invalid
+   */
+  public getRoomAgentCount(roomId: string): number | undefined {
+    return this.getCachedRoomAgentCount(roomId);
   }
 
   // ============================================================================

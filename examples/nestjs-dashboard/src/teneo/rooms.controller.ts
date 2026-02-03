@@ -89,7 +89,7 @@ export class RoomsController {
     }
 
     try {
-      await this.teneoService.subscribeToRoom(body.roomId);
+      await this.teneoService.subscribeToPublicRoom(body.roomId);
       return { success: true };
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -103,7 +103,7 @@ export class RoomsController {
     }
 
     try {
-      await this.teneoService.unsubscribeFromRoom(body.roomId);
+      await this.teneoService.unsubscribeFromPublicRoom(body.roomId);
       return { success: true };
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -228,18 +228,18 @@ export class RoomsController {
 
   @Get(":roomId/agents/:agentId/check")
   checkAgentInRoom(@Param("roomId") roomId: string, @Param("agentId") agentId: string) {
-    const isInRoom = this.teneoService.isAgentInRoom(roomId, agentId);
+    const inRoom = this.teneoService.checkAgentInRoom(roomId, agentId);
     return {
       roomId,
       agentId,
-      inRoom: isInRoom,
+      inRoom: inRoom,
       cached: true
     };
   }
 
   @Get(":id/agents/count")
   getRoomAgentCount(@Param("id") id: string) {
-    const count = this.teneoService.getRoomAgentCount(id);
+    const count = this.teneoService.getCachedRoomAgentCount(id);
     return {
       roomId: id,
       count,

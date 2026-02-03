@@ -75,16 +75,17 @@ async function main() {
     // Only public rooms need subscription - private rooms are auto-available after auth
     if (selectedRoom.is_public) {
       console.log(`\nSubscribing to "${selectedRoom.name || selectedRoom.id}"...`);
-      await sdk.subscribeToRoom(selectedRoom.id);
+      await sdk.subscribeToPublicRoom(selectedRoom.id);
       console.log("Subscribed!");
     } else {
       console.log(`\nUsing private room "${selectedRoom.name || selectedRoom.id}"...`);
     }
-    console.log("Type messages below (Ctrl+C to exit)\n");
+    console.log("Type messages below (Ctrl+C to exit)");
+    console.log("Tip: Use '@Agent Name command params' for direct commands\n");
 
     // Chat loop
     while (true) {
-      const message = await ask("You: ");
+      const message = await ask("You (or @Agent Name command): ");
       if (!message.trim()) continue;
 
       console.log("Sending...");

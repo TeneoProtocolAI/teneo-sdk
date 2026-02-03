@@ -17,7 +17,6 @@ import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 
 // Event counters for statistics
 const eventStats = {
@@ -57,7 +56,6 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY)
-    // .withAutoJoinRooms([DEFAULT_ROOM])
     .withResponseFormat({ format: "both", includeMetadata: true })
     .withLogging("info")
     .build();
@@ -213,11 +211,6 @@ async function main() {
     console.log(`🏠 [ROOM] Unsubscribed from room: ${data.roomId}`);
   });
 
-  sdk.on("room:list", (rooms) => {
-    eventStats.room++;
-    console.log(`🏠 [ROOM] Room list received: ${rooms.length} rooms`);
-  });
-
   // ============================================================================
   // WEBHOOK EVENTS
   // ============================================================================
@@ -325,11 +318,6 @@ async function main() {
     }
   });
 
-  sdk.on("warning", (warning) => {
-    eventStats.error++;
-    console.warn("⚠️  [WARNING]", warning);
-  });
-
   // ============================================================================
   // CONNECT AND TRIGGER EVENTS
   // ============================================================================
@@ -361,7 +349,7 @@ async function main() {
         {
           agent: testAgent.id,
           command: "hello event listener test",
-          room: DEFAULT_ROOM
+          room: "room-id"
         },
         false
       );

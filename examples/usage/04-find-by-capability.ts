@@ -17,7 +17,6 @@ import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 
 async function main() {
   console.log("🚀 Example 4: Find Agents by Capability\n");
@@ -31,7 +30,6 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY)
-    // .withAutoJoinRooms([DEFAULT_ROOM])
     .withLogging("info")
     .build();
 
@@ -96,7 +94,7 @@ async function main() {
       for (const capability of testCapabilities) {
         console.log(`\n🔍 Searching for capability: "${capability}"`);
         const startTime = performance.now();
-        const agentsWithCap = sdk.findAgentsByCapability(capability);
+        const agentsWithCap = sdk.findAvailableAgentsByCapability(capability);
         const duration = performance.now() - startTime;
 
         if (agentsWithCap.length > 0) {
@@ -121,7 +119,7 @@ async function main() {
 
     console.log("\n🔍 Online agents:");
     const startTimeOnline = performance.now();
-    const onlineAgents = sdk.findAgentsByStatus("online");
+    const onlineAgents = sdk.findAvailableAgentsByStatus("online");
     const durationOnline = performance.now() - startTimeOnline;
     console.log(`✅ Found ${onlineAgents.length} online agents (${durationOnline.toFixed(3)}ms):`);
     onlineAgents.forEach((agent) => {
@@ -130,7 +128,7 @@ async function main() {
 
     console.log("\n🔍 Offline agents:");
     const startTimeOffline = performance.now();
-    const offlineAgents = sdk.findAgentsByStatus("offline");
+    const offlineAgents = sdk.findAvailableAgentsByStatus("offline");
     const durationOffline = performance.now() - startTimeOffline;
     console.log(
       `✅ Found ${offlineAgents.length} offline agents (${durationOffline.toFixed(3)}ms):`
@@ -147,7 +145,7 @@ async function main() {
     for (const term of searchTerms) {
       console.log(`\n🔍 Searching for name containing: "${term}"`);
       const startTime = performance.now();
-      const foundAgents = sdk.findAgentsByName(term);
+      const foundAgents = sdk.findAvailableAgentsByName(term);
       const duration = performance.now() - startTime;
 
       if (foundAgents.length > 0) {
@@ -176,12 +174,12 @@ async function main() {
     console.log("Strategy: Find online agents with social-media or twitter capabilities\n");
 
     // First, try to find by specific capabilities
-    let candidates = sdk.findAgentsByCapability("social-media");
+    let candidates = sdk.findAvailableAgentsByCapability("social-media");
     if (candidates.length === 0) {
-      candidates = sdk.findAgentsByCapability("twitter");
+      candidates = sdk.findAvailableAgentsByCapability("twitter");
     }
     if (candidates.length === 0) {
-      candidates = sdk.findAgentsByCapability("x-platform");
+      candidates = sdk.findAvailableAgentsByCapability("x-platform");
     }
 
     // Filter to only online agents
@@ -191,9 +189,9 @@ async function main() {
     if (candidates.length === 0) {
       console.log("⚠️  No capability match, trying name search...");
       const nameResults = sdk
-        .findAgentsByName("twitter")
-        .concat(sdk.findAgentsByName("x platform"))
-        .concat(sdk.findAgentsByName("social"));
+        .findAvailableAgentsByName("twitter")
+        .concat(sdk.findAvailableAgentsByName("x platform"))
+        .concat(sdk.findAvailableAgentsByName("social"));
 
       // Remove duplicates and filter online
       const uniqueIds = new Set<string>();

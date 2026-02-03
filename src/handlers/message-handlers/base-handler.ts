@@ -34,10 +34,29 @@ export abstract class BaseMessageHandler<T extends BaseMessage = BaseMessage>
   public async handle(message: BaseMessage, context: HandlerContext): Promise<void> {
     try {
       // Validate message with Zod schema
-      const validated = this.validate(message);
+      const result = this.schema.safeParse(message);
+      if (!result.success) {
+        // Log validation errors at debug level only (hidden from end users)
+        context.logger.debug(`${this.type} message validation warning`, {
+          error: result.error.message
+        });
+      }
 
-      // Call subclass implementation
-      await this.handleValidated(validated, context);
+      // Process message even if validation failed (resilience)
+      // Use validated data if available, otherwise use raw message
+      const messageToProcess = result.success ? result.data : (message as T);
+
+      // Call subclass implementation with additional error protection
+      try {
+        await this.handleValidated(messageToProcess, context);
+      } catch (handlerError) {
+        // Catch errors from handlers accessing malformed data
+        context.logger.warn(`Handler ${this.type} failed to process message`, {
+          error: handlerError instanceof Error ? handlerError.message : String(handlerError),
+          messageType: message.type
+        });
+        // Don't re-throw - resilient processing continues
+      }
     } catch (error) {
       context.logger.error(`Error handling ${this.type} message`, error);
       this.onError(error, message, context);
@@ -45,7 +64,8 @@ export abstract class BaseMessageHandler<T extends BaseMessage = BaseMessage>
   }
 
   /**
-   * Validate message against schema
+   * Validate message against schema (deprecated - validation now inline in handle())
+   * @deprecated Validation is now done inline in handle() method
    */
   protected validate(message: BaseMessage): T {
     const result = this.schema.safeParse(message);

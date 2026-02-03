@@ -243,20 +243,28 @@ export {
   PEAQ_CHAIN_ID,
   USDC_CONTRACT,
   DEFAULT_PAY_TO_ADDRESS,
-  DEFAULT_RPC_URL,
   USDC_DECIMALS,
   X402_VERSION,
   DEFAULT_PAYMENT_TIMEOUT_SECONDS,
   buildX402ResourceUrl,
   usdcToUnits,
   unitsToUsdc,
-  type SupportedChain
+  // Multi-network support (v2.3.0)
+  type NetworkConfig,
+  NETWORKS,
+  CHAIN_ID_TO_NETWORK,
+  CAIP2_TO_NETWORK,
+  getNetwork,
+  getDefaultNetwork,
+  createChainDefinition,
+  isNetworkSupported,
+  getSupportedNetworks
 } from "./payments";
 
 /**
  * SDK version string
  */
-export const VERSION = "2.2.2";
+export const VERSION = "3.0.0";
 
 /**
  * Convenience type re-exports for message operations
@@ -275,7 +283,7 @@ export type { SendMessageOptions, AgentCommand } from "./teneo-sdk";
  * const sdk = await createTeneoSDK({
  *   wsUrl: 'ws://localhost:8080/ws',
  *   privateKey: 'your-private-key',
- *   autoJoinRooms: ['general']
+ *   autoJoinPublicRooms: ['room-id-1']
  * });
  * ```
  */

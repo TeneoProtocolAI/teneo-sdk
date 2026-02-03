@@ -36,7 +36,7 @@ export class AgentDetailsResponseHandler extends BaseMessageHandler<AgentDetails
       status: agent.status
     });
 
-    // Send webhook
-    this.sendWebhook(context, "agent_details_response", { agent });
+    // Note: This is a query response, not sent via webhook
+    // Users can listen to the 'agent:details' event if needed
   }
 }

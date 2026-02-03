@@ -100,7 +100,7 @@ async function initializeSDK() {
         backoffMultiplier: 2
       })
       .withResponseFormat({ format: "both", includeMetadata: true })
-      .withLogging("debug")
+      .withLogging("info")
       .withCache(true, 300000, 100)
       // CB-4: Message deduplication to prevent duplicate processing
       .withMessageDeduplication(
@@ -495,7 +495,19 @@ app.get("/api/deduplication", (c) => {
 app.post("/webhook", async (c) => {
   const payload = await c.req.json();
 
-  console.log("[WEBHOOK] Received:", payload.event);
+  // Filter out spammy admin broadcast events
+  const ignoredEvents = [
+    'user_count',           // Admin-only: User count updates
+    'user_authenticated',   // Broadcast when ANY user connects
+    'rate_limit_notification', // Rate limit warnings (usually not needed in webhooks)
+  ];
+  
+  if (ignoredEvents.includes(payload.event)) {
+    // Silently ignore these events - don't log, don't store, just return OK
+    return c.json({ status: "ignored" });
+  }
+
+  console.log("[WEBHOOK] Received:", payload.event, "| Data:", JSON.stringify(payload.data).slice(0, 100));
 
   // Store webhook for display
   recentWebhooks.unshift({
@@ -615,7 +627,7 @@ app.get("/api/agents/search/capability/:capability", (c) => {
 
   try {
     const capability = c.req.param("capability");
-    const agents = sdk.findAgentsByCapability(capability);
+    const agents = sdk.findAvailableAgentsByCapability(capability);
     return c.json({
       capability,
       count: agents.length,
@@ -634,7 +646,7 @@ app.get("/api/agents/search/name/:name", (c) => {
 
   try {
     const name = c.req.param("name");
-    const agents = sdk.findAgentsByName(name);
+    const agents = sdk.findAvailableAgentsByName(name);
     return c.json({
       query: name,
       count: agents.length,
@@ -653,7 +665,7 @@ app.get("/api/agents/search/status/:status", (c) => {
 
   try {
     const status = c.req.param("status");
-    const agents = sdk.findAgentsByStatus(status);
+    const agents = sdk.findAvailableAgentsByStatus(status);
     return c.json({
       status,
       count: agents.length,
@@ -788,7 +800,7 @@ app.post("/api/room/join", async (c) => {
       return c.json({ error: "Room ID is required" }, 400);
     }
 
-    await sdk.subscribeToRoom(roomId);
+    await sdk.subscribeToPublicRoom(roomId);
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -808,7 +820,7 @@ app.post("/api/room/leave", async (c) => {
       return c.json({ error: "Room ID is required" }, 400);
     }
 
-    await sdk.unsubscribeFromRoom(roomId);
+    await sdk.unsubscribeFromPublicRoom(roomId);
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -1004,12 +1016,12 @@ app.get("/api/v2/rooms/:roomId/agents/:agentId/check", (c) => {
 
   const roomId = c.req.param("roomId");
   const agentId = c.req.param("agentId");
-  const isInRoom = sdk.isAgentInRoom(roomId, agentId);
+  const inRoom = sdk.checkAgentInRoom(roomId, agentId);
 
   return c.json({
     roomId,
     agentId,
-    inRoom: isInRoom,
+    inRoom: inRoom,
     cached: true
   });
 });
@@ -1021,7 +1033,7 @@ app.get("/api/v2/rooms/:id/agents/count", (c) => {
   }
 
   const roomId = c.req.param("id");
-  const count = sdk.getRoomAgentCount(roomId);
+  const count = sdk.getCachedRoomAgentCount(roomId);
 
   return c.json({
     roomId,

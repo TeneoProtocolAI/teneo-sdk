@@ -9,7 +9,7 @@ import { TeneoSDK, SDKConfigBuilder, SecurePrivateKey } from "../src";
 const WS_URL = process.env.WS_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS;
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
+const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "your-room-id";
 
 async function main() {
   // Validate required configuration
@@ -27,7 +27,7 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(secureKey, WALLET_ADDRESS) // Use encrypted key
-    .withAutoJoinRooms([DEFAULT_ROOM]) // Auto-join default room on connect
+    .withAutoJoinPublicRooms([DEFAULT_ROOM]) // Auto-join default room on connect
     .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 }) // Enable reconnection
     .withResponseFormat({ format: "both", includeMetadata: true }) // Get both raw and humanized responses with metadata
     .withLogging("debug") // Enable debug logging
@@ -59,7 +59,7 @@ async function main() {
         console.log(
           `\n→ Subscribing to additional room: ${additionalRoom.name || additionalRoom.id}`
         );
-        await sdk.subscribeToRoom(additionalRoom.id);
+        await sdk.subscribeToPublicRoom(additionalRoom.id);
 
         // Show updated subscriptions
         const updatedSubscriptions = sdk.getSubscribedRooms();
@@ -78,19 +78,19 @@ async function main() {
     console.log("\n→ Testing indexed agent lookups (PERF-3):");
 
     // Search by capability (O(1))
-    const weatherAgents = sdk.findAgentsByCapability("weather-forecast");
+    const weatherAgents = sdk.findAvailableAgentsByCapability("weather-forecast");
     if (weatherAgents.length > 0) {
       console.log(`  ✓ Found ${weatherAgents.length} agent(s) with weather capability`);
     }
 
     // Search by name (O(k) where k = tokens)
-    const searchResults = sdk.findAgentsByName("agent");
+    const searchResults = sdk.findAvailableAgentsByName("agent");
     if (searchResults.length > 0) {
       console.log(`  ✓ Found ${searchResults.length} agent(s) matching name search`);
     }
 
     // Search by status (O(1))
-    const onlineAgents = sdk.findAgentsByStatus("online");
+    const onlineAgents = sdk.findAvailableAgentsByStatus("online");
     console.log(`  ✓ ${onlineAgents.length} agent(s) currently online`);
 
     // Send message to the room
@@ -105,6 +105,26 @@ async function main() {
       console.log("✓ Response received:", response.humanized.substring(0, 200));
     } else if (response) {
       console.log("✓ Response received (no humanized content)");
+    }
+
+    // Example: Direct command to specific agent
+    // This syntax is REQUIRED in non-coordinator environments
+    // and OPTIONAL in coordinator environments for explicit agent selection
+    console.log("\n→ Sending direct command to specific agent...");
+    const directResponse = await sdk.sendMessage(
+      "@X Platform Agent search bitcoin 5",
+      {
+        room: DEFAULT_ROOM,
+        waitForResponse: true,
+        timeout: 30000
+      }
+    );
+
+    if (directResponse && directResponse.humanized) {
+      console.log(
+        "✓ Direct command response:",
+        directResponse.humanized.substring(0, 200)
+      );
     }
 
     // Wait for some messages

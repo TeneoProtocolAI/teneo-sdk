@@ -68,10 +68,12 @@ export const MessageTypeSchema = z.enum([
   "request_task",
   "task_quote",
   "confirm_task",
+  "task_confirmed",
 
   // System
   "agents",
   "error",
+  "success",
   "ping",
   "pong",
   "capabilities",
@@ -109,9 +111,8 @@ export const MessageTypeSchema = z.enum([
   "room_agents_response",
   "available_agents_response",
 
-  // Room Ping System (2 types)
+  // Room Ping System (1 type - pong reuses "pong" type with room data)
   "room_ping",
-  "room_pong",
 
   // Admin Messages (7 types)
   "list_all_agents",
@@ -124,7 +125,17 @@ export const MessageTypeSchema = z.enum([
 
   // User Preferences (2 types)
   "set_user_preferences",
-  "user_preferences_updated"
+  "user_preferences_updated",
+
+  // API Key Preferences
+  "set_api_key_preference",
+
+  // Agent Error
+  "agent_error",
+
+  // Wallet Transaction Flow
+  "trigger_wallet_tx",
+  "tx_result"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -151,20 +162,31 @@ export const CapabilitySchema = z.object({
   description: z.string().optional()
 });
 
+// Command pricing fields — flat on the command object, matching server Go struct.
+// Kept as a standalone schema for use by pricing-resolver.
 export const CommandPricingSchema = z.object({
   priceType: z.string().optional(),
   pricePerUnit: z.number().optional(),
   taskUnit: z.string().optional(),
-  timeUnit: z.enum(["hour", "day"]).optional()
+  timeUnit: z.enum(["second", "minute", "hour"]).optional()
 });
 
 export type CommandPricing = z.infer<typeof CommandPricingSchema>;
 
+// Command schema — pricing fields are flat (not nested), matching server Go struct.
 export const CommandSchema = z.object({
   trigger: z.string(),
   argument: z.string().optional(),
   description: z.string().optional(),
-  pricing: CommandPricingSchema.optional()
+  // Pricing fields (flat, matching server Command struct)
+  pricePerUnit: z.number().optional(),
+  priceType: z.string().optional(),
+  taskUnit: z.string().optional(),
+  timeUnit: z.enum(["second", "minute", "hour"]).optional(),
+  // Extended fields from server
+  hasVariants: z.boolean().optional(),
+  variants: z.array(z.any()).optional(),
+  parameters: z.array(z.any()).optional()
 });
 
 export const RoomSchema = z.object({
@@ -193,20 +215,30 @@ export const RoomInfoSchema = z
   })
   .passthrough(); // Allow extra fields backend might add
 
-export const AgentSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  room: z.string().optional(),
-  capabilities: z.array(CapabilitySchema).optional(),
-  commands: z.array(CommandSchema).optional(),
-  status: AgentStatusSchema,
-  image: z.string().optional(),
-  agentType: AgentTypeSchema.optional(),
-  nlpFallback: stringToBoolean.optional(),
-  webhookUrl: z.string().url().optional(),
-  categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
-});
+export const AgentSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    room: z.string().optional(),
+    rooms: z.array(z.string()).optional(), // Server sends plural rooms array
+    capabilities: z.array(CapabilitySchema).optional(),
+    commands: z.array(CommandSchema).optional(),
+    status: AgentStatusSchema,
+    image: z.string().optional(),
+    // Accept both server field names and SDK field names
+    type: AgentTypeSchema.optional(), // server sends "type"
+    agentType: AgentTypeSchema.optional(), // SDK alias
+    nlp_fallback: stringToBoolean.optional(), // server sends "nlp_fallback"
+    nlpFallback: stringToBoolean.optional(), // SDK alias
+    webhookUrl: z.string().url().optional(),
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
+  })
+  .transform((data) => ({
+    ...data,
+    agentType: data.agentType ?? data.type,
+    nlpFallback: data.nlpFallback ?? data.nlp_fallback
+  }));
 
 // Base message schema
 export const BaseMessageSchema = z
@@ -223,7 +255,9 @@ export const BaseMessageSchema = z
     publicKey: z.string().optional(),
     reasoning: z.string().optional(),
     task_id: z.string().optional(),
-    id: z.string().optional() // Added for message tracking
+    id: z.string().optional(), // Added for message tracking
+    payment: z.string().optional(), // x402 payment payload
+    request_id: z.string().optional() // Request-response correlation
   })
   .passthrough(); // Allow message-specific fields to pass through
 
@@ -247,7 +281,8 @@ export const ChallengeMessageSchema = BaseMessageSchema.extend({
 export const CheckCachedAuthMessageSchema = BaseMessageSchema.extend({
   type: z.literal("check_cached_auth"),
   data: z.object({
-    address: z.string()
+    address: z.string(),
+    session_token: z.string().optional() // 64-char hex token for fast re-auth (24h validity)
   })
 });
 
@@ -282,7 +317,12 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       private_rooms: z.array(RoomSchema).optional(),
       private_room_id: z.string().optional(),
       cached_auth: stringToBoolean.optional(),
-      max_private_rooms: z.number().optional()
+      max_private_rooms: z.number().optional(),
+      // Auth enhancement fields (audit #6, #7, #9)
+      jwt_token: z.string().optional(), // JWT token for KeyVault API authentication
+      session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+      whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+      user_count: z.number().optional() // Total user count (admin only)
     })
     .optional()
 });
@@ -299,7 +339,12 @@ export const AuthSuccessMessageSchema = BaseMessageSchema.extend({
     rooms: z.array(RoomInfoSchema).optional().nullable(), // v2.0.0: Uses RoomInfo with is_owner field
     private_room_id: z.string().optional(), // DEPRECATED: Use rooms array instead
     cached_auth: stringToBoolean.optional(), // Admin field, optional
-    max_private_rooms: z.number().optional() // NEW in v2.0.0: Max rooms user can create
+    max_private_rooms: z.number().optional(), // NEW in v2.0.0: Max rooms user can create
+    // Auth enhancement fields (audit #6, #7, #9)
+    jwt_token: z.string().optional(), // JWT token for KeyVault API authentication
+    session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+    whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
+    user_count: z.number().optional() // Total user count (admin only)
   })
 });
 
@@ -396,6 +441,8 @@ export const PricingInfoSchema = z
     price_per_unit: z.number().optional(),
     priceType: z.string().optional(),
     price_type: z.string().optional(),
+    taskUnit: z.string().optional(),
+    task_unit: z.string().optional(),
     timeUnit: z.string().optional(),
     time_unit: z.string().optional(),
     currency: z.string().optional().default("USDC"),
@@ -405,6 +452,7 @@ export const PricingInfoSchema = z
     // Normalize to camelCase
     pricePerUnit: data.pricePerUnit ?? data.price_per_unit ?? 0,
     priceType: data.priceType ?? data.price_type,
+    taskUnit: data.taskUnit ?? data.task_unit,
     timeUnit: data.timeUnit ?? data.time_unit,
     currency: data.currency,
     network: data.network
@@ -414,22 +462,37 @@ export const PricingInfoSchema = z
 export const RequestTaskMessageSchema = BaseMessageSchema.extend({
   type: z.literal("request_task"),
   content: z.string(),
-  room: z.string()
+  room: z.string(),
+  data: z
+    .object({
+      network: z.string().optional() // Payment network (peaq, base, avalanche)
+    })
+    .optional()
 });
 
 // Task quote message (server response with pricing)
 export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
   type: z.literal("task_quote"),
   from: z.literal("coordinator"),
-  data: z.object({
-    task_id: z.string(),
-    agent_id: z.string(),
-    agent_name: z.string(),
-    agent_wallet: z.string(),
-    command: z.string(),
-    pricing: PricingInfoSchema,
-    expires_at: z.string()
-  })
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string(),
+      agent_name: z.string(),
+      agent_wallet: z.string(),
+      command: z.string(),
+      pricing: PricingInfoSchema,
+      expires_at: z.string(),
+      // v2.5 Settlement Router fields for x402x-router-settlement extension
+      settlement_router: z.string(),
+      salt: z.string(),
+      facilitator_fee: z.string(),
+      hook: z.string(),
+      hook_data: z.string().optional().default("0x"),
+      // Request correlation
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
 });
 
 // Confirm task message (with payment at top level - backend expects msg.payment)
@@ -440,6 +503,22 @@ export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   }),
   payment: z.string().optional() // x402 payment at top level (backend checks msg.Payment)
 });
+
+// Task confirmed message (server acknowledgment after confirm_task)
+export const TaskConfirmedMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("task_confirmed"),
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string().optional(),
+      agent_name: z.string().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
 
 // System message schemas
 export const AgentsListMessageSchema = BaseMessageSchema.extend({
@@ -459,12 +538,38 @@ export const ErrorMessageSchema = BaseMessageSchema.extend({
   })
 });
 
+export const SuccessMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("success"),
+  content: z.string().optional(),
+  from: z.literal("system").optional(),
+  data: z
+    .object({
+      content: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+}).passthrough();
+
 export const PingMessageSchema = BaseMessageSchema.extend({
   type: z.literal("ping")
 });
 
 export const PongMessageSchema = BaseMessageSchema.extend({
-  type: z.literal("pong")
+  type: z.literal("pong"),
+  data: z
+    .union([
+      // Regular pong (no data)
+      z.undefined(),
+      // Room pong (with room data)
+      z
+        .object({
+          room_id: z.string(),
+          live_count: z.number().optional(),
+          timestamp: z.string()
+        })
+        .passthrough()
+    ])
+    .optional()
 });
 
 // Room subscription schemas
@@ -636,7 +741,15 @@ export const AgentRoomInfoSchema = z
     status: z.string().optional(),
     added_by: z.string().optional(),
     added_at: z.string().optional(),
-    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional(),
+    // Server-sent typed fields
+    type: AgentTypeSchema.optional(),
+    nlp_fallback: z.union([z.boolean(), z.string()]).optional(),
+    is_verified: z.boolean().optional(),
+    is_public: z.boolean().optional(),
+    created_at: z.string().optional(),
+    creator: z.string().optional(),
+    is_banned: z.boolean().optional()
   })
   .passthrough();
 
@@ -687,7 +800,11 @@ export const AvailableAgentsResponseSchema = z
     type: z.literal("available_agents_response"),
     data: z
       .object({
-        agents: z.array(AgentRoomInfoSchema).optional()
+        agents: z.array(AgentRoomInfoSchema).optional(),
+        total: z.number().optional(),
+        offset: z.number().optional(),
+        limit: z.number().optional(),
+        has_more: z.boolean().optional()
       })
       .passthrough()
   })
@@ -730,18 +847,8 @@ export const RoomPingMessageSchema = z
   })
   .passthrough();
 
-export const RoomPongResponseSchema = z
-  .object({
-    type: z.literal("room_pong"),
-    data: z
-      .object({
-        room_id: z.string(),
-        live_count: z.number().optional(), // Optional - consuming code should handle missing as 0
-        timestamp: z.string()
-      })
-      .passthrough()
-  })
-  .passthrough();
+// Note: RoomPong reuses the "pong" message type with room data in the data field
+// The PongHandler checks for room_id in data to distinguish room pong from regular pong
 
 // Admin agent info (admin only)
 export const AdminAgentInfoSchema = z
@@ -908,6 +1015,46 @@ export const UserPreferencesUpdatedMessageSchema = z
 export type UserPreferencesUpdatedData = z.infer<typeof UserPreferencesUpdatedDataSchema>;
 export type UserPreferencesUpdatedMessage = z.infer<typeof UserPreferencesUpdatedMessageSchema>;
 
+// Agent Error message (server → client, when an agent fails)
+export const AgentErrorMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("agent_error"),
+  content: z.string().optional(),
+  from: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type AgentErrorMessage = z.infer<typeof AgentErrorMessageSchema>;
+
+// Wallet Transaction schemas
+export const TxResultStatusSchema = z.enum(["confirmed", "rejected", "failed"]);
+export type TxResultStatus = z.infer<typeof TxResultStatusSchema>;
+
+export const TriggerWalletTxMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("trigger_wallet_tx"),
+  from: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string(),
+      tx: z.object({
+        to: z.string(),
+        value: z.string(),
+        data: z.string().optional(),
+        chainId: z.number()
+      }),
+      description: z.string().optional(),
+      optional: z.boolean().optional()
+    })
+    .passthrough()
+});
+
+export type TriggerWalletTxMessage = z.infer<typeof TriggerWalletTxMessageSchema>;
+
 // Union of all INCOMING message schemas for validation
 // Note: Outgoing message schemas (Subscribe, Unsubscribe, ListRooms) are excluded
 // as they share the same type values with their response counterparts
@@ -932,9 +1079,11 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
 
   // Quote-Approve Flow (v2.2.0)
   TaskQuoteMessageSchema,
+  TaskConfirmedMessageSchema,
 
   // System
   ErrorMessageSchema,
+  SuccessMessageSchema,
   PingMessageSchema,
   PongMessageSchema,
 
@@ -954,9 +1103,6 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AvailableAgentsResponseSchema,
   AgentStatusUpdateMessageSchema,
 
-  // Room Ping System (v2.0.0)
-  RoomPongResponseSchema,
-
   // Admin Messages
   AllAgentsResponseSchema,
   UserCountMessageSchema,
@@ -965,7 +1111,13 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   AgentDetailsResponseMessageSchema,
 
   // User Preferences
-  UserPreferencesUpdatedMessageSchema
+  UserPreferencesUpdatedMessageSchema,
+
+  // Agent Error
+  AgentErrorMessageSchema,
+
+  // Wallet Transaction
+  TriggerWalletTxMessageSchema
 ]);
 
 // Type inference from schemas
@@ -1003,6 +1155,7 @@ export type TaskQuoteMessage = z.infer<typeof TaskQuoteMessageSchema>;
 export type ConfirmTaskMessage = z.infer<typeof ConfirmTaskMessageSchema>;
 
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
+export type SuccessMessage = z.infer<typeof SuccessMessageSchema>;
 export type PingMessage = z.infer<typeof PingMessageSchema>;
 export type PongMessage = z.infer<typeof PongMessageSchema>;
 export type SubscribeMessage = z.infer<typeof SubscribeMessageSchema>;
@@ -1038,7 +1191,7 @@ export type AgentStatusUpdateMessage = z.infer<typeof AgentStatusUpdateMessageSc
 
 // Room Ping Types (v2.0.0)
 export type RoomPingMessage = z.infer<typeof RoomPingMessageSchema>;
-export type RoomPongResponse = z.infer<typeof RoomPongResponseSchema>;
+// Note: Room pong responses use the PongMessage type with room data
 
 export type AnyMessage = z.infer<typeof AnyMessageSchema>;
 
@@ -1089,10 +1242,16 @@ export function createRequestChallenge(
   });
 }
 
-export function createCheckCachedAuth(address: string): CheckCachedAuthMessage {
+export function createCheckCachedAuth(
+  address: string,
+  sessionToken?: string
+): CheckCachedAuthMessage {
   return CheckCachedAuthMessageSchema.parse({
     type: "check_cached_auth",
-    data: { address }
+    data: {
+      address,
+      ...(sessionToken && { session_token: sessionToken })
+    }
   });
 }
 
@@ -1149,11 +1308,16 @@ export function createListRooms(): ListRoomsMessage {
 }
 
 // Quote-Approve Flow factory functions (v2.2.0)
-export function createRequestTask(content: string, room: string): RequestTaskMessage {
+export function createRequestTask(
+  content: string,
+  room: string,
+  network?: string
+): RequestTaskMessage {
   return RequestTaskMessageSchema.parse({
     type: "request_task",
     content,
-    room
+    room,
+    ...(network && { data: { network } })
   });
 }
 

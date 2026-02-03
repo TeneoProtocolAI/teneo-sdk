@@ -7,7 +7,7 @@
  * v2.3.0: Multi-network support with dynamic chain configuration
  */
 
-import { type Hex, toHex } from "viem";
+import { type Hex, toHex, keccak256, encodePacked } from "viem";
 import { privateKeyToAccount, signTypedData } from "viem/accounts";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 import {
@@ -93,6 +93,27 @@ function generateNonce(): Hex {
 }
 
 /**
+ * Settlement data provided by backend in task_quote response.
+ * Used for x402x-router-settlement extension.
+ */
+export interface SettlementData {
+  settlementRouter: string;
+  salt: string;
+  facilitatorFee: string;
+  hook: string;
+  hookData: string;
+}
+
+/**
+ * Validates that a string is a valid Ethereum address
+ * @param address - String to validate
+ * @returns True if valid Ethereum address format
+ */
+function isValidEthereumAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+/**
  * Resolve network configuration from various input formats
  *
  * @param config - PaymentClientConfig with network options
@@ -143,6 +164,9 @@ export class PaymentClient {
     walletAddress: string,
     config: PaymentClientConfig = {}
   ) {
+    if (!isValidEthereumAddress(walletAddress)) {
+      throw new Error(`Invalid wallet address: ${walletAddress}`);
+    }
     this.secureKey = secureKey;
     this.walletAddress = walletAddress;
     this.networkConfig = resolveNetworkConfig(config);
@@ -178,21 +202,24 @@ export class PaymentClient {
    * @param recipientAddress - Wallet address of the payment recipient (agent)
    * @param resourceUrl - Optional override for x402 resource URL
    * @param networkOverride - Optional network override for this specific payment
+   * @param settlementData - Backend-provided settlement data for x402x-router-settlement
    * @returns Base64 encoded x402 V2 payment header
    */
   async createPaymentHeader(
     amountMicroUnits: number,
     recipientAddress: string,
     resourceUrl?: string,
-    networkOverride?: string | number
+    networkOverride?: string | number,
+    settlementData?: SettlementData
   ): Promise<string> {
+    if (!isValidEthereumAddress(recipientAddress)) {
+      throw new Error(`Invalid recipient address: ${recipientAddress}`);
+    }
     const resource = resourceUrl || this.resourceUrl || this.getDefaultResourceUrl();
     const amountStr = Math.round(amountMicroUnits).toString();
 
     // Resolve network for this payment (allows per-request override)
-    const network = networkOverride
-      ? getNetwork(networkOverride)
-      : this.networkConfig;
+    const network = networkOverride ? getNetwork(networkOverride) : this.networkConfig;
 
     const asset = this.assetOverride ?? network.usdcContract;
     const chain = createChainDefinition(network);
@@ -205,7 +232,52 @@ export class PaymentClient {
       const now = Math.floor(Date.now() / 1000);
       const validAfter = now - 60; // Valid from 60 seconds ago
       const validBefore = now + 60; // Valid until 60 seconds from now
-      const nonce = generateNonce();
+
+      // Use backend-provided settlement data or fall back to defaults
+      // CRITICAL: For x402x-router-settlement to work, we MUST use the values
+      // provided by the backend in the task_quote response
+      const salt = settlementData?.salt as Hex ?? generateNonce();
+      const facilitatorFee = settlementData?.facilitatorFee ?? "1000";
+      const hookData = (settlementData?.hookData ?? "0x") as Hex;
+      const settlementRouter = settlementData?.settlementRouter ?? network.settlementRouter;
+      const hook = settlementData?.hook ?? network.transferHook;
+
+      // Calculate commitment hash (becomes the EIP-3009 nonce)
+      // This cryptographically binds all settlement parameters to the signature
+      const commitment = keccak256(
+        encodePacked(
+          [
+            "string",   // Protocol identifier
+            "uint256",  // Chain ID
+            "address",  // Hub (settlementRouter)
+            "address",  // Token (USDC)
+            "address",  // From (payer)
+            "uint256",  // Value
+            "uint256",  // Valid after
+            "uint256",  // Valid before
+            "bytes32",  // Salt
+            "address",  // Pay to (final recipient)
+            "uint256",  // Facilitator fee
+            "address",  // Hook
+            "bytes32"   // keccak256(hookData)
+          ],
+          [
+            "X402/settle/v1",
+            BigInt(chain.id),
+            settlementRouter as Hex,
+            asset as Hex,
+            account.address,
+            BigInt(amountStr),
+            BigInt(validAfter),
+            BigInt(validBefore),
+            salt as Hex,
+            recipientAddress as Hex,
+            BigInt(facilitatorFee),
+            hook as Hex,
+            keccak256(hookData)
+          ]
+        )
+      );
 
       // EIP-712 domain using network-specific parameters
       const domain = {
@@ -216,13 +288,14 @@ export class PaymentClient {
       };
 
       // ERC-3009 TransferWithAuthorization message
+      // x402x: "to" is settlementRouter, nonce is commitment hash
       const message = {
         from: account.address,
-        to: recipientAddress as `0x${string}`,
+        to: settlementRouter as `0x${string}`, // Router receives funds first
         value: BigInt(amountStr),
         validAfter: BigInt(validAfter),
         validBefore: BigInt(validBefore),
-        nonce: nonce
+        nonce: commitment // Commitment hash as nonce
       };
 
       // Sign the EIP-712 typed data
@@ -238,16 +311,19 @@ export class PaymentClient {
       const v1Payload = {
         authorization: {
           from: account.address,
-          to: recipientAddress,
+          to: settlementRouter, // Router address
           value: amountStr,
           validAfter: validAfter.toString(),
           validBefore: validBefore.toString(),
-          nonce: nonce
+          nonce: commitment // Commitment hash
         },
         signature: signature
       };
 
-      // Build V2 payload (what the backend expects)
+      // Convert facilitator fee to hex format (required by facilitator)
+      const facilitatorFeeHex = `0x${BigInt(facilitatorFee).toString(16)}`;
+
+      // Build V2 payload with x402x-router-settlement extension
       const v2Payload = {
         x402Version: 2,
         resource: {
@@ -260,11 +336,34 @@ export class PaymentClient {
           network: network.caip2,
           amount: amountStr,
           asset: asset,
-          payTo: recipientAddress,
+          payTo: recipientAddress, // Final recipient (for display)
           maxTimeoutSeconds: 60,
-          extra: { name: network.eip712.name, version: network.eip712.version }
+          extra: {
+            name: network.eip712.name,
+            version: network.eip712.version,
+            // Settlement router info - MUST include all fields for facilitator
+            settlementRouter: settlementRouter,
+            salt: salt,
+            payTo: recipientAddress, // finalPayTo
+            facilitatorFee: facilitatorFeeHex, // Must be hex format
+            hook: hook,
+            hookData: hookData
+          }
         },
-        payload: v1Payload
+        payload: v1Payload,
+        // x402x router settlement extension (v2 format)
+        extensions: {
+          "x402x-router-settlement": {
+            info: {
+              settlementRouter: settlementRouter,
+              hook: hook,
+              hookData: hookData,
+              facilitatorFee: facilitatorFeeHex, // Must be hex format
+              salt: salt,
+              finalPayTo: recipientAddress // Final recipient of the payment
+            }
+          }
+        }
       };
 
       return Buffer.from(JSON.stringify(v2Payload)).toString("base64");
@@ -274,11 +373,16 @@ export class PaymentClient {
   }
 
   /**
-   * Get default x402 resource URL from WebSocket URL
+   * Get resource URL for x402 payments.
+   * Throws if no resource URL is configured.
    */
   private getDefaultResourceUrl(): string {
-    // Default fallback
-    return "https://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/x402";
+    if (!this.resourceUrl) {
+      throw new Error(
+        "Resource URL not configured. Pass resourceUrl to PaymentClient or use buildX402ResourceUrl(wsUrl)."
+      );
+    }
+    return this.resourceUrl;
   }
 
   /**

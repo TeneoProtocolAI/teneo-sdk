@@ -23,7 +23,6 @@ import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 const PORT = parseInt(process.env.PORT || "3000");
 
 // Validate configuration
@@ -40,13 +39,11 @@ app.use(express.json());
 console.log("🚀 Initializing Teneo API Server\n");
 console.log("📋 Configuration:");
 console.log(`   WebSocket: ${WS_URL}`);
-console.log(`   Room: ${DEFAULT_ROOM}`);
 console.log(`   Port: ${PORT}\n`);
 
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(PRIVATE_KEY)
-  // .withAutoJoinRooms([DEFAULT_ROOM])
   .withResponseFormat({ format: "both", includeMetadata: true })
   .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 })
   .withLogging("info")
@@ -182,7 +179,7 @@ app.get("/agents/:id", (req: Request, res: Response) => {
 app.get("/agents/capability/:capability", (req: Request, res: Response) => {
   try {
     const { capability } = req.params;
-    const agents = sdk.findAgentsByCapability(capability);
+    const agents = sdk.findAvailableAgentsByCapability(capability);
 
     res.json({
       success: true,
@@ -206,6 +203,13 @@ app.get("/agents/capability/:capability", (req: Request, res: Response) => {
  * POST /message
  * Send a message to an agent
  * Body: { message: string, agent?: string, waitForResponse?: boolean, timeout?: number }
+ *
+ * Two approaches:
+ * 1. WITH AGENT: Direct command (required in non-coordinator environments)
+ *    Example: { "message": "search bitcoin 5", "agent": "X Platform Agent" }
+ *
+ * 2. WITHOUT AGENT: Coordinator routing (only works in coordinator environments)
+ *    Example: { "message": "Get bitcoin info" }
  */
 app.post("/message", async (req: Request, res: Response) => {
   try {
@@ -228,12 +232,12 @@ app.post("/message", async (req: Request, res: Response) => {
     const startTime = Date.now();
 
     if (agent) {
-      // Send to specific agent
+      // Send to specific agent (direct command)
       const response = await sdk.sendDirectCommand(
         {
           agent,
           command: message,
-          room: DEFAULT_ROOM
+          room: "room-id"
         },
         waitForResponse
       );
@@ -260,7 +264,7 @@ app.post("/message", async (req: Request, res: Response) => {
     } else {
       // Send via coordinator (will auto-select agent)
       const response = await sdk.sendMessage(message, {
-        room: DEFAULT_ROOM,
+        room: "room-id",
         waitForResponse,
         timeout
       });
@@ -318,7 +322,7 @@ app.get("/rooms", (_req: Request, res: Response) => {
 app.post("/rooms/:roomId/subscribe", async (req: Request, res: Response) => {
   try {
     const { roomId } = req.params;
-    await sdk.subscribeToRoom(roomId);
+    await sdk.subscribeToPublicRoom(roomId);
 
     res.json({
       success: true,
@@ -340,7 +344,7 @@ app.post("/rooms/:roomId/subscribe", async (req: Request, res: Response) => {
 app.post("/rooms/:roomId/unsubscribe", async (req: Request, res: Response) => {
   try {
     const { roomId } = req.params;
-    await sdk.unsubscribeFromRoom(roomId);
+    await sdk.unsubscribeFromPublicRoom(roomId);
 
     res.json({
       success: true,

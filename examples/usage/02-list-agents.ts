@@ -16,7 +16,6 @@ import { TeneoSDK, SDKConfigBuilder } from "../../dist/index.js";
 // Load configuration from environment
 const WS_URL = process.env.WS_URL || "wss://your-teneo-server.com/ws";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 
 async function main() {
   console.log("🚀 Example 2: List Available Agents\n");
@@ -30,7 +29,6 @@ async function main() {
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
     .withAuthentication(PRIVATE_KEY)
-    // .withAutoJoinRooms([DEFAULT_ROOM])
     .withLogging("info")
     .build();
 

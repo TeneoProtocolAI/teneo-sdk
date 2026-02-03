@@ -13,29 +13,42 @@ export class ListAvailableAgentsHandler extends BaseMessageHandler<AvailableAgen
   readonly schema = AvailableAgentsResponseSchema;
 
   protected handleValidated(message: AvailableAgentsResponse, context: HandlerContext): void {
-    const { agents } = message.data;
+    const { agents, total, offset, limit, has_more } = message.data;
 
     context.logger.debug("Handling available_agents_response", {
-      agentCount: agents?.length || 0
+      agentCount: agents?.length || 0,
+      total,
+      offset,
+      limit,
+      has_more
     });
 
     // Parse agents array (handle undefined as empty array)
     const agentList: AgentRoomInfo[] = agents || [];
 
     context.logger.info("Available agents listed", {
-      count: agentList.length
+      count: agentList.length,
+      total
     });
 
     // Note: We don't cache this globally since it's room-specific
     // The AgentRoomManager will cache it with the room context
 
-    // Emit success event
-    this.emit(context, "agent_room:available_agents_listed", agentList);
+    // Emit success event, with pagination metadata if present
+    const hasPagination =
+      total !== undefined || offset !== undefined || limit !== undefined || has_more !== undefined;
+    if (hasPagination) {
+      this.emit(context, "agent_room:available_agents_listed", agentList, {
+        total,
+        offset,
+        limit,
+        hasMore: has_more
+      });
+    } else {
+      this.emit(context, "agent_room:available_agents_listed", agentList);
+    }
 
-    // Send webhook
-    this.sendWebhook(context, "available_agents_listed", {
-      agents: agentList,
-      count: agentList.length
-    });
+    // Note: This is a query response, not sent via webhook
+    // Users can listen to the 'agent_room:available_agents_listed' event if needed
   }
 }

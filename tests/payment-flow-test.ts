@@ -48,7 +48,8 @@ async function testPaymentFlow() {
     .withLogging("info")
     .build();
 
-  const sdk = new TeneoSDK(config);
+  // Increase max message size to 10MB to handle large payloads
+  const sdk = new TeneoSDK({ ...config, maxMessageSize: 10 * 1024 * 1024 });
 
   // Set up event listeners
   sdk.on("connection:open", () => console.log("✓ Connected"));
@@ -99,7 +100,7 @@ async function testPaymentFlow() {
     // Subscribe to test room
     console.log("Subscribing to room:", TEST_ROOM);
     try {
-      await sdk.subscribeToRoom(TEST_ROOM);
+      await sdk.subscribeToPublicRoom(TEST_ROOM);
       console.log("Subscribed!\n");
     } catch {
       console.log("Room subscription skipped (private room)\n");
@@ -109,10 +110,11 @@ async function testPaymentFlow() {
     await sleep(1000);
 
     // Send test message - this will trigger quote-approve flow
+    // Use direct @agent command since AI coordinator is disabled
     console.log("\n=== Sending Test Request ===");
-    console.log('Request: "get me 1 post from @elonmusk from x"\n');
+    console.log('Request: "@x-agent-enterprise-v2 user @elonmusk"\n');
 
-    const response = await sdk.sendMessage("get me 1 post from @elonmusk from x", {
+    const response = await sdk.sendMessage("@x-agent-enterprise-v2 user @elonmusk", {
       room: TEST_ROOM,
       waitForResponse: true,
       timeout: 120000 // 2 minutes

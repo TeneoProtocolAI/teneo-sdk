@@ -30,6 +30,8 @@ export interface ListAllAgentsOptions {
   offset?: number;
   /** Number of agents to return (default: 50) */
   limit?: number;
+  /** Sort order: alphabetical or by request count */
+  sortBy?: "a-z" | "requests";
 }
 
 /**
@@ -124,9 +126,9 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
       throw new SDKError("Admin privileges required", ErrorCode.AUTH_ERROR);
     }
 
-    const { filter, offset = 0, limit = 50 } = options;
+    const { filter, offset = 0, limit = 50, sortBy } = options;
 
-    this.logger.info("AdminManager: Listing all agents", { filter, offset, limit });
+    this.logger.info("AdminManager: Listing all agents", { filter, offset, limit, sortBy });
 
     // Generate request ID
     const requestId = `admin_list_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -137,6 +139,7 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
       filter,
       offset,
       limit,
+      ...(sortBy && { sort_by: sortBy }),
       request_id: requestId
     };
 

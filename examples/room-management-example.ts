@@ -84,7 +84,7 @@ async function main() {
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("🔍 Querying Specific Room");
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      const room = sdk.getRoomById(newRooms[0].id);
+      const room = sdk.getRoom(newRooms[0].id);
       if (room) {
         console.log(`Room ID: ${room.id}`);
         console.log(`Name: ${room.name}`);
@@ -236,7 +236,7 @@ async function createSampleRooms(sdk: TeneoSDK) {
 
 async function updateRoomExample(sdk: TeneoSDK, roomId: string) {
   try {
-    const originalRoom = sdk.getRoomById(roomId);
+    const originalRoom = sdk.getRoom(roomId);
     if (!originalRoom) {
       console.log("  ⚠️  Room not found");
       return;

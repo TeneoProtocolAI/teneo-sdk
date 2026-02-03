@@ -50,6 +50,7 @@ export {
   // System message schemas
   AgentsListMessageSchema,
   ErrorMessageSchema,
+  SuccessMessageSchema,
   PingMessageSchema,
   PongMessageSchema,
 
@@ -87,7 +88,6 @@ export {
 
   // Room Ping schemas (v2.0.0)
   RoomPingMessageSchema,
-  RoomPongResponseSchema,
 
   // Union schema
   AnyMessageSchema,
@@ -125,6 +125,7 @@ export {
   type ConfirmTaskMessage,
   type AgentsListMessage,
   type ErrorMessage,
+  type SuccessMessage,
   type PingMessage,
   type PongMessage,
   type SubscribeMessage,
@@ -160,7 +161,6 @@ export {
 
   // Room Ping types (v2.0.0)
   type RoomPingMessage,
-  type RoomPongResponse,
 
   // Admin types
   AdminAgentInfoSchema,
@@ -191,8 +191,21 @@ export {
   type SetUserPreferencesMessage,
   type UserPreferencesUpdatedData,
   type UserPreferencesUpdatedMessage,
-
   type AnyMessage,
+
+  // Task Confirmed types
+  TaskConfirmedMessageSchema,
+  type TaskConfirmedMessage,
+
+  // Agent Error types
+  AgentErrorMessageSchema,
+  type AgentErrorMessage,
+
+  // Wallet Transaction types
+  TxResultStatusSchema,
+  TriggerWalletTxMessageSchema,
+  type TxResultStatus,
+  type TriggerWalletTxMessage,
 
   // Type guards
   isAuthSuccess,

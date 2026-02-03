@@ -5,6 +5,318 @@ All notable changes to the Teneo Protocol SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-28
+
+*Built on top of v2.3.0 multi-network support*
+
+## [2.3.0] - 2026-01-28
+
+### ✨ Multi-Network Payment Support with Dynamic Configuration
+
+The SDK now supports USDC payments across multiple EVM networks with **dynamic configuration fetched from the backend**. Network configurations are no longer hardcoded, enabling the protocol to add new networks without SDK updates.
+
+#### 🔄 Dynamic Network Configuration
+
+Networks are now fetched from the backend API during SDK initialization:
+
+- **Automatic Initialization**: Networks loaded during `connect()` via backend `/api/networks` endpoint
+- **60-Minute Cache**: Network configs cached locally with automatic refresh
+- **Offline Resilience**: Falls back to cached configs if backend temporarily unavailable
+- **Future-Proof**: New networks can be added server-side without SDK changes
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: "wss://teneo.network/ws",
+  privateKey: "0x..."
+});
+
+// Networks automatically initialized during connect
+await sdk.connect();
+
+// Now network utilities are ready
+const networks = getSupportedNetworks();
+console.log(networks); // Backend-provided network list
+```
+
+#### 🌐 Supported Networks
+
+Current networks include (dynamically configured from backend):
+
+- **PEAQ Mainnet** (chainId: 3338) - Original network
+- **Base Mainnet** (chainId: 8453) - Layer 2 scaling solution
+- **Avalanche Mainnet** (chainId: 43114) - High-throughput blockchain
+
+Each network includes:
+- Network-specific USDC contract addresses
+- Settlement router contracts for x402 v2.5 payments
+- Transfer hook contracts for payment verification
+- EIP-712 signing parameters
+
+#### 📦 New Exports
+
+```typescript
+import {
+  // Network utilities (dynamic, populated after connect)
+  NETWORKS,
+  CHAIN_ID_TO_NETWORK,
+  CAIP2_TO_NETWORK,
+  getNetwork,
+  getDefaultNetwork,
+  createChainDefinition,
+  isNetworkSupported,
+  getSupportedNetworks,
+  type NetworkConfig
+} from "@teneo-protocol/sdk";
+```
+
+#### 🔧 Network Configuration API
+
+```typescript
+// Get network by name
+const peaq = getNetwork("peaq");
+const base = getNetwork("base");
+const avalanche = getNetwork("avalanche");
+
+// Get network by chain ID
+const baseNetwork = getNetwork(8453);
+
+// Get network by CAIP-2 identifier
+const avaxNetwork = getNetwork("eip155:43114");
+
+// Get default network (prefers PEAQ, falls back to first available)
+const defaultNetwork = getDefaultNetwork();
+
+// Check if network is supported
+if (isNetworkSupported("base")) {
+  // Create chain definition for viem
+  const baseChain = createChainDefinition(base);
+}
+
+// Get all supported networks
+const allNetworks = getSupportedNetworks();
+console.log(allNetworks); // e.g., ["peaq", "base", "avalanche"]
+```
+
+#### 🔐 Settlement Router Integration (x402 v2.5)
+
+Payment quotes now include settlement router fields for enhanced transaction routing:
+
+```typescript
+// Request a quote
+const quote = await sdk.requestQuote("Analyze this data", "room-id");
+
+// Quote includes settlement router information
+console.log(quote.data.settlement_router); // Router contract address
+console.log(quote.data.salt); // Unique salt for transaction
+console.log(quote.data.facilitator_fee); // Facilitator fee amount
+console.log(quote.data.hook); // Transfer hook address
+```
+
+#### 💰 Network-Aware Payment Configuration
+
+The `PaymentClient` automatically uses the correct network configuration:
+
+```typescript
+import { PaymentClient, getNetwork } from "@teneo-protocol/sdk";
+
+// Payment client uses dynamically configured networks
+const paymentClient = new PaymentClient({
+  privateKey: "0x...",
+  wsUrl: "wss://teneo.network/ws"
+});
+
+// Network selection happens automatically based on agent capabilities
+```
+
+#### 🛠️ New Diagnostic Scripts
+
+Four new diagnostic scripts added to help debug network and payment issues:
+
+- `scripts/diagnose-connection.ts` - Connection health diagnostics
+- `scripts/investigate-payload.ts` - Payment payload inspection
+- `scripts/list-agents.ts` - List all available agents
+- `scripts/live-multi-network-test.ts` - Multi-network payment testing
+
+#### ⚠️ Breaking Changes
+
+- **Network initialization required**: `NETWORKS` is empty until `connect()` completes
+- **Backend dependency**: SDK requires backend to be reachable during `connect()` (falls back to cache for subsequent reconnects)
+- **Settlement router fields**: TaskQuote messages now have required `settlement_router`, `salt`, `facilitator_fee`, and `hook` fields
+
+#### 🔄 Backward Compatibility
+
+All existing code continues to work! The SDK defaults to PEAQ network if no network is specified. Legacy exports like `PEAQ_CHAIN_ID` and `USDC_CONTRACT` are maintained for backward compatibility.
+
+#### 📚 Migration Notes
+
+No code changes required for most users. Networks are initialized automatically during `connect()`. If you were accessing `NETWORKS` directly before `connect()`, ensure you do so after:
+
+```typescript
+// ❌ Before connect - NETWORKS is empty
+console.log(NETWORKS); // {}
+
+await sdk.connect();
+
+// ✅ After connect - NETWORKS is populated
+console.log(NETWORKS); // { peaq: {...}, base: {...}, ... }
+```
+
+---
+
+## [3.0.0] - 2026-01-28
+
+### 🎉 Major Release: API Naming Improvements
+
+Version 3.0 introduces comprehensive naming improvements to make the SDK API more intuitive and explicit. All renamed methods include deprecated aliases for backward compatibility during migration.
+
+### 💥 Breaking Changes
+
+#### Room Subscription Clarity
+
+**Before:**
+
+```typescript
+const sdk = new TeneoSDK({
+  autoJoinRooms: ["room-1", "room-2"]
+});
+await sdk.subscribeToRoom("room-id");
+await sdk.unsubscribeFromRoom("room-id");
+```
+
+**After (v3.0):**
+
+```typescript
+const sdk = new TeneoSDK({
+  autoJoinPublicRooms: ["room-1", "room-2"] // Explicit: only public rooms
+});
+await sdk.subscribeToPublicRoom("room-id"); // Explicit: only works for public rooms
+await sdk.unsubscribeFromPublicRoom("room-id"); // Private rooms are auto-available
+```
+
+**Why:** These methods only work with public rooms. Private rooms are automatically available after authentication. The new names make this distinction explicit.
+
+---
+
+#### Cache-Only Methods Now Explicit
+
+**Before:**
+
+```typescript
+const agents = sdk.getRoomAgents("room-123"); // Unclear: cache or fetch?
+const available = sdk.getAvailableAgents("room-123"); // Unclear: cache or fetch?
+const count = sdk.getRoomAgentCount("room-123"); // Returns undefined if not cached
+```
+
+**After (v3.0):**
+
+```typescript
+const agents = sdk.getCachedRoomAgents("room-123"); // Clear: cache-only
+const available = sdk.getCachedAvailableAgents("room-123"); // Clear: cache-only
+const count = sdk.getCachedRoomAgentCount("room-123"); // Clear: cache-only
+
+// Async methods unchanged (still fetch from server):
+await sdk.listRoomAgents("room-123"); // Still async fetch
+await sdk.listAvailableAgents("room-123"); // Still async fetch
+```
+
+**Why:** Method names now clearly indicate sync (cache-only) vs async (server fetch) behavior.
+
+---
+
+#### Boolean Method Semantic Clarity
+
+**Before:**
+
+```typescript
+const result = sdk.isAgentInRoom("room-123", "agent-456");
+// Returns: boolean | undefined (but 'is*' implies boolean-only)
+```
+
+**After (v3.0):**
+
+```typescript
+const result = sdk.checkAgentInRoom("room-123", "agent-456");
+// Returns: boolean | undefined (name doesn't mislead about return type)
+// - true: agent IS in room (verified)
+// - false: agent is NOT in room (verified)
+// - undefined: cache unavailable (need to fetch)
+```
+
+**Why:** `is*` naming convention implies boolean-only return. `check*` makes it clear the method may return multiple states.
+
+---
+
+#### Network-Wide Search Scope Clarity
+
+**Before:**
+
+```typescript
+const agents = sdk.findAgentsByCapability("weather"); // Unclear: what scope?
+const results = sdk.findAgentsByName("bot"); // All agents? Room agents?
+const online = sdk.findAgentsByStatus("online"); // Which agents?
+```
+
+**After (v3.0):**
+
+```typescript
+const agents = sdk.findAvailableAgentsByCapability("weather"); // Clear: all available agents
+const results = sdk.findAvailableAgentsByName("bot"); // Clear: network-wide search
+const online = sdk.findAvailableAgentsByStatus("online"); // Clear: all available agents
+```
+
+**Why:** These methods search ALL available agents network-wide, not just room-specific agents. The new names make this scope explicit.
+
+---
+
+### 🔄 Migration Guide
+
+**All old method names are deprecated but still work!** You'll see deprecation warnings in TypeScript/JSDoc. Update at your convenience:
+
+1. **Search & Replace** across your codebase:
+   - `autoJoinRooms:` → `autoJoinPublicRooms:`
+   - `.subscribeToRoom(` → `.subscribeToPublicRoom(`
+   - `.unsubscribeFromRoom(` → `.unsubscribeFromPublicRoom(`
+   - `.getRoomAgents(` → `.getCachedRoomAgents(`
+   - `.getAvailableAgents(` → `.getCachedAvailableAgents(`
+   - `.getRoomAgentCount(` → `.getCachedRoomAgentCount(`
+   - `.isAgentInRoom(` → `.checkAgentInRoom(`
+   - `.findAgentsByCapability(` → `.findAvailableAgentsByCapability(`
+   - `.findAgentsByName(` → `.findAvailableAgentsByName(`
+   - `.findAgentsByStatus(` → `.findAvailableAgentsByStatus(`
+
+2. **Update TypeScript types** if you reference them directly
+
+3. **Test thoroughly** - all functionality remains the same, only names changed
+
+---
+
+### ✨ Summary of Changes
+
+- **6 major naming improvements** for clarity and consistency
+- **All old names deprecated** with helpful migration messages
+- **Zero functional changes** - only naming improvements
+- **Backward compatible** - old names still work via aliases
+- **All documentation updated** - README, CONCEPTS, examples
+
+---
+
+## [2.2.2]
+
+### 🐛 Fixed
+
+- Added minimal-chat example for quick SDK testing
+
+---
+
+## [2.2.1]
+
+### 🐛 Fixed Issues
+
+- Fixed `getRooms()`/`getRoom()` race condition after connect
+- Fixed `room_list_response` message type to match backend
+
+---
+
 ## [2.2.0]
 
 ### Quote-Approve Payment Flow
@@ -43,6 +355,14 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 - Payment client is set up automatically when `privateKey` is provided
 - `withPayments()` builder no longer has `enabled` option
 
+### ⚠️ Breaking Changes
+
+- `paymentsEnabled` config option removed — payments are always enabled when `privateKey` is provided
+- `validatePrice()` method removed — price validation now happens in `confirmQuote`
+- `attachPayment()` method removed — payment attachment now happens in `confirmQuote`
+- `setAgentRegistry()` method removed — no longer needed
+- `withPayments()` builder no longer accepts `enabled` option
+
 ### 🗑️ Removed
 
 - `paymentsEnabled` config option (payments always on)
@@ -60,13 +380,13 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 
 ## [2.1.0] - 2025-12-08
 
-### ✨ Added
+### ✨ Added Features
 
 #### Automatic X402 Payment Signing
 
 - SDK now auto-signs x402 payment headers when confirming tasks
 - Uses PEAQ chain with USDC stablecoin for micropayments
-- No manual payment encoding needed - just call `confirmTask({ taskId })`
+- No manual payment encoding needed - just call `confirmQuote(taskId)`
 
 ### 📦 Dependencies
 
@@ -80,12 +400,12 @@ Payments now use a quote-approve model. Instead of attaching payments blindly, t
 
 Version 2.0 introduces comprehensive room management and per-room agent customization capabilities, enabling developers to create context-specific agent experiences.
 
-### ✨ Added
+### ✨ Added Feature
 
 #### Phase 1: Room Management System
 
 - **Room CRUD Operations**
-  - `createRoom(name, description?)` - Create new private rooms with validation
+  - `createRoom({ name, description?, isPublic? })` - Create new rooms with validation
   - `updateRoom(roomId, updates)` - Update room name/description (owner only)
   - `deleteRoom(roomId)` - Delete owned rooms
 
@@ -93,7 +413,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
   - `getOwnedRooms()` - Get all rooms you created
   - `getSharedRooms()` - Get rooms you were invited to
   - `getAllRooms()` - Get all rooms (owned + shared) convenience method
-  - `getRoomById(roomId)` - Get specific room details
+  - `getRoom(roomId)` - Get specific room details
   - `getRoomLimit()` - Check your room creation limit
   - `canCreateRoom()` - Check if you can create more rooms
   - `getOwnedRoomCount()` - Count your owned rooms
@@ -122,10 +442,10 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
   - `listAvailableAgents(roomId, useCache?)` - List agents available to add
 
 - **Agent Room Query Methods (Synchronous)**
-  - `getRoomAgents(roomId)` - Get cached room agents instantly
-  - `getAvailableAgents(roomId)` - Get cached available agents instantly
-  - `isAgentInRoom(roomId, agentId)` - Check if agent is in room (cached)
-  - `getRoomAgentCount(roomId)` - Get agent count from cache
+  - `getCachedRoomAgents(roomId)` - Get cached room agents instantly
+  - `getCachedAvailableAgents(roomId)` - Get cached available agents instantly
+  - `checkAgentInRoom(roomId, agentId)` - Check if agent is in room (cached)
+  - `getCachedRoomAgentCount(roomId)` - Get agent count from cache
 
 - **Cache Management**
   - `invalidateAgentRoomCache(roomId)` - Manually clear cache for specific room
@@ -171,13 +491,13 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 - Comprehensive coverage of agent room management
 - All manager and handler tests passing
 
-### 🔄 Changed
+### 🔄 Changed Features
 
 - Message handlers now use `BaseMessageHandler` pattern
 - Enhanced event system with 14 new event types
 - WebSocketClient now manages room and agent-room managers
 
-### 🐛 Fixed
+### 🐛 Fixed Issue
 
 - Schema field names now match backend source of truth
 - Proper defensive copying for cache immutability
@@ -187,7 +507,7 @@ Version 2.0 introduces comprehensive room management and per-room agent customiz
 - Room management events now properly forward from WebSocket handlers to SDK instance
 - Room persistence: Private rooms now correctly persist after page refresh via proper initialization of RoomManagementManager from auth state
 
-### 📚 Documentation
+### 📚 Documentation Updates
 
 - Comprehensive README updates with v2.0 features
 - New "What's New in v2.0" section
@@ -261,14 +581,14 @@ pnpm install @teneo-protocol/sdk@2.0.0
 **Before (v1.x):** Single room subscription
 
 ```typescript
-await sdk.subscribeToRoom("room-id");
+await sdk.subscribeToPublicRoom("room-id");
 ```
 
 **After (v2.0):** Create and manage multiple rooms
 
 ```typescript
 // Create your own rooms
-const room = await sdk.createRoom("My Room", "Description");
+const room = await sdk.createRoom({ name: "My Room", description: "Description" });
 
 // Get all your rooms
 const ownedRooms = sdk.getOwnedRooms();
@@ -321,7 +641,7 @@ All v1.x APIs continue to work:
 
 - ✅ `connect()`, `disconnect()`
 - ✅ `sendMessage()`
-- ✅ `subscribeToRoom()`, `unsubscribeFromRoom()`
+- ✅ `subscribeToPublicRoom()`, `unsubscribeFromPublicRoom()`
 - ✅ `getAgents()`, `getAgent()`
 - ✅ All existing events
 

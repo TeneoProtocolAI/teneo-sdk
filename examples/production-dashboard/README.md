@@ -125,7 +125,6 @@ PRIVATE_KEY=0x...your-private-key
 WALLET_ADDRESS=0x...your-wallet-address
 
 # Optional
-DEFAULT_ROOM=general
 PORT=3000
 
 # Security Features
@@ -147,7 +146,6 @@ const secureKey = new SecurePrivateKey(PRIVATE_KEY);
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
   .withAuthentication(secureKey, WALLET_ADDRESS) // Use encrypted key
-  .withAutoJoinRooms([DEFAULT_ROOM])
   .withReconnection({ enabled: true, delay: 5000, maxAttempts: 10 })
   // REL-3: Custom retry strategies for production
   .withReconnectionStrategy({
@@ -208,7 +206,7 @@ const config = new SDKConfigBuilder()
   {
     "agent": "weather-agent",
     "command": "weather New York",
-    "room": "general"
+    "room": "your-room-id"
   }
   ```
 
@@ -223,7 +221,7 @@ const config = new SDKConfigBuilder()
 - `POST /api/room/subscribe` - Subscribe to a room (v1)
   ```json
   {
-    "roomId": "tech-support"
+    "roomId": "your-room-id"
   }
   ```
 - `POST /api/room/unsubscribe` - Unsubscribe from a room (v1)
@@ -415,13 +413,13 @@ curl http://localhost:3000/api/agents/search/status/online
 
 ```typescript
 // Fast capability search
-const weatherAgents = sdk.findAgentsByCapability("weather-forecast");
+const weatherAgents = sdk.findAvailableAgentsByCapability("weather-forecast");
 
 // Fast partial name search
-const agentsWithWeather = sdk.findAgentsByName("weather");
+const agentsWithWeather = sdk.findAvailableAgentsByName("weather");
 
 // Fast status filtering
-const onlineAgents = sdk.findAgentsByStatus("online");
+const onlineAgents = sdk.findAvailableAgentsByStatus("online");
 ```
 
 ### Configurable Retry Strategies (REL-3)
@@ -536,7 +534,7 @@ The `/health` endpoint returns comprehensive status:
   },
   "rooms": {
     "count": 3,
-    "subscribedRooms": ["general", "announcements"]
+    "subscribedRooms": ["room-id-1", "room-id-2"]
   }
 }
 ```
