@@ -5,9 +5,9 @@
  * Uses a test private key to create actual payment headers.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { PaymentClient } from "../src/payments/payment-client";
-import { getNetwork, NETWORKS } from "../src/payments/networks";
+import { getNetwork, NETWORKS, setNetworkConfigUrl, fetchNetworkConfigs } from "../src/payments/networks";
 import { SecurePrivateKey } from "../src/utils/secure-private-key";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -15,11 +15,68 @@ import { privateKeyToAccount } from "viem/accounts";
 const TEST_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const TEST_RECIPIENT = "0x1234567890123456789012345678901234567890";
 
+// Mock network data
+const mockNetworkData = {
+  networks: {
+    peaq: {
+      chainId: 3338,
+      name: "PEAQ Mainnet",
+      caip2: "eip155:3338",
+      rpcUrl: "https://peaq.network/rpc",
+      usdcContract: "0xbbA60da06c2c5424f03f7434542280FCAd453d10",
+      settlementRouter: "0xCD57f4596f70b18a0fd0c42daa4F3066d3adc8d4",
+      transferHook: "0xf45FA7713a58eBd0C353186F9e49A7C39a0eD34E",
+      eip712: {
+        name: "USDC",
+        version: "2"
+      }
+    },
+    base: {
+      chainId: 8453,
+      name: "Base Mainnet",
+      caip2: "eip155:8453",
+      rpcUrl: "https://mainnet.base.org",
+      usdcContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      settlementRouter: "0x73fc659Cd5494E69852bE8D9D23FE05Aab14b29B",
+      transferHook: "0x081258287F692D61575387ee2a4075f34dd7Aef7",
+      eip712: {
+        name: "USD Coin",
+        version: "2"
+      }
+    },
+    avalanche: {
+      chainId: 43114,
+      name: "Avalanche Mainnet",
+      caip2: "eip155:43114",
+      rpcUrl: "https://api.avax.network/ext/bc/C/rpc",
+      usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+      settlementRouter: "0xF38709cFd3f89734c231dd8E59Ff1d44caCddEe8",
+      transferHook: "0x6D21298950dC58a984664B12Cdf4DeBA143889aa",
+      eip712: {
+        name: "USD Coin",
+        version: "2"
+      }
+    }
+  }
+};
+
 describe("Multi-Network Payment Tests", () => {
   let secureKey: SecurePrivateKey;
   let walletAddress: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    // Mock global fetch
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockNetworkData)
+      } as Response)
+    );
+
+    // Initialize networks before tests
+    setNetworkConfigUrl("https://backend.test.com/ws");
+    await fetchNetworkConfigs();
+
     secureKey = new SecurePrivateKey(TEST_PRIVATE_KEY);
     const account = privateKeyToAccount(TEST_PRIVATE_KEY as `0x${string}`);
     walletAddress = account.address;
@@ -87,7 +144,10 @@ describe("Multi-Network Payment Tests", () => {
       expect(decoded.accepted.asset).toBe("0xbbA60da06c2c5424f03f7434542280FCAd453d10");
       expect(decoded.accepted.amount).toBe("1000000");
       expect(decoded.payload.authorization.from).toBe(walletAddress);
-      expect(decoded.payload.authorization.to).toBe(TEST_RECIPIENT);
+      // Authorization "to" is the settlement router, not the recipient
+      expect(decoded.payload.authorization.to).toBe("0xCD57f4596f70b18a0fd0c42daa4F3066d3adc8d4");
+      // Final recipient is in accepted.payTo
+      expect(decoded.accepted.payTo).toBe(TEST_RECIPIENT);
       console.log("PEAQ Payment Header:", JSON.stringify(decoded, null, 2));
     });
   });
@@ -126,7 +186,7 @@ describe("Multi-Network Payment Tests", () => {
     });
 
     it("should use correct EIP-712 domain for Base USDC", async () => {
-      const header = await client.createPaymentHeader(100000, TEST_RECIPIENT);
+      const header = await client.createPaymentHeader(100000, TEST_RECIPIENT, "https://example.com/x402");
       const decoded = JSON.parse(Buffer.from(header, "base64").toString());
 
       // Base USDC uses "USD Coin" as the EIP-712 name

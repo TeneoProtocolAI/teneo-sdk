@@ -16,11 +16,76 @@ import {
   getSupportedNetworks,
   NETWORKS,
   CHAIN_ID_TO_NETWORK,
-  CAIP2_TO_NETWORK
+  CAIP2_TO_NETWORK,
+  setNetworkConfigUrl,
+  fetchNetworkConfigs
 } from "../src/payments/networks";
 import { SDKConfigBuilder } from "../src/types/config";
 
+// Mock fetch globally for all tests
+const mockNetworkData = {
+  networks: {
+    peaq: {
+      chainId: 3338,
+      name: "PEAQ Mainnet",
+      caip2: "eip155:3338",
+      rpcUrl: "https://peaq.network/rpc",
+      usdcContract: "0xbbA60da06c2c5424f03f7434542280FCAd453d10",
+      settlementRouter: "0x0000000000000000000000000000000000000001",
+      transferHook: "0x0000000000000000000000000000000000000002",
+      eip712: {
+        name: "USDC",
+        version: "2"
+      }
+    },
+    base: {
+      chainId: 8453,
+      name: "Base Mainnet",
+      caip2: "eip155:8453",
+      rpcUrl: "https://mainnet.base.org",
+      usdcContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      settlementRouter: "0x0000000000000000000000000000000000000003",
+      transferHook: "0x0000000000000000000000000000000000000004",
+      eip712: {
+        name: "USD Coin",
+        version: "2"
+      }
+    },
+    avalanche: {
+      chainId: 43114,
+      name: "Avalanche Mainnet",
+      caip2: "eip155:43114",
+      rpcUrl: "https://api.avax.network/ext/bc/C/rpc",
+      usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+      settlementRouter: "0x0000000000000000000000000000000000000005",
+      transferHook: "0x0000000000000000000000000000000000000006",
+      eip712: {
+        name: "USD Coin",
+        version: "2"
+      }
+    }
+  }
+};
+
 describe("Multi-Network Support", () => {
+  beforeEach(async () => {
+    // Mock global fetch
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockNetworkData)
+      } as Response)
+    );
+
+    // Initialize networks before each test
+    setNetworkConfigUrl("https://backend.test.com/ws");
+    await fetchNetworkConfigs();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe("Network Configuration", () => {
     it("should have PEAQ network configured", () => {
       expect(NETWORKS.peaq).toBeDefined();
