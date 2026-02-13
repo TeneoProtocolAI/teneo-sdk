@@ -745,8 +745,11 @@ export const AgentRoomInfoSchema = z
     // Server-sent typed fields
     type: AgentTypeSchema.optional(),
     nlp_fallback: z.union([z.boolean(), z.string()]).optional(),
-    is_verified: z.boolean().optional(),
-    is_public: z.boolean().optional(),
+    review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
+    decline_reason: z.string().optional().nullable(),
+    submitted_at: z.string().optional().nullable(),
+    reviewed_at: z.string().optional().nullable(),
+    reviewed_by: z.string().optional().nullable(),
     created_at: z.string().optional(),
     creator: z.string().optional(),
     is_banned: z.boolean().optional()
@@ -861,10 +864,13 @@ export const AdminAgentInfoSchema = z
     image_url: z.string().optional().nullable(),
     is_online: z.boolean().optional(),
     is_active: z.boolean().optional(),
-    is_verified: z.boolean().optional(),
-    is_public: z.boolean().optional(),
     is_banned: z.boolean().optional(),
-    created_at: z.string().optional().nullable()
+    created_at: z.string().optional().nullable(),
+    review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
+    decline_reason: z.string().optional().nullable(),
+    submitted_at: z.string().optional().nullable(),
+    reviewed_at: z.string().optional().nullable(),
+    reviewed_by: z.string().optional().nullable()
   })
   .passthrough();
 
