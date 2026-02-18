@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-3.0.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.1.1-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -12,6 +12,46 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
 - 🔐 **Web3-native authentication** using Ethereum wallet signatures (no API keys!)
+
+---
+
+## 🎉 What's New in v3.1.1
+
+### 🤖 Pre-Flight Auto-Summon
+
+The SDK now automatically detects when an agent is missing from your room and adds it **before** sending your command — no more failed requests or retry cycles:
+
+```typescript
+const sdk = new TeneoSDK({
+  wsUrl: process.env.WS_URL,
+  privateKey: process.env.PRIVATE_KEY,
+  autoSummon: true // Enable auto-summon
+});
+
+// Agent not in room? SDK handles it automatically:
+// 1. Checks local cache → agent missing
+// 2. Fires autosummon:start
+// 3. Adds agent to room
+// 4. Fires autosummon:success
+// 5. Sends your command
+await sdk.sendDirectCommand({
+  agent: "example-agent",
+  command: "latest 2h",
+  room: roomId
+}, true);
+```
+
+**Lifecycle events** for full visibility:
+
+- `autosummon:start` — agent addition initiated
+- `autosummon:success` — agent added, command proceeding
+- `autosummon:failed` — agent not found or addition failed, falls back to coordinator
+
+### 🔐 Private Key Validation
+
+Constructor now validates private key format immediately, catching empty or malformed keys before they cause cryptic signing errors downstream.
+
+[See Full CHANGELOG](CHANGELOG.md#311---2026-02-19)
 
 ---
 
