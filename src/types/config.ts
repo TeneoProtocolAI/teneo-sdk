@@ -152,7 +152,10 @@ const SDKConfigBaseSchema = z.object({
 
   // Multi-network support (v2.3.0)
   network: z.string().optional(), // Network name (peaq, base, avalanche)
-  networkChainId: z.number().optional() // Or chain ID directly
+  networkChainId: z.number().optional(), // Or chain ID directly
+
+  // Auto-summon (v2.4.0)
+  autoSummon: z.boolean().optional() // Auto-add agents to room on "Agent not found"
 });
 
 // SDK Configuration schema with transform for backward compatibility
@@ -193,7 +196,7 @@ export const AuthenticationStateSchema = z.object({
   walletAddress: z.string().optional(),
   isWhitelisted: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
-  nftVerified: z.boolean().optional(),
+  nftVerified: z.union([z.boolean(), z.string()]).optional(),
   rooms: z.array(z.string()).optional(), // Room IDs for backward compatibility (deprecated)
   roomObjects: z.array(RoomInfoSchema).optional(), // Full room objects from auth (v2.0.0: uses RoomInfo)
   privateRoomId: z.string().optional(), // DEPRECATED: Single room ID (use privateRoomIds instead)
@@ -945,6 +948,24 @@ export class SDKConfigBuilder {
    */
   withNetworkChainId(chainId: number): this {
     this.config.networkChainId = z.number().parse(chainId);
+    return this;
+  }
+
+  /**
+   * Enables or disables auto-summon (v2.4.0).
+   * When enabled, the SDK automatically adds agents to the room if they are
+   * not present when a command is sent, then retries the command.
+   *
+   * @param enabled - Whether to enable auto-summon (default: false)
+   * @returns this builder for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withAutoSummon(true) // Auto-add agents to room when not found
+   * ```
+   */
+  withAutoSummon(enabled: boolean): this {
+    this.config.autoSummon = z.boolean().parse(enabled);
     return this;
   }
 

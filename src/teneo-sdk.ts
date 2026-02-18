@@ -167,7 +167,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
         if (typeof config.privateKey === "object" && "use" in config.privateKey) {
           this.secureKey = config.privateKey;
         } else {
-          this.secureKey = new SecurePrivateKey(config.privateKey as string);
+          // Ensure the private key has 0x prefix before encrypting (matches websocket-client normalization)
+          const pkStr = config.privateKey as string;
+          this.secureKey = new SecurePrivateKey(pkStr.startsWith("0x") ? pkStr : `0x${pkStr}`);
         }
       }
 
@@ -206,9 +208,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           wsUrl: this.config.wsUrl,
           paymentNetwork: this.config.paymentNetwork,
           paymentAsset: this.config.paymentAsset,
-          network: this.config.network // Network name from withNetwork()
+          network: this.config.network, // Network name from withNetwork()
+          autoSummon: this.config.autoSummon // Auto-summon (v2.4.0)
         }
       );
+      this.messages.setAgentRoomManager(this.agentRoom); // Enable auto-summon (v2.4.0)
 
       // NOTE: Payment client is set up in connect() after networks are initialized
 
@@ -2078,6 +2082,17 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.agentRoom.emit("agent_room:list_available_error", error);
       // Emit on SDK for external listeners
       this.emit("agent_room:list_available_error", error);
+    });
+
+    // Forward autosummon lifecycle events (v2.5.0)
+    this.wsClient.on("autosummon:start", (agentName, roomId) => {
+      this.emit("autosummon:start", agentName, roomId);
+    });
+    this.wsClient.on("autosummon:success", (agentName, agentId, roomId) => {
+      this.emit("autosummon:success", agentName, agentId, roomId);
+    });
+    this.wsClient.on("autosummon:failed", (agentName, roomId, reason) => {
+      this.emit("autosummon:failed", agentName, roomId, reason);
     });
 
     // Forward admin events from AdminManager
