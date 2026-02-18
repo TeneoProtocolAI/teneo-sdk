@@ -647,7 +647,7 @@ await sdk.connect();
 ```typescript
 // Just send a command — the agent doesn't need to be in your room
 const response = await sdk.sendDirectCommand({
-  agent: "coindeskfeed-001",
+  agent: "example-agent",
   command: "latest 2h",
   room: roomId
 }, true);
