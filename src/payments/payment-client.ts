@@ -243,6 +243,9 @@ export class PaymentClient {
       const settlementRouter = settlementData?.settlementRouter ?? network.settlementRouter;
       const hook = settlementData?.hook ?? network.transferHook;
 
+      // Total ERC-3009 value = agent price + facilitator fee (fee is added on top, not deducted)
+      const totalValueStr = (BigInt(amountStr) + BigInt(facilitatorFee)).toString();
+
       // Calculate commitment hash (becomes the EIP-3009 nonce)
       // This cryptographically binds all settlement parameters to the signature
       const commitment = keccak256(
@@ -268,7 +271,7 @@ export class PaymentClient {
             settlementRouter as Hex,
             asset as Hex,
             account.address,
-            BigInt(amountStr),
+            BigInt(totalValueStr),
             BigInt(validAfter),
             BigInt(validBefore),
             salt as Hex,
@@ -293,7 +296,7 @@ export class PaymentClient {
       const message = {
         from: account.address,
         to: settlementRouter as `0x${string}`, // Router receives funds first
-        value: BigInt(amountStr),
+        value: BigInt(totalValueStr),
         validAfter: BigInt(validAfter),
         validBefore: BigInt(validBefore),
         nonce: commitment // Commitment hash as nonce
@@ -313,7 +316,7 @@ export class PaymentClient {
         authorization: {
           from: account.address,
           to: settlementRouter, // Router address
-          value: amountStr,
+          value: totalValueStr,
           validAfter: validAfter.toString(),
           validBefore: validBefore.toString(),
           nonce: commitment // Commitment hash

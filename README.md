@@ -623,6 +623,71 @@ sdk.on("agent_room:list_available_error", (error) => {
 });
 ```
 
+### Auto-Summon
+
+When you send a command to an agent that isn't in your room yet, the SDK can automatically add it for you. No manual `addAgentToRoom()` call needed — just send your command and the SDK handles the rest.
+
+#### Setup
+
+```typescript
+const sdk = new TeneoSDK(
+  TeneoSDK.builder()
+    .withWebSocketUrl(process.env.TENEO_WS_URL!)
+    .withAuthentication(process.env.PRIVATE_KEY!)
+    .withAutoSummon(true)  // Enable auto-summon
+    .withNetwork("base")
+    .build()
+);
+
+await sdk.connect();
+```
+
+#### How It Works
+
+```typescript
+// Just send a command — the agent doesn't need to be in your room
+const response = await sdk.sendDirectCommand({
+  agent: "example-agent",
+  command: "latest 2h",
+  room: roomId
+}, true);
+
+// Behind the scenes:
+// 1. SDK checks if agent is in the room (instant cache lookup)
+// 2. If not -> automatically adds the agent to your room
+// 3. Sends your command to the agent
+// 4. Returns the response
+console.log(response.humanized);
+```
+
+#### Auto-Summon Events
+
+Track the auto-summon lifecycle to show loading states in your UI:
+
+```typescript
+// Agent is being added to the room
+sdk.on("autosummon:start", (agentName, roomId) => {
+  showLoadingState(`Adding ${agentName} to your room...`);
+});
+
+// Agent was successfully added — command is now being processed
+sdk.on("autosummon:success", (agentName, agentId, roomId) => {
+  showNotification(`${agentName} joined your room`);
+});
+
+// Agent could not be added (doesn't exist, is offline, etc.)
+sdk.on("autosummon:failed", (agentName, roomId, reason) => {
+  showError(`Could not add ${agentName}: ${reason}`);
+});
+```
+
+#### Behavior Notes
+
+- **No duplicates**: If the agent is already in the room, the SDK skips the summon and sends your command directly.
+- **Works with any message method**: Auto-summon triggers from both `sendDirectCommand()` and `sendMessage()` when the message targets an `@agent`.
+- **Graceful fallback**: If the local cache is empty (e.g., first connection), the SDK falls back to server-side detection — your command still works, just with a small extra round trip.
+- **Room ownership required**: Auto-summon only works in rooms you own, since adding agents requires owner permissions.
+
 ### Complete Example: Room Setup
 
 ```typescript

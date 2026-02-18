@@ -408,6 +408,11 @@ export interface SDKEvents {
     room?: string;
   }) => void;
 
+  // Autosummon lifecycle events (v2.5.0)
+  "autosummon:start": (agentName: string, roomId: string) => void;
+  "autosummon:success": (agentName: string, agentId: string, roomId: string) => void;
+  "autosummon:failed": (agentName: string, roomId: string, reason: string) => void;
+
   // Webhook events
   "webhook:sent": (payload: any, url: string) => void;
   "webhook:success": (response: any, url: string) => void;

@@ -20,7 +20,8 @@ import {
   TaskQuoteMessage,
   PricingInfo
 } from "../types";
-import { SDKEvents, SDKError, ValidationError, AgentResponse, PaymentError } from "../types/events";
+import { SDKEvents, SDKError, ValidationError, type AgentResponse, PaymentError, MessageError } from "../types/events";
+import type { AgentRoomManager } from "./agent-room-manager";
 import { ErrorCode } from "../types/error-codes";
 import { TIMEOUTS } from "../constants";
 import {
@@ -88,6 +89,7 @@ export interface MessageRouterConfig {
   paymentNetwork?: string; // CAIP-2 format (e.g., "eip155:3338")
   paymentAsset?: string;
   network?: string; // Network name (e.g., "peaq", "base", "avalanche")
+  autoSummon?: boolean; // Auto-add agents to room on "Agent not found" (v2.4.0)
 }
 
 export class MessageRouter extends EventEmitter<SDKEvents> {
@@ -108,6 +110,10 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private readonly paymentNetwork: string; // CAIP-2 format if set
   private readonly paymentAsset: string;
   private readonly networkName: string; // Network name (peaq, base, avalanche)
+
+  // Auto-summon (v2.4.0)
+  private readonly autoSummon: boolean;
+  private agentRoomManager: AgentRoomManager | null = null;
 
   constructor(
     wsClient: WebSocketClient,
@@ -135,6 +141,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.paymentNetwork = config.paymentNetwork ?? "";
     this.paymentAsset = config.paymentAsset ?? "";
     this.networkName = config.network ?? "";
+    this.autoSummon = config.autoSummon ?? false;
 
     this.setupEventForwarding();
   }
@@ -185,6 +192,13 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       network: this.getResolvedPaymentNetwork(),
       asset: this.getResolvedPaymentAsset()
     });
+  }
+
+  /**
+   * Sets the agent room manager for auto-summon functionality (v2.4.0).
+   */
+  public setAgentRoomManager(manager: AgentRoomManager): void {
+    this.agentRoomManager = manager;
   }
 
   /**
@@ -359,6 +373,16 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * Returns the quote data for manual confirmation.
    */
   public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
+    return this._requestQuoteInternal(content, room, networkOverride, false);
+  }
+
+  /**
+   * Internal quote request with error racing and auto-summon support.
+   * @param isRetry - true on auto-summon retry to prevent infinite loops
+   */
+  private async _requestQuoteInternal(
+    content: string, room: string, networkOverride: string | number | undefined, isRetry: boolean
+  ): Promise<QuoteResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
     }
@@ -366,14 +390,76 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
     const message = createRequestTask(content, room, resolvedNetwork);
-    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork });
+    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork, isRetry });
+
+    // Pre-flight autosummon: check cache before sending to avoid reject-retry cycle
+    if (this.autoSummon && this.agentRoomManager && !isRetry) {
+      const match = content.match(/^@(\S+)/);
+      if (match) {
+        const agentName = match[1];
+        const inRoom = this.agentRoomManager.checkAgentInRoom(room, agentName);
+        if (inRoom === false) {
+          this.logger.info("MessageRouter: Pre-flight autosummon", { agentName, room });
+          try {
+            await this.preFlightAutoSummon(agentName, room);
+          } catch (e) {
+            this.logger.debug("MessageRouter: Pre-flight failed, falling back", { error: (e as Error).message });
+          }
+        }
+      }
+    }
 
     await this.wsClient.sendMessage(message);
 
-    const quote = await waitForEvent<TaskQuoteMessage>(this.wsClient, "quote:received", {
+    // Race quote:received against error events to detect "Agent not found" quickly.
+    // The backend may signal "agent not in room" via:
+    //   1. An "error" event with "agent ... not found"
+    //   2. An "agent:response" from the coordinator with content like
+    //      "agent X does not have access to room Y"
+    // We race all three to catch whichever arrives first.
+    const quotePromise = waitForEvent<TaskQuoteMessage>(this.wsClient, "quote:received", {
       timeout: this.quoteTimeout,
       timeoutMessage: `Quote request timed out after ${this.quoteTimeout}ms`
     });
+
+    const errorPromise = waitForEvent<MessageError>(this.wsClient, "error", {
+      timeout: this.quoteTimeout + 1000,
+      filter: (err: MessageError) => {
+        const msg = (err.message || "").toLowerCase();
+        return this.isAgentAccessErrorMessage(msg);
+      }
+    });
+
+    // Also race against agent:response that contains an access-denied error from the coordinator
+    const agentErrorPromise = waitForEvent<AgentResponse>(this.wsClient, "agent:response", {
+      timeout: this.quoteTimeout + 1000,
+      filter: (resp: AgentResponse) => {
+        const msg = (resp.content || "").toLowerCase();
+        return this.isAgentAccessErrorMessage(msg);
+      }
+    });
+
+    let quote: TaskQuoteMessage;
+    try {
+      quote = await Promise.race([
+        quotePromise,
+        errorPromise.then((err) => { throw err; }),
+        agentErrorPromise.then((resp) => {
+          throw new SDKError(resp.content, ErrorCode.AGENT_NOT_IN_ROOM);
+        })
+      ]);
+    } catch (error) {
+      if (this.isAgentNotFoundError(error) && !isRetry) {
+        if (this.autoSummon) {
+          return this.handleAutoSummon(content, room, networkOverride);
+        }
+        throw new SDKError(
+          "Agent not found in room. Enable autoSummon to automatically add agents.",
+          ErrorCode.AGENT_NOT_IN_ROOM
+        );
+      }
+      throw error;
+    }
 
     const result: QuoteResult = {
       taskId: quote.data.task_id,
@@ -403,6 +489,100 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     this.pendingQuotes.set(result.taskId, result);
     return result;
+  }
+
+  /**
+   * Pre-flight autosummon: adds agent to room before sending the command.
+   * Called when cache confirms agent is NOT in room, avoiding the reject-retry cycle.
+   */
+  private async preFlightAutoSummon(agentName: string, room: string): Promise<void> {
+    if (!this.agentRoomManager) {
+      throw new SDKError("Auto-summon requires AgentRoomManager", ErrorCode.AUTOSUMMON_FAILED);
+    }
+
+    this.wsClient.emit("autosummon:start", agentName, room);
+
+    const available = await this.agentRoomManager.listAvailableAgents(room, false);
+    const agent = available.find(
+      (a) => a.agent_id === agentName || a.agent_name === agentName
+    );
+
+    if (!agent) {
+      this.wsClient.emit("autosummon:failed", agentName, room, "Agent not found or offline");
+      throw new SDKError(
+        `Agent '${agentName}' does not exist or is offline`,
+        ErrorCode.AGENT_NOT_FOUND
+      );
+    }
+
+    await this.agentRoomManager.addAgentToRoom(room, agent.agent_id);
+    this.wsClient.emit("autosummon:success", agentName, agent.agent_id, room);
+    this.logger.info("MessageRouter: Pre-flight autosummon succeeded", { agentId: agent.agent_id });
+  }
+
+  /**
+   * Handles auto-summon: finds the agent, adds it to the room, and retries the quote.
+   * Fallback path triggered by coordinator reject when pre-flight was skipped (cache empty).
+   */
+  private async handleAutoSummon(
+    content: string, room: string, networkOverride?: string | number
+  ): Promise<QuoteResult> {
+    if (!this.agentRoomManager) {
+      throw new SDKError("Auto-summon requires AgentRoomManager", ErrorCode.AUTOSUMMON_FAILED);
+    }
+
+    const match = content.match(/^@(\S+)/);
+    if (!match) {
+      throw new SDKError("Cannot extract agent name for auto-summon", ErrorCode.AUTOSUMMON_FAILED);
+    }
+    const agentName = match[1];
+
+    this.logger.info("MessageRouter: Auto-summoning agent", { agentName, room });
+    this.wsClient.emit("autosummon:start", agentName, room);
+
+    const available = await this.agentRoomManager.listAvailableAgents(room, false);
+    const agent = available.find(
+      (a) => a.agent_id === agentName || a.agent_name === agentName
+    );
+
+    if (!agent) {
+      this.wsClient.emit("autosummon:failed", agentName, room, "Agent not found or offline");
+      throw new SDKError(
+        `Agent '${agentName}' does not exist or is offline`,
+        ErrorCode.AGENT_NOT_FOUND
+      );
+    }
+
+    await this.agentRoomManager.addAgentToRoom(room, agent.agent_id);
+    this.wsClient.emit("autosummon:success", agentName, agent.agent_id, room);
+    this.logger.info("MessageRouter: Agent auto-summoned, retrying", { agentId: agent.agent_id });
+
+    return this._requestQuoteInternal(content, room, networkOverride, true);
+  }
+
+  /**
+   * Checks if a message string indicates an agent-access error from the backend.
+   * Matches patterns like:
+   *   - "agent X not found"
+   *   - "agent X does not have access to room Y"
+   *   - "Agent not found. Check the agent name..."
+   */
+  private isAgentAccessErrorMessage(msg: string): boolean {
+    if (!msg.includes("agent")) return false;
+    return (
+      msg.includes("not found") ||
+      msg.includes("does not have access") ||
+      msg.includes("not in room") ||
+      msg.includes("no access")
+    );
+  }
+
+  /**
+   * Checks if an error is an "Agent not found / not in room" error from the backend.
+   */
+  private isAgentNotFoundError(error: unknown): boolean {
+    const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    return this.isAgentAccessErrorMessage(msg);
   }
 
   /**
