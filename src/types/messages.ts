@@ -186,7 +186,11 @@ export const CommandSchema = z.object({
   // Extended fields from server
   hasVariants: z.boolean().optional(),
   variants: z.array(z.any()).optional(),
-  parameters: z.array(z.any()).optional()
+  parameters: z.array(z.any()).optional(),
+  // Command validation fields
+  strictArg: z.boolean().optional(),
+  minArgs: z.number().optional(),
+  maxArgs: z.number().optional()
 });
 
 export const RoomSchema = z.object({
@@ -232,7 +236,8 @@ export const AgentSchema = z
     nlp_fallback: stringToBoolean.optional(), // server sends "nlp_fallback"
     nlpFallback: stringToBoolean.optional(), // SDK alias
     webhookUrl: z.string().url().optional(),
-    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional()
+    categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional(),
+    review_status: z.enum(["private", "in_review", "public", "declined"]).optional()
   })
   .transform((data) => ({
     ...data,
