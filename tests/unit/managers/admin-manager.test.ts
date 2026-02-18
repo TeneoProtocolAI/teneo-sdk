@@ -33,8 +33,8 @@ describe("AdminManager", () => {
   describe("listAllAgents", () => {
     const mockAgentsResponse = {
       agents: [
-        { agent_name: "Agent A", is_verified: true, is_banned: false },
-        { agent_name: "Agent B", is_verified: false, is_banned: false }
+        { agent_name: "Agent A", review_status: "public", is_banned: false },
+        { agent_name: "Agent B", review_status: "private", is_banned: false }
       ],
       total: 2,
       offset: 0,

@@ -264,7 +264,7 @@ export {
 /**
  * SDK version string
  */
-export const VERSION = "3.0.0";
+export const VERSION = "3.0.1";
 
 /**
  * Convenience type re-exports for message operations

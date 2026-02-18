@@ -112,7 +112,7 @@ export class AdminManager extends EventEmitter<AdminManagerEvents> {
    *   const result = await sdk.admin.listAllAgents({ limit: 20 });
    *   console.log(`Found ${result.total} agents`);
    *   result.agents.forEach(agent => {
-   *     console.log(`${agent.agent_name}: verified=${agent.is_verified}, banned=${agent.is_banned}`);
+   *     console.log(`${agent.agent_name}: status=${agent.review_status}, banned=${agent.is_banned}`);
    *   });
    * }
    * ```
