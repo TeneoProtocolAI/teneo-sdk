@@ -168,8 +168,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           this.secureKey = config.privateKey;
         } else {
           // Ensure the private key has 0x prefix before encrypting (matches websocket-client normalization)
-          const pkStr = config.privateKey as string;
-          this.secureKey = new SecurePrivateKey(pkStr.startsWith("0x") ? pkStr : `0x${pkStr}`);
+          const pkStr = (config.privateKey as string).trim();
+          const normalized = pkStr.startsWith("0x") ? pkStr : `0x${pkStr}`;
+          if (normalized.length < 66) {
+            throw new Error("Invalid private key: expected 32 bytes (64 hex characters)");
+          }
+          this.secureKey = new SecurePrivateKey(normalized);
         }
       }
 
