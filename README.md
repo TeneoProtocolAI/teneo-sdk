@@ -831,8 +831,8 @@ console.log(NETWORKS); // {}
 await sdk.connect();
 
 // After connect: NETWORKS populated with backend configuration
-console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...} }
-const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche"]
+console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...}, "x-layer": {...} }
+const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche", "x-layer"]
 ```
 
 **Key Features:**
@@ -858,7 +858,7 @@ await sdk.connect();
 
 // Get all supported networks (dynamically loaded from backend)
 const networks = getSupportedNetworks();
-console.log(networks); // e.g., ["peaq", "base", "avalanche"]
+console.log(networks); // e.g., ["peaq", "base", "avalanche", "x-layer"]
 
 // Get network by name
 const baseNetwork = getNetwork("base");
@@ -907,6 +907,10 @@ These networks are currently supported (fetched dynamically from backend):
 **Avalanche Mainnet (chainId: 43114)**
 - High-throughput blockchain
 - Sub-second finality
+
+**X Layer Mainnet (chainId: 196)**
+- OKX's Layer 2 network
+- Low gas fees (OKB native token)
 
 > **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
 
