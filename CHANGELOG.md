@@ -5,6 +5,27 @@ All notable changes to the Teneo Protocol SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-02-19
+
+### ✨ Pre-Flight Auto-Summon
+
+The SDK now automatically adds missing agents to your room before sending commands, eliminating coordinator reject→retry cycles.
+
+- **Pre-flight cache check**: Before sending a command, the SDK checks if the target agent is already in the room
+- **Automatic addition**: If the agent is missing, it's added to the room before the command is sent
+- **Lifecycle events**: `autosummon:start`, `autosummon:success`, `autosummon:failed` for full observability
+- **Fallback path**: If pre-flight fails or cache is empty, falls back to coordinator-triggered auto-summon
+- **Configuration**: Enable with `autoSummon: true` or `.withAutoSummon(true)` in the builder
+
+### 🔐 Private Key Validation
+
+- Constructor now validates private key format (64 hex characters / 32 bytes)
+- Catches empty strings, malformed keys, and too-short keys immediately
+- Prevents cryptic signing errors downstream
+
+
+---
+
 ## [3.0.0] - 2026-01-28
 
 *Built on top of v2.3.0 multi-network support*
