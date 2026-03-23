@@ -1251,6 +1251,117 @@ Your App                    Teneo Backend                 Agent
 
 ---
 
+## 🔗 Wallet Transaction Flow (On-Chain Actions)
+
+Some agents (e.g., Squid Router for cross-chain swaps) need your wallet to sign and submit on-chain transactions. The SDK handles this through a simple event-driven flow.
+
+### How It Works
+
+1. **Agent requests a transaction** — the SDK emits a `wallet:tx_requested` event with the transaction details
+2. **Your app signs and submits** — using your wallet/signer of choice (ethers, viem, web3.js, etc.)
+3. **Your app reports the result** — call `sendTxResult()` so the agent knows what happened
+4. **Agent may request more transactions** — for multi-step operations (e.g., approve + swap), the agent sends additional `trigger_wallet_tx` messages after each result
+
+```
+Your App                    Teneo Backend                 Agent
+   │                             │                          │
+   │                             │<── trigger_wallet_tx ────│  (e.g., "approve USDC")
+   │<── wallet:tx_requested ─────│                          │
+   │                             │                          │
+   │  [Sign & submit tx]         │                          │
+   │                             │                          │
+   │──── tx_result ─────────────>│──── tx_result ──────────>│
+   │    (confirmed + txHash)     │                          │
+   │                             │                          │
+   │                             │<── trigger_wallet_tx ────│  (e.g., "execute swap")
+   │<── wallet:tx_requested ─────│                          │
+   │                             │                          │
+   │  [Sign & submit tx]         │                          │
+   │                             │                          │
+   │──── tx_result ─────────────>│──── tx_result ──────────>│
+   │                             │                          │
+   │<───── task_response ────────│<────── response ─────────│
+   └                             └                          └
+```
+
+### Basic Usage
+
+```typescript
+sdk.on("wallet:tx_requested", async (data) => {
+  console.log(`Transaction requested by ${data.agentName}: ${data.description}`);
+  console.log(`Chain: ${data.tx.chainId}, To: ${data.tx.to}, Value: ${data.tx.value}`);
+
+  try {
+    // Sign and submit using your preferred library
+    const txHash = await wallet.sendTransaction({
+      to: data.tx.to,
+      value: data.tx.value,
+      data: data.tx.data,
+      chainId: data.tx.chainId,
+    });
+
+    // Wait for confirmation
+    const receipt = await provider.waitForTransaction(txHash);
+
+    // Report success — include data.room so the server can route it back to the agent
+    await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room);
+  } catch (err) {
+    // Report failure
+    await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room);
+  }
+});
+```
+
+### Rejecting a Transaction
+
+If the transaction is optional (`data.optional === true`) or you don't want to sign:
+
+```typescript
+await sdk.sendTxResult(data.taskId, "rejected", undefined, undefined, data.room);
+```
+
+### Event: `wallet:tx_requested`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `taskId` | `string` | Task identifier — pass this back in `sendTxResult()` |
+| `agentName` | `string?` | Name of the agent requesting the transaction |
+| `tx.to` | `string` | Target contract/address |
+| `tx.value` | `string` | Value in wei |
+| `tx.data` | `string?` | Encoded calldata (for contract interactions) |
+| `tx.chainId` | `number` | Target chain (e.g., `8453` for Base) |
+| `description` | `string?` | Human-readable description of the transaction |
+| `optional` | `boolean` | Whether the user can skip this transaction |
+| `room` | `string?` | Room ID — **must** be passed back in `sendTxResult()` for routing |
+
+### Method: `sendTxResult()`
+
+```typescript
+await sdk.sendTxResult(taskId, status, txHash?, error?, room?)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `taskId` | `string` | The `taskId` from the `wallet:tx_requested` event |
+| `status` | `"confirmed" \| "rejected" \| "failed"` | Transaction outcome |
+| `txHash` | `string?` | On-chain transaction hash (required for `"confirmed"`) |
+| `error` | `string?` | Error message (for `"failed"` status) |
+| `room` | `string?` | Room ID from the `wallet:tx_requested` event (required for routing) |
+
+> **Important:** Always pass `data.room` from the event back into `sendTxResult()`. The server uses this to route the result to the correct agent. Without it, the agent won't receive your response and multi-step transactions will stall.
+
+### Multi-Step Transactions
+
+Some operations require multiple sequential transactions (e.g., ERC-20 approve followed by a swap). The agent handles sequencing — your code just needs to keep listening:
+
+1. Agent sends `trigger_wallet_tx` #1 (approve) → you sign → you call `sendTxResult()`
+2. Agent receives the result, then sends `trigger_wallet_tx` #2 (swap) → you sign → you call `sendTxResult()`
+3. Agent sends `task_response` with the final outcome
+
+Your `wallet:tx_requested` listener stays active for the entire lifecycle. Each transaction arrives as a separate event with the **same `taskId`** but different `tx` data. The task is only resolved when the agent sends the final `task_response`.
+
+---
+
 ## 🎨 Event System
 
 The SDK is fully event-driven. Subscribe to what matters:
@@ -1302,6 +1413,16 @@ sdk.on("room:subscribed", (data) => {
 
 sdk.on("room:unsubscribed", (data) => {
   console.log(`👋 Left room: ${data.roomId}`);
+});
+```
+
+### Wallet Transaction Events
+
+```typescript
+sdk.on("wallet:tx_requested", async (data) => {
+  console.log(`🔗 ${data.agentName} requests tx on chain ${data.tx.chainId}`);
+  console.log(`   ${data.description}`);
+  // See "Wallet Transaction Flow" section for full handling
 });
 ```
 
