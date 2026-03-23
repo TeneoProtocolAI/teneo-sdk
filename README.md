@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-3.1.2-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.1.3-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -831,8 +831,8 @@ console.log(NETWORKS); // {}
 await sdk.connect();
 
 // After connect: NETWORKS populated with backend configuration
-console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...}, "x-layer": {...} }
-const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche", "x-layer"]
+console.log(NETWORKS); // { peaq: {...}, base: {...}, avalanche: {...} }
+const networks = getSupportedNetworks(); // ["peaq", "base", "avalanche"]
 ```
 
 **Key Features:**
@@ -858,7 +858,7 @@ await sdk.connect();
 
 // Get all supported networks (dynamically loaded from backend)
 const networks = getSupportedNetworks();
-console.log(networks); // e.g., ["peaq", "base", "avalanche", "x-layer"]
+console.log(networks); // e.g., ["peaq", "base", "avalanche"]
 
 // Get network by name
 const baseNetwork = getNetwork("base");
@@ -907,10 +907,6 @@ These networks are currently supported (fetched dynamically from backend):
 **Avalanche Mainnet (chainId: 43114)**
 - High-throughput blockchain
 - Sub-second finality
-
-**X Layer Mainnet (chainId: 196)**
-- OKX's Layer 2 network
-- Low gas fees (OKB native token)
 
 > **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
 
@@ -1303,11 +1299,11 @@ sdk.on("wallet:tx_requested", async (data) => {
     // Wait for confirmation
     const receipt = await provider.waitForTransaction(txHash);
 
-    // Report success — include data.room so the server can route it back to the agent
-    await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room);
+    // Report success — include room and chainId for proper routing and tx hash formatting
+    await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room, data.tx.chainId);
   } catch (err) {
     // Report failure
-    await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room);
+    await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room, data.tx.chainId);
   }
 });
 ```
@@ -1317,7 +1313,7 @@ sdk.on("wallet:tx_requested", async (data) => {
 If the transaction is optional (`data.optional === true`) or you don't want to sign:
 
 ```typescript
-await sdk.sendTxResult(data.taskId, "rejected", undefined, undefined, data.room);
+await sdk.sendTxResult(data.taskId, "rejected", undefined, undefined, data.room, data.tx.chainId);
 ```
 
 ### Event: `wallet:tx_requested`
@@ -1337,7 +1333,7 @@ await sdk.sendTxResult(data.taskId, "rejected", undefined, undefined, data.room)
 ### Method: `sendTxResult()`
 
 ```typescript
-await sdk.sendTxResult(taskId, status, txHash?, error?, room?)
+await sdk.sendTxResult(taskId, status, txHash?, error?, room?, chainId?)
 ```
 
 | Parameter | Type | Description |
@@ -1347,8 +1343,9 @@ await sdk.sendTxResult(taskId, status, txHash?, error?, room?)
 | `txHash` | `string?` | On-chain transaction hash (required for `"confirmed"`) |
 | `error` | `string?` | Error message (for `"failed"` status) |
 | `room` | `string?` | Room ID from the `wallet:tx_requested` event (required for routing) |
+| `chainId` | `number?` | Chain ID from `data.tx.chainId` — formats txHash as `hash\|network` (e.g., `0xabc...\|base`) |
 
-> **Important:** Always pass `data.room` from the event back into `sendTxResult()`. The server uses this to route the result to the correct agent. Without it, the agent won't receive your response and multi-step transactions will stall.
+> **Important:** Always pass `data.room` and `data.tx.chainId` from the event back into `sendTxResult()`. The server uses `room` to route the result to the correct agent, and `chainId` formats the tx hash to match the expected format. Without these, the agent may not receive your response correctly.
 
 ### Multi-Step Transactions
 

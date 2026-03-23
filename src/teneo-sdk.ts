@@ -22,6 +22,7 @@ import {
   type HealthStatus
 } from "./types";
 import { SDKEvents, SDKError } from "./types/events";
+import { CHAIN_ID_TO_NETWORK } from "./payments/networks";
 import { ErrorCode } from "./types/error-codes";
 import { WebSocketClient } from "./core/websocket-client";
 import { WebhookHandler } from "./handlers/webhook-handler";
@@ -1339,11 +1340,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * Used in response to a "wallet:tx_requested" event after the user
    * has confirmed, rejected, or encountered a failure with the transaction.
    *
+   * The txHash is automatically formatted with the network name (e.g., `0xabc...|base`)
+   * when a chainId is provided, matching the format the UI uses.
+   *
    * @param taskId - The task ID from the wallet:tx_requested event
    * @param status - Transaction result: "confirmed", "rejected", or "failed"
    * @param txHash - The on-chain transaction hash (required for "confirmed" status)
    * @param error - Error message (optional, for "failed" status)
    * @param room - The room ID from the wallet:tx_requested event (required for routing)
+   * @param chainId - The chain ID from data.tx.chainId (used to format txHash with network name)
    * @throws {SDKError} If the SDK has been destroyed or not connected
    *
    * @example
@@ -1351,9 +1356,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * sdk.on("wallet:tx_requested", async (data) => {
    *   try {
    *     const txHash = await wallet.sendTransaction(data.tx);
-   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room);
+   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room, data.tx.chainId);
    *   } catch (err) {
-   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room);
+   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room, data.tx.chainId);
    *   }
    * });
    * ```
@@ -1363,7 +1368,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     status: "confirmed" | "rejected" | "failed",
     txHash?: string,
     error?: string,
-    room?: string
+    room?: string,
+    chainId?: number
   ): Promise<void> {
     if (this.isDestroyed) {
       throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
@@ -1373,6 +1379,15 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
+    // Format txHash with network name (e.g., "0xabc...|base") to match UI format
+    let formattedTxHash = txHash;
+    if (txHash && chainId) {
+      const networkName = CHAIN_ID_TO_NETWORK[chainId];
+      if (networkName) {
+        formattedTxHash = `${txHash}|${networkName}`;
+      }
+    }
+
     const message = {
       type: "tx_result" as const,
       ...(room && { room }),
@@ -1380,7 +1395,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       data: {
         task_id: taskId,
         status,
-        ...(txHash && { tx_hash: txHash }),
+        ...(formattedTxHash && { tx_hash: formattedTxHash }),
         ...(error && { error })
       }
     };
