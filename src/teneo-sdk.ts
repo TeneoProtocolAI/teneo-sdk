@@ -1343,6 +1343,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * @param status - Transaction result: "confirmed", "rejected", or "failed"
    * @param txHash - The on-chain transaction hash (required for "confirmed" status)
    * @param error - Error message (optional, for "failed" status)
+   * @param room - The room ID from the wallet:tx_requested event (required for routing)
    * @throws {SDKError} If the SDK has been destroyed or not connected
    *
    * @example
@@ -1350,9 +1351,9 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * sdk.on("wallet:tx_requested", async (data) => {
    *   try {
    *     const txHash = await wallet.sendTransaction(data.tx);
-   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash);
+   *     await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room);
    *   } catch (err) {
-   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message);
+   *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room);
    *   }
    * });
    * ```
@@ -1361,7 +1362,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     taskId: string,
     status: "confirmed" | "rejected" | "failed",
     txHash?: string,
-    error?: string
+    error?: string,
+    room?: string
   ): Promise<void> {
     if (this.isDestroyed) {
       throw new SDKError("SDK has been destroyed", ErrorCode.SDK_DESTROYED, null, false);
@@ -1373,6 +1375,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
     const message = {
       type: "tx_result" as const,
+      ...(room && { room }),
+      timestamp: new Date().toISOString(),
       data: {
         task_id: taskId,
         status,

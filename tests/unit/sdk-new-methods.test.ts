@@ -105,6 +105,7 @@ describe("TeneoSDK New Methods", () => {
 
       expect(sendMessageSpy).toHaveBeenCalledWith({
         type: "tx_result",
+        timestamp: expect.any(String),
         data: {
           task_id: "task-123",
           status: "confirmed",
@@ -118,6 +119,7 @@ describe("TeneoSDK New Methods", () => {
 
       expect(sendMessageSpy).toHaveBeenCalledWith({
         type: "tx_result",
+        timestamp: expect.any(String),
         data: {
           task_id: "task-456",
           status: "failed",
@@ -131,11 +133,34 @@ describe("TeneoSDK New Methods", () => {
 
       expect(sendMessageSpy).toHaveBeenCalledWith({
         type: "tx_result",
+        timestamp: expect.any(String),
         data: {
           task_id: "task-789",
           status: "rejected"
         }
       });
+    });
+
+    it("should include room when provided", async () => {
+      await sdk.sendTxResult("task-100", "confirmed", "0xhash", undefined, "room-abc");
+
+      expect(sendMessageSpy).toHaveBeenCalledWith({
+        type: "tx_result",
+        room: "room-abc",
+        timestamp: expect.any(String),
+        data: {
+          task_id: "task-100",
+          status: "confirmed",
+          tx_hash: "0xhash"
+        }
+      });
+    });
+
+    it("should not include room when not provided", async () => {
+      await sdk.sendTxResult("task-100", "rejected");
+
+      const sentMessage = sendMessageSpy.mock.calls[0][0];
+      expect(sentMessage).not.toHaveProperty("room");
     });
 
     it("should not include tx_hash when not provided", async () => {
@@ -157,6 +182,7 @@ describe("TeneoSDK New Methods", () => {
 
       expect(sendMessageSpy).toHaveBeenCalledWith({
         type: "tx_result",
+        timestamp: expect.any(String),
         data: {
           task_id: "task-200",
           status: "failed",
