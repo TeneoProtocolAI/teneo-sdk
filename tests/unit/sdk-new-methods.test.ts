@@ -7,6 +7,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TeneoSDK } from "../../src/teneo-sdk";
 import { ErrorCode } from "../../src/types/error-codes";
 
+// Mock the networks module so we can control CHAIN_ID_TO_NETWORK
+vi.mock("../../src/payments/networks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/payments/networks")>();
+  return {
+    ...actual,
+    CHAIN_ID_TO_NETWORK: {} as Record<number, string>,
+  };
+});
+
+import { CHAIN_ID_TO_NETWORK } from "../../src/payments/networks";
+
 describe("TeneoSDK New Methods", () => {
   let sdk: TeneoSDK;
   let sendMessageSpy: ReturnType<typeof vi.fn>;
@@ -154,6 +165,37 @@ describe("TeneoSDK New Methods", () => {
           tx_hash: "0xhash"
         }
       });
+    });
+
+    it("should format txHash with network name when chainId is provided", async () => {
+      // Populate the chain ID mapping like fetchNetworkConfigs would
+      const chainMap = CHAIN_ID_TO_NETWORK as Record<number, string>;
+      chainMap[8453] = "base";
+      chainMap[43114] = "avalanche";
+
+      await sdk.sendTxResult("task-100", "confirmed", "0xabc", undefined, "room-abc", 8453);
+
+      expect(sendMessageSpy).toHaveBeenCalledWith({
+        type: "tx_result",
+        room: "room-abc",
+        timestamp: expect.any(String),
+        data: {
+          task_id: "task-100",
+          status: "confirmed",
+          tx_hash: "0xabc|base"
+        }
+      });
+
+      // Cleanup
+      delete chainMap[8453];
+      delete chainMap[43114];
+    });
+
+    it("should send raw txHash when chainId is unknown", async () => {
+      await sdk.sendTxResult("task-100", "confirmed", "0xabc", undefined, "room-abc", 99999);
+
+      const sentMessage = sendMessageSpy.mock.calls[0][0];
+      expect(sentMessage.data.tx_hash).toBe("0xabc");
     });
 
     it("should not include room when not provided", async () => {
