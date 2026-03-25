@@ -19,6 +19,7 @@ import {
   BaseMessageSchema,
   createRequestChallenge,
   createCheckCachedAuth,
+  createApiKeyAuth,
   createPing,
   safeParseMessage,
   Logger
@@ -606,7 +607,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Authenticate with the server
    */
   private async authenticate(): Promise<void> {
-    if (!this.account && !this.config.walletAddress) {
+    if (!this.account && !this.config.walletAddress && !this.config.apiKey) {
       this.logger.info("No authentication configured, continuing without auth");
       this.updateAuthState({ authenticated: false });
       this.emit("ready");
@@ -614,6 +615,22 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     }
 
     try {
+      // API-key auth: single message, no challenge-response needed
+      if (this.config.apiKey) {
+        const address = this.account?.address || this.config.walletAddress;
+        if (!address) {
+          throw new AuthenticationError("walletAddress is required for API-key authentication");
+        }
+
+        this.logger.debug("Authenticating with API key");
+        await this.sendMessage(
+          createApiKeyAuth(address, this.config.apiKey, this.config.clientType || "user")
+        );
+
+        await this.waitForAuthCompletion();
+        return;
+      }
+
       // Check for cached authentication first
       if (this.config.walletAddress) {
         const sessionToken = this.authState.sessionToken;
@@ -631,7 +648,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
         }
       }
 
-      // Request challenge
+      // Challenge-response auth (requires privateKey)
       this.logger.debug("Requesting authentication challenge");
       await this.sendMessage(
         createRequestChallenge(
@@ -641,47 +658,51 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       );
 
       // Wait for authentication to complete
-      await new Promise<void>((resolve, reject) => {
-        let timeout: NodeJS.Timeout | undefined;
-        const pollTimeouts: NodeJS.Timeout[] = [];
-
-        // Centralized cleanup function - guarantees cleanup in all scenarios
-        const cleanup = () => {
-          if (timeout) {
-            clearTimeout(timeout);
-            timeout = undefined;
-          }
-          // Clear all polling timeouts
-          pollTimeouts.forEach((t) => clearTimeout(t));
-          pollTimeouts.length = 0;
-        };
-
-        // Set main authentication timeout
-        timeout = setTimeout(() => {
-          cleanup();
-          reject(new AuthenticationError("Authentication timeout"));
-        }, TIMEOUTS.AUTH_TIMEOUT);
-
-        const checkAuth = () => {
-          if (this.authState.authenticated) {
-            cleanup();
-            resolve();
-          } else if (this.connectionState.lastError) {
-            cleanup();
-            reject(this.connectionState.lastError);
-          } else {
-            // Store polling timeout for cleanup
-            const pollTimeout = setTimeout(checkAuth, TIMEOUTS.AUTH_POLL_INTERVAL);
-            pollTimeouts.push(pollTimeout);
-          }
-        };
-
-        checkAuth();
-      });
+      await this.waitForAuthCompletion();
     } catch (error) {
       this.logger.error("Authentication failed", error);
       throw new AuthenticationError("Failed to authenticate", error);
     }
+  }
+
+  /**
+   * Waits for authentication state to become authenticated.
+   * Used by both API-key and challenge-response auth flows.
+   */
+  private async waitForAuthCompletion(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      let timeout: NodeJS.Timeout | undefined;
+      const pollTimeouts: NodeJS.Timeout[] = [];
+
+      const cleanup = () => {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = undefined;
+        }
+        pollTimeouts.forEach((t) => clearTimeout(t));
+        pollTimeouts.length = 0;
+      };
+
+      timeout = setTimeout(() => {
+        cleanup();
+        reject(new AuthenticationError("Authentication timeout"));
+      }, TIMEOUTS.AUTH_TIMEOUT);
+
+      const checkAuth = () => {
+        if (this.authState.authenticated) {
+          cleanup();
+          resolve();
+        } else if (this.connectionState.lastError) {
+          cleanup();
+          reject(this.connectionState.lastError);
+        } else {
+          const pollTimeout = setTimeout(checkAuth, TIMEOUTS.AUTH_POLL_INTERVAL);
+          pollTimeouts.push(pollTimeout);
+        }
+      };
+
+      checkAuth();
+    });
   }
 
   /**

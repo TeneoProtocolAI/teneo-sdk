@@ -86,6 +86,7 @@ const SDKConfigBaseSchema = z.object({
   // Authentication
   privateKey: PrivateKeySchema.optional(),
   walletAddress: z.string().optional(),
+  apiKey: z.string().optional(), // API key for session-key auth & payment (no privateKey needed)
 
   // Client identification
   clientType: ClientTypeSchema.optional(),
@@ -426,6 +427,28 @@ export class SDKConfigBuilder {
    */
   withAuthentication(privateKey: string | SecurePrivateKey, walletAddress?: string): this {
     this.config.privateKey = PrivateKeySchema.parse(privateKey);
+    if (walletAddress) {
+      this.config.walletAddress = z.string().parse(walletAddress);
+    }
+    return this;
+  }
+
+  /**
+   * Sets the API key for session-key-based authentication and payment.
+   * When set, the SDK authenticates with the API key directly (no challenge-response)
+   * and uses it for task confirmations instead of x402 payment signing.
+   *
+   * @param apiKey - API key string (e.g., 'sk_live_...')
+   * @param walletAddress - Wallet address associated with the API key
+   * @returns this builder for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withApiKey('sk_live_kQp3x...', '0xYourWalletAddress')
+   * ```
+   */
+  withApiKey(apiKey: string, walletAddress?: string): this {
+    this.config.apiKey = z.string().min(1).parse(apiKey);
     if (walletAddress) {
       this.config.walletAddress = z.string().parse(walletAddress);
     }
