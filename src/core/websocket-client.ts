@@ -36,7 +36,7 @@ import { TIMEOUTS, RETRY, LIMITS } from "../constants";
 import { MessageHandlerRegistry } from "../handlers/message-handler-registry";
 import { getDefaultHandlers } from "../handlers/message-handlers";
 import { HandlerContext } from "../handlers/message-handlers/types";
-import { createPinoLogger } from "../utils/logger";
+import { createConsoleLogger } from "../utils/logger";
 import { TokenBucketRateLimiter } from "../utils/rate-limiter";
 import { SignatureVerifier } from "../utils/signature-verifier";
 import { SecurePrivateKey } from "../utils/secure-private-key";
@@ -966,10 +966,10 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Create default logger using pino
+   * Create default console-based logger
    */
   private createDefaultLogger(): Logger {
-    return createPinoLogger(this.config.logLevel || "info", "WebSocketClient");
+    return createConsoleLogger(this.config.logLevel || "info", "WebSocketClient");
   }
 
   // Getters
