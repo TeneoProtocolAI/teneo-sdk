@@ -270,7 +270,7 @@ export {
 /**
  * SDK version string
  */
-export const VERSION = "3.0.1";
+export const VERSION = "3.2.0";
 
 /**
  * Convenience type re-exports for message operations
