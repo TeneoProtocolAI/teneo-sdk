@@ -232,19 +232,19 @@ export class RoomManager extends EventEmitter<SDKEvents> {
         resolve(rooms);
       };
 
-      const onError = (error: Error) => {
+      const onDisconnect = () => {
         cleanup();
-        reject(error);
+        reject(new SDKError("Connection lost while listing rooms", ErrorCode.CONNECTION_ERROR));
       };
 
       const cleanup = () => {
         clearTimeout(timeout);
         this.off("room:list", onSuccess);
-        this.off("error", onError);
+        this.wsClient.off("connection:close", onDisconnect);
       };
 
       this.once("room:list", onSuccess);
-      this.once("error", onError);
+      this.wsClient.once("connection:close", onDisconnect);
 
       this.wsClient.sendMessage(message);
     });
