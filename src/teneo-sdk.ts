@@ -1344,8 +1344,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * when a chainId is provided, matching the format the UI uses.
    *
    * @param taskId - The task ID from the wallet:tx_requested event
-   * @param status - Transaction result: "confirmed", "rejected", or "failed"
-   * @param txHash - The on-chain transaction hash (required for "confirmed" status)
+   * @param status - Transaction result: "broadcasted" (tx sent, hash available), "confirmed" (on-chain receipt), "rejected" (user declined), or "failed" (error)
+   * @param txHash - The on-chain transaction hash (required for "broadcasted" and "confirmed" status)
    * @param error - Error message (optional, for "failed" status)
    * @param room - The room ID from the wallet:tx_requested event (required for routing)
    * @param chainId - The chain ID from data.tx.chainId (used to format txHash with network name)
@@ -1356,6 +1356,10 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * sdk.on("wallet:tx_requested", async (data) => {
    *   try {
    *     const txHash = await wallet.sendTransaction(data.tx);
+   *     // Notify agent that tx was broadcast (hash available, not yet confirmed)
+   *     await sdk.sendTxResult(data.taskId, "broadcasted", txHash, undefined, data.room, data.tx.chainId);
+   *     // Wait for on-chain confirmation
+   *     await waitForReceipt(txHash);
    *     await sdk.sendTxResult(data.taskId, "confirmed", txHash, undefined, data.room, data.tx.chainId);
    *   } catch (err) {
    *     await sdk.sendTxResult(data.taskId, "failed", undefined, err.message, data.room, data.tx.chainId);
@@ -1365,7 +1369,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    */
   public async sendTxResult(
     taskId: string,
-    status: "confirmed" | "rejected" | "failed",
+    status: "broadcasted" | "confirmed" | "rejected" | "failed",
     txHash?: string,
     error?: string,
     room?: string,
