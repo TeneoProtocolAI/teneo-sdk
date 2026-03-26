@@ -661,12 +661,40 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     if (options?.waitForResponse) {
       const timeout = options.timeout ?? this.messageTimeout;
-      const response = await waitForEvent<AgentResponse>(this.wsClient, "agent:response", {
+
+      // Race agent:response against error events so backend rejections
+      // (e.g. 402 "Payment verification failed") surface immediately
+      // instead of silently waiting until timeout.
+      const responsePromise = waitForEvent<AgentResponse>(this.wsClient, "agent:response", {
         timeout,
         filter: (r) => r.taskId === taskId,
         timeoutMessage: `Task response timed out after ${timeout}ms (taskId: ${taskId})`
       });
-      return response as FormattedResponse;
+
+      const errorPromise = waitForEvent<MessageError>(this.wsClient, "error", {
+        timeout: timeout + 1000
+      });
+
+      const agentErrorPromise = waitForEvent<{ agentName?: string; content?: string; taskId?: string; room?: string }>(
+        this.wsClient, "agent:error", {
+          timeout: timeout + 1000,
+          filter: (e) => e.taskId === taskId
+        }
+      );
+
+      const result = await Promise.race([
+        responsePromise,
+        errorPromise.then((err) => { throw err; }),
+        agentErrorPromise.then((e) => {
+          throw new SDKError(
+            e.content || "Agent error during task execution",
+            ErrorCode.MESSAGE_ERROR,
+            { taskId, agentName: e.agentName }
+          );
+        })
+      ]);
+
+      return result as FormattedResponse;
     }
   }
 
