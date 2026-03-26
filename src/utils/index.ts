@@ -79,3 +79,13 @@ export {
   type ResolvedPricing,
   type PriceResolutionOptions
 } from "./pricing-resolver";
+
+/**
+ * ERC20 utilities for wallet transaction flows.
+ * Check allowances to skip unnecessary approval transactions.
+ */
+export {
+  checkERC20Allowance,
+  parseApproveCalldata,
+  ERC20_APPROVE_SELECTOR
+} from "./erc20";

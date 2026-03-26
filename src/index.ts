@@ -234,6 +234,12 @@ export {
 export { SecurePrivateKey } from "./utils/secure-private-key";
 
 /**
+ * ERC20 utilities for wallet transaction flows
+ * Check allowances to skip unnecessary approval transactions
+ */
+export { checkERC20Allowance, parseApproveCalldata, ERC20_APPROVE_SELECTOR } from "./utils/erc20";
+
+/**
  * Payment utilities for x402 payment signing
  * Enables SDK users to make payments directly using private keys
  */

@@ -1043,7 +1043,7 @@ export const AgentErrorMessageSchema = BaseMessageSchema.extend({
 export type AgentErrorMessage = z.infer<typeof AgentErrorMessageSchema>;
 
 // Wallet Transaction schemas
-export const TxResultStatusSchema = z.enum(["confirmed", "rejected", "failed"]);
+export const TxResultStatusSchema = z.enum(["broadcasted", "confirmed", "rejected", "failed"]);
 export type TxResultStatus = z.infer<typeof TxResultStatusSchema>;
 
 export const TriggerWalletTxMessageSchema = BaseMessageSchema.extend({
