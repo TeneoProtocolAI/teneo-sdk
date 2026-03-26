@@ -141,7 +141,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.paymentNetwork = config.paymentNetwork ?? "";
     this.paymentAsset = config.paymentAsset ?? "";
     this.networkName = config.network ?? "";
-    this.autoSummon = config.autoSummon ?? false;
+    this.autoSummon = config.autoSummon ?? true;
 
     this.setupEventForwarding();
   }

@@ -320,6 +320,7 @@ export interface SDKEvents {
   }) => void;
 
   // Room events
+  "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;
   "room:subscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:unsubscribed": (data: { roomId: string; subscriptions: string[] }) => void;
   "room:message": (roomId: string, message: z.infer<typeof BaseMessageSchema>) => void;

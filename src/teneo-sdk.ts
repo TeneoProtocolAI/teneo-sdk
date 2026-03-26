@@ -2032,6 +2032,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       // Emit on SDK for external listeners
       this.emit("room:deleted", roomId);
     });
+    this.wsClient.on("room:list", (rooms) => {
+      // Emit on RoomManager for promise resolution (see listRooms method)
+      this.rooms.emit("room:list", rooms);
+      // Emit on SDK for external listeners
+      this.emit("room:list", rooms);
+    });
     this.wsClient.on("room:create_error", (error) => {
       // Emit on RoomManagementManager for promise rejection
       this.roomManagement.emit("room:create_error", error);

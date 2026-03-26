@@ -215,12 +215,39 @@ export class RoomManager extends EventEmitter<SDKEvents> {
     this.logger.info("RoomManager: Listing rooms");
 
     const message = createListRooms();
-    await this.wsClient.sendMessage(message);
 
-    // Room list will be received via list_rooms response handler
-    // For now, return empty array as this is async
-    // TODO: Implement response waiting mechanism
-    return [];
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new SDKError("List rooms timeout", ErrorCode.TIMEOUT));
+      }, 30000);
+
+      const onSuccess = (rooms: RoomInfo[]) => {
+        cleanup();
+        // Update local cache with fresh data
+        this.rooms.clear();
+        for (const room of rooms) {
+          this.rooms.set(room.id, room);
+        }
+        resolve(rooms);
+      };
+
+      const onError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        this.off("room:list", onSuccess);
+        this.off("error", onError);
+      };
+
+      this.once("room:list", onSuccess);
+      this.once("error", onError);
+
+      this.wsClient.sendMessage(message);
+    });
   }
 
   /**
