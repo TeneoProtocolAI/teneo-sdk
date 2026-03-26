@@ -47,7 +47,7 @@ import {
   ListAvailableAgentsOptions,
   PaginatedAgentsResult
 } from "./managers";
-import { createPinoLogger } from "./utils/logger";
+import { createConsoleLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
 import { SecurePrivateKey } from "./utils/secure-private-key";
 import { setNetworkConfigUrl, initializeNetworks } from "./payments";
@@ -2176,10 +2176,10 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   }
 
   /**
-   * Create default logger using pino
+   * Create default console-based logger
    */
   private createDefaultLogger(): Logger {
-    return createPinoLogger(this.config.logLevel ?? "info", "TeneoSDK");
+    return createConsoleLogger(this.config.logLevel ?? "info", "TeneoSDK");
   }
 
   /**

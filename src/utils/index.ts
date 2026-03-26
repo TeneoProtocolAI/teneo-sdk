@@ -5,7 +5,7 @@
 /**
  * Logger creation utilities
  */
-export { createPinoLogger } from "./logger";
+export { createConsoleLogger, createPinoLogger } from "./logger";
 
 /**
  * SSRF protection utilities for webhook URL validation

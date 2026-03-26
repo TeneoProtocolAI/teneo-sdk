@@ -1,14 +1,30 @@
 /**
  * Logger utility for Teneo Protocol SDK
- * Provides pino-based logging with structured output and optional pretty printing
+ * Provides console-based logging with level filtering
  */
 
-import pino from "pino";
 import type { Logger, LogLevel } from "../types";
 
+const LOG_LEVELS: Record<string, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  silent: 4
+};
+
+function formatData(data: unknown): string {
+  if (data === undefined || data === null) return "";
+  try {
+    return " " + JSON.stringify(data, null, 2);
+  } catch {
+    return " " + String(data);
+  }
+}
+
 /**
- * Creates a pino-based logger that conforms to the SDK Logger interface.
- * Automatically configures pretty printing for development environments.
+ * Creates a console-based logger that conforms to the SDK Logger interface.
+ * Filters messages below the configured log level.
  *
  * @param level - Log level (debug, info, warn, error, silent)
  * @param name - Logger name for identifying log source (e.g., "TeneoSDK", "WebSocketClient")
@@ -16,72 +32,38 @@ import type { Logger, LogLevel } from "../types";
  *
  * @example
  * ```typescript
- * const logger = createPinoLogger('info', 'TeneoSDK');
+ * const logger = createConsoleLogger('info', 'TeneoSDK');
  * logger.info('SDK initialized', { wsUrl: 'wss://example.com' });
  * logger.error('Connection failed', { code: 'CONN_FAILED', attempt: 3 });
  * ```
  */
-export function createPinoLogger(level: LogLevel, name?: string): Logger {
-  // Map 'silent' to pino's 'silent' level
-  const pinoLevel = level === "silent" ? "silent" : level;
+export function createConsoleLogger(level: LogLevel, name?: string): Logger {
+  const threshold = LOG_LEVELS[level] ?? LOG_LEVELS.info;
+  const prefix = name ? `[${name}]` : "";
 
-  // Create pino logger with optional pretty printing for development
-  const pinoLogger = pino({
-    level: pinoLevel,
-    name: name || "TeneoSDK",
-    // Use pino-pretty in development for readable logs
-    transport:
-      process.env.NODE_ENV !== "production"
-        ? {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              ignore: "pid,hostname",
-              translateTime: "HH:MM:ss.l",
-              singleLine: false
-            }
-          }
-        : undefined,
-    // Production: fast JSON logs
-    formatters:
-      process.env.NODE_ENV === "production"
-        ? {
-            level: (label) => {
-              return { level: label };
-            }
-          }
-        : undefined
-  });
-
-  // Adapt pino's API to match our Logger interface
   return {
     debug: (message: string, data?: unknown) => {
-      if (data !== undefined) {
-        pinoLogger.debug(data as object, message);
-      } else {
-        pinoLogger.debug(message);
+      if (threshold <= LOG_LEVELS.debug) {
+        console.debug(`${prefix} ${message}${formatData(data)}`);
       }
     },
     info: (message: string, data?: unknown) => {
-      if (data !== undefined) {
-        pinoLogger.info(data as object, message);
-      } else {
-        pinoLogger.info(message);
+      if (threshold <= LOG_LEVELS.info) {
+        console.info(`${prefix} ${message}${formatData(data)}`);
       }
     },
     warn: (message: string, data?: unknown) => {
-      if (data !== undefined) {
-        pinoLogger.warn(data as object, message);
-      } else {
-        pinoLogger.warn(message);
+      if (threshold <= LOG_LEVELS.warn) {
+        console.warn(`${prefix} ${message}${formatData(data)}`);
       }
     },
     error: (message: string, data?: unknown) => {
-      if (data !== undefined) {
-        pinoLogger.error(data as object, message);
-      } else {
-        pinoLogger.error(message);
+      if (threshold <= LOG_LEVELS.error) {
+        console.error(`${prefix} ${message}${formatData(data)}`);
       }
     }
   };
 }
+
+/** @deprecated Use createConsoleLogger instead */
+export const createPinoLogger = createConsoleLogger;
