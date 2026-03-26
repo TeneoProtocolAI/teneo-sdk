@@ -80,7 +80,7 @@ function buildAllowanceCalldata(owner: string, spender: string): string {
  *   userWallet,
  *   spenderAddress
  * );
- * if (allowance > 0n) {
+ * if (allowance >= requiredAmount) {
  *   console.log("Sufficient allowance, skipping approval");
  * }
  * ```
