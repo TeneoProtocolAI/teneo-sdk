@@ -26,8 +26,8 @@ const ERC20_ALLOWANCE_SELECTOR = "0xdd62ed3e";
  *   if (approveInfo) {
  *     // This is an ERC20 approve — check allowance first
  *     const allowance = await checkERC20Allowance(rpcUrl, data.tx.to, myAddress, approveInfo.spender);
- *     if (allowance > 0n) {
- *       // Allowance sufficient, skip approval
+ *     if (allowance >= approveInfo.amount) {
+ *       // Allowance sufficient for requested amount, skip approval
  *       await sdk.sendTxResult(data.taskId, "confirmed", undefined, undefined, data.room, data.tx.chainId);
  *       return;
  *     }
@@ -36,16 +36,17 @@ const ERC20_ALLOWANCE_SELECTOR = "0xdd62ed3e";
  * });
  * ```
  */
-export function parseApproveCalldata(data?: string): { spender: string } | null {
+export function parseApproveCalldata(data?: string): { spender: string; amount: bigint } | null {
   if (!data || !data.toLowerCase().startsWith(ERC20_APPROVE_SELECTOR)) {
     return null;
   }
   // approve(address spender, uint256 amount)
   // calldata = 0x095ea7b3 + 32-byte left-padded spender + 32-byte amount
-  // "0x" (2) + selector (8) + zero-padding (24) + address (40) = 74 chars minimum
-  if (data.length < 74) return null;
+  // Full calldata: "0x" (2) + selector (8) + spender (64) + amount (64) = 138 chars
+  if (data.length < 138) return null;
   const spender = "0x" + data.slice(34, 74);
-  return { spender };
+  const amount = BigInt("0x" + data.slice(74, 138));
+  return { spender, amount };
 }
 
 /**
