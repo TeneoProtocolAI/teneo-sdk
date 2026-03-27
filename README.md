@@ -11,7 +11,7 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
-- 🔐 **Web3-native authentication** using Ethereum wallet signatures (no API keys!)
+- 🔐 **Flexible authentication** — Ethereum wallet signatures or API key
 
 ---
 
@@ -90,13 +90,21 @@ pnpm install @teneo-protocol/sdk
 ### Your First Connection
 
 ```typescript
-import { TeneoSDK } from "@teneo-protocol/sdk";
+import { TeneoSDK, SDKConfigBuilder } from "@teneo-protocol/sdk";
 
-// 1. Initialize with your Ethereum private key
+// Option A: Initialize with your Ethereum private key
 const sdk = new TeneoSDK({
   wsUrl: "wss://backend.developer.chatroom.teneo-protocol.ai/ws",
   privateKey: "0x..." // Your private key with 0x prefix
 });
+
+// Option B: Initialize with an API key (no private key needed)
+// const config = new SDKConfigBuilder()
+//   .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
+//   .withApiKey("sk_live_...", "0xYourWalletAddress")
+//   .withNetwork("peaq")
+//   .build();
+// const sdk = new TeneoSDK(config);
 
 // 2. Listen for responses
 sdk.on("agent:response", (response) => {
@@ -181,9 +189,11 @@ Teneo Coordinator ──→ Selects best agent
 └─────────┴─────────┴─────────┴─────────┘
 ```
 
-### 3. Web3 Authentication
+### 3. Authentication
 
-Unlike traditional APIs with API keys, Teneo uses **Ethereum wallet signatures**:
+The SDK supports two authentication methods:
+
+#### Option A: Wallet Signature (Challenge-Response)
 
 ```typescript
 // Challenge-response authentication flow:
@@ -196,9 +206,23 @@ Unlike traditional APIs with API keys, Teneo uses **Ethereum wallet signatures**
 // Your private key never leaves your machine
 ```
 
-This enables:
+#### Option B: API Key
 
-- 🔐 **No API keys to manage** - Your wallet IS your identity
+```typescript
+// API-key authentication — no private key needed:
+// 1. SDK connects to Teneo network
+// 2. SDK sends API key + wallet address
+// 3. Server validates the key and authenticates
+// 4. ✅ Authenticated! Payments are handled server-side
+
+const config = new SDKConfigBuilder()
+  .withWebSocketUrl(WS_URL)
+  .withApiKey("sk_live_...", "0xYourWalletAddress")
+  .withNetwork("peaq")
+  .build();
+```
+
+API key auth is ideal for **server-side integrations** where you don't want to manage private keys directly. The backend handles payment signing using the stored session key.
 
 ---
 
