@@ -211,6 +211,7 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           maxPricePerRequest: this.config.maxPricePerRequest,
           quoteTimeout: this.config.quoteTimeout,
           wsUrl: this.config.wsUrl,
+          apiKey: this.config.apiKey,
           paymentNetwork: this.config.paymentNetwork,
           paymentAsset: this.config.paymentAsset,
           network: this.config.network, // Network name from withNetwork()

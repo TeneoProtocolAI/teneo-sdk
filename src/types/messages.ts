@@ -31,7 +31,7 @@ const stringToBoolean = z
       }
 
       // Accept falsy values
-      if (normalized === "false" || normalized === "0" || normalized === "no") {
+      if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "skipped") {
         return false;
       }
 
@@ -330,7 +330,10 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       jwt_token: z.string().optional(), // JWT token for KeyVault API authentication
       session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
       whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
-      user_count: z.number().optional() // Total user count (admin only)
+      user_count: z.number().optional(), // Total user count (admin only)
+      // API-key auth fields
+      api_key: z.string().optional(), // API key for session-key auth (no challenge-response needed)
+      platform: z.string().optional() // Platform identifier (e.g., "community")
     })
     .optional()
 });
@@ -507,7 +510,9 @@ export const TaskQuoteMessageSchema = BaseMessageSchema.extend({
 export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   type: z.literal("confirm_task"),
   data: z.object({
-    task_id: z.string()
+    task_id: z.string(),
+    api_key: z.string().optional(), // API key for session-key payment flow
+    network: z.string().optional() // Payment network: "peaq", "base", "avalanche", "x-layer"
   }),
   payment: z.string().optional() // x402 payment at top level (backend checks msg.Payment)
 });
@@ -1286,6 +1291,23 @@ export function createAuth(
   });
 }
 
+export function createApiKeyAuth(
+  address: string,
+  apiKey: string,
+  userType: ClientType = "user",
+  platform: string = "community"
+): AuthMessage {
+  return AuthMessageSchema.parse({
+    type: "auth",
+    data: {
+      address,
+      userType,
+      api_key: apiKey,
+      platform
+    }
+  });
+}
+
 export function createUserMessage(content: string, room: string, from?: string): UserMessage {
   return UserMessageSchema.parse({
     type: "message",
@@ -1335,13 +1357,18 @@ export function createRequestTask(
   });
 }
 
-export function createConfirmTask(taskId: string, x402Payment?: string): ConfirmTaskMessage {
+export function createConfirmTask(
+  taskId: string,
+  options?: { x402Payment?: string; apiKey?: string; network?: string }
+): ConfirmTaskMessage {
   return ConfirmTaskMessageSchema.parse({
     type: "confirm_task",
     data: {
-      task_id: taskId
+      task_id: taskId,
+      ...(options?.apiKey && { api_key: options.apiKey }),
+      ...(options?.network && { network: options.network })
     },
-    ...(x402Payment && { payment: x402Payment }) // payment at top level for backend
+    ...(options?.x402Payment && { payment: options.x402Payment })
   });
 }
 

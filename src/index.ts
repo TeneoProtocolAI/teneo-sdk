@@ -151,6 +151,7 @@ export {
   createRequestChallenge,
   createCheckCachedAuth,
   createAuth,
+  createApiKeyAuth,
   createUserMessage,
   createPing,
   createSubscribe,
