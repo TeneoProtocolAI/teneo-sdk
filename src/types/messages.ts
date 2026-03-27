@@ -135,7 +135,10 @@ export const MessageTypeSchema = z.enum([
 
   // Wallet Transaction Flow
   "trigger_wallet_tx",
-  "tx_result"
+  "tx_result",
+
+  // Agent Owner Wallets
+  "agent_owner_wallets"
 ]);
 
 export const ContentTypeSchema = z.enum([
