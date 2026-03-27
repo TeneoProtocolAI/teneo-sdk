@@ -280,8 +280,10 @@ export class WebhookHandler extends EventEmitter<SDKEvents> {
       await this.sendWebhook(eventType, validatedMessage, metadata);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        this.logger.error("Invalid message for webhook", error);
-        throw new ValidationError("Invalid message for webhook", error);
+        this.logger.debug("Skipping webhook for unrecognized message type", {
+          type: message.type
+        });
+        return;
       }
       throw error;
     }

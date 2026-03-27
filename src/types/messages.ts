@@ -135,7 +135,10 @@ export const MessageTypeSchema = z.enum([
 
   // Wallet Transaction Flow
   "trigger_wallet_tx",
-  "tx_result"
+  "tx_result",
+
+  // Agent Owner Wallets
+  "agent_owner_wallets"
 ]);
 
 export const ContentTypeSchema = z.enum([
@@ -1043,7 +1046,7 @@ export const AgentErrorMessageSchema = BaseMessageSchema.extend({
 export type AgentErrorMessage = z.infer<typeof AgentErrorMessageSchema>;
 
 // Wallet Transaction schemas
-export const TxResultStatusSchema = z.enum(["confirmed", "rejected", "failed"]);
+export const TxResultStatusSchema = z.enum(["broadcasted", "confirmed", "rejected", "failed"]);
 export type TxResultStatus = z.infer<typeof TxResultStatusSchema>;
 
 export const TriggerWalletTxMessageSchema = BaseMessageSchema.extend({
