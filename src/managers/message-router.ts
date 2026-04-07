@@ -20,7 +20,14 @@ import {
   TaskQuoteMessage,
   PricingInfo
 } from "../types";
-import { SDKEvents, SDKError, ValidationError, type AgentResponse, PaymentError, MessageError } from "../types/events";
+import {
+  SDKEvents,
+  SDKError,
+  ValidationError,
+  type AgentResponse,
+  PaymentError,
+  MessageError
+} from "../types/events";
 import type { AgentRoomManager } from "./agent-room-manager";
 import { ErrorCode } from "../types/error-codes";
 import { TIMEOUTS } from "../constants";
@@ -335,7 +342,11 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Use quote-approve flow with auto-approval (v2.2.0)
     if (this.autoApproveQuotes) {
-      this.logger.debug("MessageRouter: Using quote-approve flow", { content, room, network: command.network });
+      this.logger.debug("MessageRouter: Using quote-approve flow", {
+        content,
+        room,
+        network: command.network
+      });
       const quote = await this.requestQuote(content, room, command.network);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse,
@@ -375,7 +386,11 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * Requests a quote for a task without auto-approval.
    * Returns the quote data for manual confirmation.
    */
-  public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
+  public async requestQuote(
+    content: string,
+    room: string,
+    networkOverride?: string | number
+  ): Promise<QuoteResult> {
     return this._requestQuoteInternal(content, room, networkOverride, false);
   }
 
@@ -384,7 +399,10 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * @param isRetry - true on auto-summon retry to prevent infinite loops
    */
   private async _requestQuoteInternal(
-    content: string, room: string, networkOverride: string | number | undefined, isRetry: boolean
+    content: string,
+    room: string,
+    networkOverride: string | number | undefined,
+    isRetry: boolean
   ): Promise<QuoteResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
@@ -393,7 +411,12 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
     const message = createRequestTask(content, room, resolvedNetwork);
-    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork, isRetry });
+    this.logger.debug("MessageRouter: Requesting quote", {
+      content,
+      room,
+      network: resolvedNetwork,
+      isRetry
+    });
 
     // Pre-flight autosummon: check cache before sending to avoid reject-retry cycle
     if (this.autoSummon && this.agentRoomManager && !isRetry) {
@@ -406,7 +429,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
           try {
             await this.preFlightAutoSummon(agentName, room);
           } catch (e) {
-            this.logger.debug("MessageRouter: Pre-flight failed, falling back", { error: (e as Error).message });
+            this.logger.debug("MessageRouter: Pre-flight failed, falling back", {
+              error: (e as Error).message
+            });
           }
         }
       }
@@ -446,7 +471,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     try {
       quote = await Promise.race([
         quotePromise,
-        errorPromise.then((err) => { throw err; }),
+        errorPromise.then((err) => {
+          throw err;
+        }),
         agentErrorPromise.then((resp) => {
           throw new SDKError(resp.content, ErrorCode.AGENT_NOT_IN_ROOM);
         })
@@ -506,9 +533,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.wsClient.emit("autosummon:start", agentName, room);
 
     const available = await this.agentRoomManager.listAvailableAgents(room, false);
-    const agent = available.find(
-      (a) => a.agent_id === agentName || a.agent_name === agentName
-    );
+    const agent = available.find((a) => a.agent_id === agentName || a.agent_name === agentName);
 
     if (!agent) {
       this.wsClient.emit("autosummon:failed", agentName, room, "Agent not found or offline");
@@ -528,7 +553,9 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * Fallback path triggered by coordinator reject when pre-flight was skipped (cache empty).
    */
   private async handleAutoSummon(
-    content: string, room: string, networkOverride?: string | number
+    content: string,
+    room: string,
+    networkOverride?: string | number
   ): Promise<QuoteResult> {
     if (!this.agentRoomManager) {
       throw new SDKError("Auto-summon requires AgentRoomManager", ErrorCode.AUTOSUMMON_FAILED);
@@ -544,9 +571,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.wsClient.emit("autosummon:start", agentName, room);
 
     const available = await this.agentRoomManager.listAvailableAgents(room, false);
-    const agent = available.find(
-      (a) => a.agent_id === agentName || a.agent_name === agentName
-    );
+    const agent = available.find((a) => a.agent_id === agentName || a.agent_name === agentName);
 
     if (!agent) {
       this.wsClient.emit("autosummon:failed", agentName, room, "Agent not found or offline");
@@ -683,16 +708,21 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         timeout: timeout + 1000
       });
 
-      const agentErrorPromise = waitForEvent<{ agentName?: string; content?: string; taskId?: string; room?: string }>(
-        this.wsClient, "agent:error", {
-          timeout: timeout + 1000,
-          filter: (e) => e.taskId === taskId
-        }
-      );
+      const agentErrorPromise = waitForEvent<{
+        agentName?: string;
+        content?: string;
+        taskId?: string;
+        room?: string;
+      }>(this.wsClient, "agent:error", {
+        timeout: timeout + 1000,
+        filter: (e) => e.taskId === taskId
+      });
 
       const result = await Promise.race([
         responsePromise,
-        errorPromise.then((err) => { throw err; }),
+        errorPromise.then((err) => {
+          throw err;
+        }),
         agentErrorPromise.then((e) => {
           throw new SDKError(
             e.content || "Agent error during task execution",

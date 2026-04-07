@@ -61,7 +61,7 @@ async function runTest() {
       console.log(`Connected and authenticated on ${network}`);
 
       // Wait for agents list
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Get the user's private room
       const authState = sdk.getAuthState();
@@ -72,23 +72,21 @@ async function runTest() {
       console.log(`\n--- Direct Request (@x-agent-enterprise-v2) ---`);
       const directStart = Date.now();
       try {
-        const directResponse = await sdk.sendMessage(
-          "@x-agent-enterprise-v2 user @elonmusk",
-          {
-            room: privateRoom,
-            waitForResponse: true,
-            timeout: 60000
-          }
-        );
+        const directResponse = await sdk.sendMessage("@x-agent-enterprise-v2 user @elonmusk", {
+          room: privateRoom,
+          waitForResponse: true,
+          timeout: 60000
+        });
 
         const directDuration = Date.now() - directStart;
         const directResult: TestResult = {
           network,
           type: "direct",
           success: true,
-          response: typeof directResponse === "string"
-            ? directResponse.substring(0, 200) + "..."
-            : JSON.stringify(directResponse).substring(0, 200) + "...",
+          response:
+            typeof directResponse === "string"
+              ? directResponse.substring(0, 200) + "..."
+              : JSON.stringify(directResponse).substring(0, 200) + "...",
           duration: directDuration
         };
 
@@ -119,33 +117,33 @@ async function runTest() {
           error: error instanceof Error ? error.message : String(error),
           duration: directDuration
         });
-        console.log(`Error (${directDuration}ms): ${error instanceof Error ? error.message : error}`);
+        console.log(
+          `Error (${directDuration}ms): ${error instanceof Error ? error.message : error}`
+        );
       }
 
       // Wait between requests
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Test 2: Coordinator request
       console.log(`\n--- Coordinator Request ---`);
       const coordStart = Date.now();
       try {
-        const coordResponse = await sdk.sendMessage(
-          "give me 1 post from @elonmusk on x",
-          {
-            room: privateRoom,
-            waitForResponse: true,
-            timeout: 60000
-          }
-        );
+        const coordResponse = await sdk.sendMessage("give me 1 post from @elonmusk on x", {
+          room: privateRoom,
+          waitForResponse: true,
+          timeout: 60000
+        });
 
         const coordDuration = Date.now() - coordStart;
         const coordResult: TestResult = {
           network,
           type: "coordinator",
           success: true,
-          response: typeof coordResponse === "string"
-            ? coordResponse.substring(0, 200) + "..."
-            : JSON.stringify(coordResponse).substring(0, 200) + "...",
+          response:
+            typeof coordResponse === "string"
+              ? coordResponse.substring(0, 200) + "..."
+              : JSON.stringify(coordResponse).substring(0, 200) + "...",
           duration: coordDuration
         };
 
@@ -176,9 +174,10 @@ async function runTest() {
           error: error instanceof Error ? error.message : String(error),
           duration: coordDuration
         });
-        console.log(`Error (${coordDuration}ms): ${error instanceof Error ? error.message : error}`);
+        console.log(
+          `Error (${coordDuration}ms): ${error instanceof Error ? error.message : error}`
+        );
       }
-
     } catch (error) {
       console.error(`Failed to test ${network}:`, error instanceof Error ? error.message : error);
     } finally {
@@ -189,7 +188,7 @@ async function runTest() {
     }
 
     // Wait between networks
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   // Print summary
@@ -221,10 +220,10 @@ async function runTest() {
   }
 
   // Exit
-  process.exit(results.every(r => r.success) ? 0 : 1);
+  process.exit(results.every((r) => r.success) ? 0 : 1);
 }
 
-runTest().catch(error => {
+runTest().catch((error) => {
   console.error("Test failed:", error);
   process.exit(1);
 });

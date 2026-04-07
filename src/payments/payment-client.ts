@@ -222,7 +222,9 @@ export class PaymentClient {
     const network = networkOverride ? getNetwork(networkOverride) : this.networkConfig;
 
     // When using a per-request network override, always use that network's asset contract
-    const asset = networkOverride ? network.usdcContract : (this.assetOverride ?? network.usdcContract);
+    const asset = networkOverride
+      ? network.usdcContract
+      : (this.assetOverride ?? network.usdcContract);
     const chain = createChainDefinition(network);
 
     // Create payment header using the secure key
@@ -237,7 +239,7 @@ export class PaymentClient {
       // Use backend-provided settlement data or fall back to defaults
       // CRITICAL: For x402x-router-settlement to work, we MUST use the values
       // provided by the backend in the task_quote response
-      const salt = settlementData?.salt as Hex ?? generateNonce();
+      const salt = (settlementData?.salt as Hex) ?? generateNonce();
       const facilitatorFee = settlementData?.facilitatorFee ?? "1000";
       const hookData = (settlementData?.hookData ?? "0x") as Hex;
       const settlementRouter = settlementData?.settlementRouter ?? network.settlementRouter;
@@ -251,19 +253,19 @@ export class PaymentClient {
       const commitment = keccak256(
         encodePacked(
           [
-            "string",   // Protocol identifier
-            "uint256",  // Chain ID
-            "address",  // Hub (settlementRouter)
-            "address",  // Token (USDC)
-            "address",  // From (payer)
-            "uint256",  // Value
-            "uint256",  // Valid after
-            "uint256",  // Valid before
-            "bytes32",  // Salt
-            "address",  // Pay to (final recipient)
-            "uint256",  // Facilitator fee
-            "address",  // Hook
-            "bytes32"   // keccak256(hookData)
+            "string", // Protocol identifier
+            "uint256", // Chain ID
+            "address", // Hub (settlementRouter)
+            "address", // Token (USDC)
+            "address", // From (payer)
+            "uint256", // Value
+            "uint256", // Valid after
+            "uint256", // Valid before
+            "bytes32", // Salt
+            "address", // Pay to (final recipient)
+            "uint256", // Facilitator fee
+            "address", // Hook
+            "bytes32" // keccak256(hookData)
           ],
           [
             "X402/settle/v1",

@@ -399,7 +399,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * The quote includes agent selection, pricing, and expiration.
    * Does NOT auto-approve - use confirmQuote() to execute.
    */
-  public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
+  public async requestQuote(
+    content: string,
+    room: string,
+    networkOverride?: string | number
+  ): Promise<QuoteResult> {
     return this.messages.requestQuote(content, room, networkOverride);
   }
 

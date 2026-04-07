@@ -113,7 +113,11 @@ const SDKConfigBaseSchema = z.object({
 
   // Message settings
   messageTimeout: z.number().min(1000).max(300000).optional(),
-  maxMessageSize: z.number().min(1024).max(10 * 1024 * 1024).optional(), // 1KB to 10MB
+  maxMessageSize: z
+    .number()
+    .min(1024)
+    .max(10 * 1024 * 1024)
+    .optional(), // 1KB to 10MB
   maxMessagesPerSecond: z.number().min(1).max(1000).optional(), // Rate limiting
 
   // Response formatting
