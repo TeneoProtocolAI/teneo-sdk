@@ -31,7 +31,12 @@ const stringToBoolean = z
       }
 
       // Accept falsy values
-      if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "skipped") {
+      if (
+        normalized === "false" ||
+        normalized === "0" ||
+        normalized === "no" ||
+        normalized === "skipped"
+      ) {
         return false;
       }
 
@@ -240,12 +245,19 @@ export const AgentSchema = z
     nlpFallback: stringToBoolean.optional(), // SDK alias
     webhookUrl: z.string().url().optional(),
     categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional(),
-    review_status: z.enum(["private", "in_review", "public", "declined"]).optional()
+    review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
+    // Featured/popular metadata from backend
+    is_featured: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+    is_popular: z.boolean().optional(),
+    isPopular: z.boolean().optional()
   })
   .transform((data) => ({
     ...data,
     agentType: data.agentType ?? data.type,
-    nlpFallback: data.nlpFallback ?? data.nlp_fallback
+    nlpFallback: data.nlpFallback ?? data.nlp_fallback,
+    isFeatured: data.isFeatured ?? data.is_featured,
+    isPopular: data.isPopular ?? data.is_popular
   }));
 
 // Base message schema
@@ -765,7 +777,9 @@ export const AgentRoomInfoSchema = z
     reviewed_by: z.string().optional().nullable(),
     created_at: z.string().optional(),
     creator: z.string().optional(),
-    is_banned: z.boolean().optional()
+    is_banned: z.boolean().optional(),
+    is_featured: z.boolean().optional(),
+    is_popular: z.boolean().optional()
   })
   .passthrough();
 
@@ -878,6 +892,8 @@ export const AdminAgentInfoSchema = z
     is_online: z.boolean().optional(),
     is_active: z.boolean().optional(),
     is_banned: z.boolean().optional(),
+    is_featured: z.boolean().optional(),
+    is_popular: z.boolean().optional(),
     created_at: z.string().optional().nullable(),
     review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
     decline_reason: z.string().optional().nullable(),

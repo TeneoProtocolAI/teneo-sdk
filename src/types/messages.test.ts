@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  AgentRoomInfoSchema,
+  AgentSchema,
   AgentsListMessageSchema,
+  AdminAgentInfoSchema,
   AuthMessageSchema,
   AuthSuccessMessageSchema,
   BaseMessageSchema,
@@ -657,5 +660,121 @@ describe("safeParseMessage", () => {
       expect(result.data.data.success).toBe(true);
       expect(result.data.content).toBe("Here is my response");
     }
+  });
+});
+
+describe("is_featured / is_popular fields", () => {
+  describe("AgentRoomInfoSchema", () => {
+    it("should accept is_featured and is_popular booleans", () => {
+      const agent = {
+        agent_id: "agent-1",
+        agent_name: "Test Agent",
+        is_featured: true,
+        is_popular: false
+      };
+      const result = AgentRoomInfoSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.is_featured).toBe(true);
+        expect(result.data.is_popular).toBe(false);
+      }
+    });
+
+    it("should accept agent without is_featured/is_popular (backward compat)", () => {
+      const agent = {
+        agent_id: "agent-1",
+        agent_name: "Test Agent"
+      };
+      const result = AgentRoomInfoSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.is_featured).toBeUndefined();
+        expect(result.data.is_popular).toBeUndefined();
+      }
+    });
+  });
+
+  describe("AdminAgentInfoSchema", () => {
+    it("should accept is_featured and is_popular booleans", () => {
+      const agent = {
+        agent_id: "agent-1",
+        agent_name: "Admin Agent",
+        creator: "user-1",
+        is_featured: true,
+        is_popular: true
+      };
+      const result = AdminAgentInfoSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.is_featured).toBe(true);
+        expect(result.data.is_popular).toBe(true);
+      }
+    });
+
+    it("should default to undefined when fields are missing", () => {
+      const agent = {
+        agent_id: "agent-1",
+        agent_name: "Admin Agent",
+        creator: "user-1"
+      };
+      const result = AdminAgentInfoSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.is_featured).toBeUndefined();
+        expect(result.data.is_popular).toBeUndefined();
+      }
+    });
+  });
+
+  describe("AgentSchema", () => {
+    it("should accept and transform is_featured/is_popular to camelCase aliases", () => {
+      const agent = {
+        id: "agent-1",
+        name: "Test Agent",
+        status: "online",
+        is_featured: true,
+        is_popular: false
+      };
+      const result = AgentSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.is_featured).toBe(true);
+        expect(result.data.is_popular).toBe(false);
+        expect(result.data.isFeatured).toBe(true);
+        expect(result.data.isPopular).toBe(false);
+      }
+    });
+
+    it("should prefer camelCase aliases when both are provided", () => {
+      const agent = {
+        id: "agent-1",
+        name: "Test Agent",
+        status: "online",
+        is_featured: false,
+        isFeatured: true,
+        is_popular: false,
+        isPopular: true
+      };
+      const result = AgentSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isFeatured).toBe(true);
+        expect(result.data.isPopular).toBe(true);
+      }
+    });
+
+    it("should default to undefined when fields are missing (backward compat)", () => {
+      const agent = {
+        id: "agent-1",
+        name: "Test Agent",
+        status: "online"
+      };
+      const result = AgentSchema.safeParse(agent);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isFeatured).toBeUndefined();
+        expect(result.data.isPopular).toBeUndefined();
+      }
+    });
   });
 });
