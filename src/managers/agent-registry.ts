@@ -343,10 +343,11 @@ export class AgentRegistry extends EventEmitter<SDKEvents> {
 
     this.logger.info("AgentRegistry: Requesting agent details", { agentId: validatedAgentId });
 
-    // Send get_agent_details message
+    // Send get_agent_details message — agent_id must be nested under data
+    // to match the backend's expected format
     const message = {
       type: "get_agent_details" as const,
-      agent_id: validatedAgentId
+      data: { agent_id: validatedAgentId }
     };
 
     await this.wsClient.sendMessage(message);
