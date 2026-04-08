@@ -12,7 +12,7 @@ vi.mock("../../src/payments/networks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/payments/networks")>();
   return {
     ...actual,
-    CHAIN_ID_TO_NETWORK: {} as Record<number, string>,
+    CHAIN_ID_TO_NETWORK: {} as Record<number, string>
   };
 });
 

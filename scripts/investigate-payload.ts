@@ -69,27 +69,31 @@ ws.on("message", async (data: Buffer) => {
   if (parsed?.type === "auth_required" && !authStarted) {
     authStarted = true;
     console.log("📤 Requesting challenge...\n");
-    ws.send(JSON.stringify({
-      type: "request_challenge",
-      data: {
-        userType: "user",
-        address: account.address
-      }
-    }));
+    ws.send(
+      JSON.stringify({
+        type: "request_challenge",
+        data: {
+          userType: "user",
+          address: account.address
+        }
+      })
+    );
   } else if (parsed?.type === "challenge") {
     const challenge = parsed.data?.challenge;
     console.log("📤 Signing challenge and authenticating...\n");
     const messageToSign = `Teneo authentication challenge: ${challenge}`;
     const signature = await account.signMessage({ message: messageToSign });
-    ws.send(JSON.stringify({
-      type: "auth",
-      data: {
-        address: account.address,
-        signature,
-        message: messageToSign,
-        userType: "user"
-      }
-    }));
+    ws.send(
+      JSON.stringify({
+        type: "auth",
+        data: {
+          address: account.address,
+          signature,
+          message: messageToSign,
+          userType: "user"
+        }
+      })
+    );
   }
 
   // After receiving enough messages post-auth, close and summarize
@@ -143,7 +147,7 @@ function summarize() {
   }
 
   // Check if any message exceeded 2MB (original limit)
-  const over2mb = messageSizes.filter(m => m.size > 2 * 1024 * 1024);
+  const over2mb = messageSizes.filter((m) => m.size > 2 * 1024 * 1024);
   if (over2mb.length > 0) {
     console.log("\n⚠️  Messages exceeding original 2MB limit:");
     for (const msg of over2mb) {

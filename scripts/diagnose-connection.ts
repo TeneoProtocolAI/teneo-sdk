@@ -27,9 +27,16 @@ async function diagnose() {
 
   // Listen to all events
   const events = [
-    "connected", "disconnected", "authenticated", "error",
-    "message:received", "message:sent", "message:error",
-    "agent:response", "agent:selected", "agents:list"
+    "connected",
+    "disconnected",
+    "authenticated",
+    "error",
+    "message:received",
+    "message:sent",
+    "message:error",
+    "agent:response",
+    "agent:selected",
+    "agents:list"
   ];
 
   for (const event of events) {
@@ -58,7 +65,7 @@ async function diagnose() {
 
     // Wait for agents list
     console.log("\nWaiting for agents list (10s)...");
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Try to send a simple message (fire and forget)
     console.log("\nSending test message (fire and forget)...");
@@ -71,11 +78,10 @@ async function diagnose() {
 
     // Wait for any response
     console.log("\nWaiting for response (15s)...");
-    await new Promise(resolve => setTimeout(resolve, 15000));
+    await new Promise((resolve) => setTimeout(resolve, 15000));
 
     await sdk.disconnect();
     console.log("\nDisconnected");
-
   } catch (error) {
     console.error("Error:", error);
   }

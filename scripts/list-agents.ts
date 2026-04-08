@@ -27,7 +27,7 @@ async function listAgents() {
     console.log("Connected!\n");
 
     // Wait for agents list
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Get auth state for rooms
     const authState = sdk.getAuthState();
