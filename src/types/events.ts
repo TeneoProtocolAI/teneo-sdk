@@ -408,6 +408,14 @@ export interface SDKEvents {
     optional?: boolean;
     room?: string;
   }) => void;
+  "wallet:tx_completed": (data: {
+    taskId: string;
+    status: "confirmed" | "rejected" | "failed";
+    txHash?: string;
+    error?: string;
+    room?: string;
+    chainId?: number;
+  }) => void;
 
   // Autosummon lifecycle events (v2.5.0)
   "autosummon:start": (agentName: string, roomId: string) => void;
