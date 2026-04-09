@@ -1001,7 +1001,9 @@ export type RateLimitNotificationMessage = z.infer<typeof RateLimitNotificationM
 export const GetAgentDetailsMessageSchema = z
   .object({
     type: z.literal("get_agent_details"),
-    agent_id: z.string(),
+    data: z.object({
+      agent_id: z.string()
+    }),
     request_id: z.string().optional()
   })
   .passthrough();
