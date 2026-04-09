@@ -452,9 +452,9 @@ describe("Message Type Schemas", () => {
       expect(createAuth("0x123", "0xsig", "challenge", "user", "cli").data?.request_source).toBe(
         "cli"
       );
-      expect(createApiKeyAuth("0x123", "api-key", "user", "community", "cli").data?.request_source).toBe(
-        "cli"
-      );
+      expect(
+        createApiKeyAuth("0x123", "api-key", "user", "community", "cli").data?.request_source
+      ).toBe("cli");
     });
   });
 

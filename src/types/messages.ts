@@ -1395,7 +1395,12 @@ export function createRequestTask(
 
 export function createConfirmTask(
   taskId: string,
-  options?: { x402Payment?: string; apiKey?: string; network?: string; requestSource?: RequestSource }
+  options?: {
+    x402Payment?: string;
+    apiKey?: string;
+    network?: string;
+    requestSource?: RequestSource;
+  }
 ): ConfirmTaskMessage {
   return ConfirmTaskMessageSchema.parse({
     type: "confirm_task",

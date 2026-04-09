@@ -415,7 +415,12 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
     const message = createRequestTask(content, room, resolvedNetwork, this.requestSource);
-    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork, isRetry });
+    this.logger.debug("MessageRouter: Requesting quote", {
+      content,
+      room,
+      network: resolvedNetwork,
+      isRetry
+    });
 
     // Pre-flight autosummon: check cache before sending to avoid reject-retry cycle
     if (this.autoSummon && this.agentRoomManager && !isRetry) {

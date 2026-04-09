@@ -114,7 +114,10 @@ describe("MessageRouter: Autosummon", () => {
     const { router, wsClient } = createRouter({ requestSource: "cli" });
 
     const promise = (router as any)._requestQuoteInternal(
-      "@news-agent latest", "room-1", undefined, false
+      "@news-agent latest",
+      "room-1",
+      undefined,
+      false
     );
 
     await vi.waitFor(() => {
