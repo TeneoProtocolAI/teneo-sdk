@@ -110,6 +110,51 @@ function resolveQuote(wsClient: ReturnType<typeof createMockWsClient>) {
 }
 
 describe("MessageRouter: Autosummon", () => {
+  it("should tag request_task with the configured request source", async () => {
+    const { router, wsClient } = createRouter({ requestSource: "cli" });
+
+    const promise = (router as any)._requestQuoteInternal(
+      "@news-agent latest", "room-1", undefined, false
+    );
+
+    await vi.waitFor(() => {
+      expect(wsClient.sendMessage).toHaveBeenCalled();
+    });
+
+    const sentMessage = (wsClient.sendMessage as any).mock.calls[0][0];
+    expect(sentMessage.type).toBe("request_task");
+    expect(sentMessage.data.request_source).toBe("cli");
+
+    resolveQuote(wsClient);
+    await promise;
+  });
+
+  it("should tag confirm_task with the configured request source", async () => {
+    const { router, wsClient } = createRouter({ requestSource: "cli" });
+    (router as any).pendingQuotes.set("task-1", {
+      taskId: "task-1",
+      agentId: "news-agent",
+      agentName: "news-agent",
+      agentWallet: "0x123",
+      command: "latest",
+      pricing: { pricePerUnit: 0, priceType: "task-transaction", taskUnit: "per-query" },
+      expiresAt: new Date(Date.now() + 60_000),
+      settlement: {
+        settlementRouter: "0x",
+        salt: "0x",
+        facilitatorFee: "0",
+        hook: "0x",
+        hookData: "0x"
+      }
+    });
+
+    await router.confirmQuote("task-1");
+
+    const sentMessage = (wsClient.sendMessage as any).mock.calls[0][0];
+    expect(sentMessage.type).toBe("confirm_task");
+    expect(sentMessage.data.request_source).toBe("cli");
+  });
+
   describe("pre-flight autosummon (cache says agent NOT in room)", () => {
     it("should add agent to room before sending command", async () => {
       const { router, wsClient } = createRouter();

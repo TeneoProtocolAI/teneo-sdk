@@ -11,6 +11,7 @@ export {
   ClientTypeSchema,
   AgentTypeSchema,
   AgentStatusSchema,
+  RequestSourceSchema,
 
   // Supporting schemas
   CapabilitySchema,
@@ -98,6 +99,7 @@ export {
   type ClientType,
   type AgentType,
   type AgentStatus,
+  type RequestSource,
   type Capability,
   type CommandPricing,
   type Command,

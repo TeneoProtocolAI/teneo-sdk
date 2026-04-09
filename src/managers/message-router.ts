@@ -18,7 +18,8 @@ import {
   ResponseFormat,
   TaskResponseMessage,
   TaskQuoteMessage,
-  PricingInfo
+  PricingInfo,
+  RequestSource
 } from "../types";
 import {
   SDKEvents,
@@ -98,6 +99,7 @@ export interface MessageRouterConfig {
   paymentAsset?: string;
   network?: string; // Network name (e.g., "peaq", "base", "avalanche")
   autoSummon?: boolean; // Auto-add agents to room on "Agent not found" (v2.4.0)
+  requestSource?: RequestSource;
 }
 
 export class MessageRouter extends EventEmitter<SDKEvents> {
@@ -119,6 +121,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private readonly paymentNetwork: string; // CAIP-2 format if set
   private readonly paymentAsset: string;
   private readonly networkName: string; // Network name (peaq, base, avalanche)
+  private readonly requestSource: RequestSource;
 
   // Auto-summon (v2.4.0)
   private readonly autoSummon: boolean;
@@ -152,6 +155,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.paymentAsset = config.paymentAsset ?? "";
     this.networkName = config.network ?? "";
     this.autoSummon = config.autoSummon ?? true;
+    this.requestSource = config.requestSource ?? "sdk";
 
     this.setupEventForwarding();
   }
@@ -410,13 +414,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
-    const message = createRequestTask(content, room, resolvedNetwork);
-    this.logger.debug("MessageRouter: Requesting quote", {
-      content,
-      room,
-      network: resolvedNetwork,
-      isRetry
-    });
+    const message = createRequestTask(content, room, resolvedNetwork, this.requestSource);
+    this.logger.debug("MessageRouter: Requesting quote", { content, room, network: resolvedNetwork, isRetry });
 
     // Pre-flight autosummon: check cache before sending to avoid reject-retry cycle
     if (this.autoSummon && this.agentRoomManager && !isRetry) {
@@ -682,7 +681,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     const confirmMessage = createConfirmTask(taskId, {
       x402Payment: paymentHeader,
       apiKey: this.apiKey,
-      network: this.apiKey ? this.networkName || undefined : undefined
+      network: this.apiKey ? this.networkName || undefined : undefined,
+      requestSource: this.requestSource
     });
 
     this.logger.debug("MessageRouter: Confirming quote", { taskId });

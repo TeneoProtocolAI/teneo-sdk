@@ -215,7 +215,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           paymentNetwork: this.config.paymentNetwork,
           paymentAsset: this.config.paymentAsset,
           network: this.config.network, // Network name from withNetwork()
-          autoSummon: this.config.autoSummon // Auto-summon (v2.4.0)
+          autoSummon: this.config.autoSummon, // Auto-summon (v2.4.0)
+          requestSource: this.config.requestSource
         }
       );
       this.messages.setAgentRoomManager(this.agentRoom); // Enable auto-summon (v2.4.0)

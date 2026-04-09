@@ -11,6 +11,12 @@ import {
   MessageTypeSchema,
   RoomSchema,
   TaskResponseMessageSchema,
+  createApiKeyAuth,
+  createAuth,
+  createCheckCachedAuth,
+  createConfirmTask,
+  createRequestChallenge,
+  createRequestTask,
   isAgentSelected,
   isAuthError,
   isAuthSuccess,
@@ -384,6 +390,94 @@ describe("Message Type Schemas", () => {
         const result = AuthMessageSchema.safeParse(msg);
         expect(result.success).toBe(true); // Schema is permissive - all fields are optional
       });
+    });
+
+    it("should validate explicit request source on auth messages", () => {
+      const message = {
+        type: "auth",
+        data: {
+          address: "0x1234567890123456789012345678901234567890",
+          signature: "0xsignature",
+          message: "challenge-string",
+          userType: "user",
+          request_source: "sdk"
+        }
+      };
+      const result = AuthMessageSchema.safeParse(message);
+      expect(result.success).toBe(true);
+    });
+
+    it("should validate cli request source on auth messages", () => {
+      const message = {
+        type: "auth",
+        data: {
+          address: "0x1234567890123456789012345678901234567890",
+          signature: "0xsignature",
+          message: "challenge-string",
+          userType: "user",
+          request_source: "cli"
+        }
+      };
+      const result = AuthMessageSchema.safeParse(message);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("Auth factory functions", () => {
+    it("should tag request challenge as sdk by default", () => {
+      const message = createRequestChallenge("user", "0x123");
+      expect(message.data.request_source).toBe("sdk");
+    });
+
+    it("should tag cached auth checks as sdk by default", () => {
+      const message = createCheckCachedAuth("0x123", "session-token");
+      expect(message.data.request_source).toBe("sdk");
+    });
+
+    it("should tag signed auth as sdk by default", () => {
+      const message = createAuth("0x123", "0xsig", "challenge", "user");
+      expect(message.data?.request_source).toBe("sdk");
+    });
+
+    it("should tag api key auth as sdk by default", () => {
+      const message = createApiKeyAuth("0x123", "api-key", "user");
+      expect(message.data?.request_source).toBe("sdk");
+    });
+
+    it("should allow overriding auth request source to cli", () => {
+      expect(createRequestChallenge("user", "0x123", "cli").data.request_source).toBe("cli");
+      expect(createCheckCachedAuth("0x123", "session-token", "cli").data.request_source).toBe(
+        "cli"
+      );
+      expect(createAuth("0x123", "0xsig", "challenge", "user", "cli").data?.request_source).toBe(
+        "cli"
+      );
+      expect(createApiKeyAuth("0x123", "api-key", "user", "community", "cli").data?.request_source).toBe(
+        "cli"
+      );
+    });
+  });
+
+  describe("Quote-approve factory functions", () => {
+    it("should tag request_task as sdk by default", () => {
+      const message = createRequestTask("hello", "room-1", "eip155:3338");
+      expect(message.data?.request_source).toBe("sdk");
+      expect(message.data?.network).toBe("eip155:3338");
+    });
+
+    it("should tag confirm_task as sdk by default", () => {
+      const message = createConfirmTask("task-1", { network: "peaq" });
+      expect(message.data.request_source).toBe("sdk");
+      expect(message.data.network).toBe("peaq");
+    });
+
+    it("should allow overriding task-flow request source", () => {
+      expect(createRequestTask("hello", "room-1", "eip155:3338", "cli").data?.request_source).toBe(
+        "cli"
+      );
+      expect(
+        createConfirmTask("task-1", { network: "peaq", requestSource: "cli" }).data.request_source
+      ).toBe("cli");
     });
   });
 
