@@ -439,7 +439,11 @@ export const TaskResponseMessageSchema = BaseMessageSchema.extend({
     task_id: z.string(),
     agent_name: z.string().optional(),
     success: stringToBoolean.optional(),
-    error: z.string().optional()
+    error: z.string().optional(),
+    stream: z.object({
+      seq: z.number(),
+      final: z.boolean()
+    }).optional()
   })
 });
 
