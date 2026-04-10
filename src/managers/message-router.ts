@@ -42,6 +42,17 @@ import { PaymentClient, buildX402ResourceUrl, usdcToUnits } from "../payments/pa
 import { getDefaultNetwork, getNetwork } from "../payments/networks";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
+export interface StreamingChunk {
+  content: string;
+  seq: number;
+}
+
+export interface StreamingResponse {
+  [Symbol.asyncIterator](): AsyncIterator<StreamingChunk>;
+  assembledContent: Promise<string>;
+  taskId: string;
+}
+
 export interface SendMessageOptions {
   room: string;
   from?: string;
@@ -910,6 +921,94 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       this.emit("coordinator:selected", agentId, reasoning)
     );
     this.wsClient.on("coordinator:error", (error) => this.emit("coordinator:error", error));
+  }
+
+  /**
+   * Sends a message and returns a streaming response with an async iterator.
+   * Listens for `agent:chunk` and `agent:stream_end` events matching the taskId.
+   *
+   * @param content - The message content to send
+   * @param options - Configuration for message sending (room is required)
+   * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
+   */
+  public sendMessageStreaming(
+    content: string,
+    options: SendMessageOptions,
+  ): StreamingResponse {
+    const taskId = uuidv4();
+    const chunks: StreamingChunk[] = [];
+    let done = false;
+    let resolveAssembled: (s: string) => void;
+    let rejectAssembled: (e: Error) => void;
+    let notifyChunk: (() => void) | null = null;
+
+    const assembledContent = new Promise<string>((resolve, reject) => {
+      resolveAssembled = resolve;
+      rejectAssembled = reject;
+    });
+
+    const chunkHandler = (data: any) => {
+      if (data.taskId !== taskId) return;
+      chunks.push({ content: data.content, seq: data.seq });
+      notifyChunk?.();
+    };
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    const endHandler = (data: any) => {
+      if (data.taskId !== taskId) return;
+      done = true;
+      clearTimeout(timer);
+      resolveAssembled!(data.assembledContent);
+      cleanup();
+      notifyChunk?.();
+    };
+
+    const cleanup = () => {
+      this.wsClient.off("agent:chunk" as any, chunkHandler);
+      this.wsClient.off("agent:stream_end" as any, endHandler);
+    };
+
+    this.wsClient.on("agent:chunk" as any, chunkHandler);
+    this.wsClient.on("agent:stream_end" as any, endHandler);
+
+    // Send the message (fire-and-forget)
+    this.sendMessage(content, { ...options, waitForResponse: false });
+
+    // Stream timeout
+    const streamTimeout = (options as any).streamTimeout ?? 300_000;
+    timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        if (chunks.length > 0) {
+          resolveAssembled!(chunks.map((c) => c.content).join(""));
+        } else {
+          rejectAssembled!(new Error("Stream timeout — no chunks received"));
+        }
+        cleanup();
+        notifyChunk?.();
+      }
+    }, streamTimeout);
+
+    const self: StreamingResponse = {
+      taskId,
+      assembledContent,
+      async *[Symbol.asyncIterator]() {
+        let yielded = 0;
+        while (true) {
+          while (yielded < chunks.length) {
+            yield chunks[yielded++];
+          }
+          if (done) return;
+          await new Promise<void>((r) => {
+            notifyChunk = r;
+          });
+          notifyChunk = null;
+        }
+      },
+    };
+
+    return self;
   }
 
   /**

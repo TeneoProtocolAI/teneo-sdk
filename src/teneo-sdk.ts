@@ -41,6 +41,8 @@ import {
   SendMessageOptions,
   AgentCommand,
   QuoteResult,
+  StreamingChunk,
+  StreamingResponse,
   AdminManager,
   ListAllAgentsOptions,
   AllAgentsResult,
@@ -58,6 +60,8 @@ export type {
   SendMessageOptions,
   AgentCommand,
   QuoteResult,
+  StreamingChunk,
+  StreamingResponse,
   ListAllAgentsOptions,
   AllAgentsResult,
   ListAvailableAgentsOptions,
@@ -431,6 +435,18 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     return this.messages.sendDirectCommand(command, waitForResponse);
+  }
+
+  /**
+   * Sends a message and returns a streaming response with an async iterator.
+   * Yields chunks as they arrive and provides assembled content when complete.
+   *
+   * @param content - The message content to send
+   * @param options - Configuration for message sending (room is required)
+   * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
+   */
+  public sendMessageStreaming(content: string, options: SendMessageOptions): StreamingResponse {
+    return this.messages.sendMessageStreaming(content, options);
   }
 
   /**
