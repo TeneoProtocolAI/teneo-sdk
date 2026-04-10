@@ -41,11 +41,13 @@ function createMockLogger(): Logger {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function createMockAgentRoomManager(opts: {
-  checkAgentInRoom?: boolean | undefined;
-  availableAgents?: Array<{ agent_id: string; agent_name: string }>;
-  addAgentThrows?: Error;
-} = {}) {
+function createMockAgentRoomManager(
+  opts: {
+    checkAgentInRoom?: boolean | undefined;
+    availableAgents?: Array<{ agent_id: string; agent_name: string }>;
+    addAgentThrows?: Error;
+  } = {}
+) {
   return {
     checkAgentInRoom: vi.fn().mockReturnValue(opts.checkAgentInRoom),
     listAvailableAgents: vi.fn().mockResolvedValue(opts.availableAgents || []),
@@ -57,10 +59,17 @@ function createMockAgentRoomManager(opts: {
 
 const QUOTE_DATA = {
   data: {
-    task_id: "t1", agent_id: "news-agent", agent_name: "news-agent",
-    agent_wallet: "0x123", command: "latest", pricing: { price: 0 },
+    task_id: "t1",
+    agent_id: "news-agent",
+    agent_name: "news-agent",
+    agent_wallet: "0x123",
+    command: "latest",
+    pricing: { price: 0 },
     expires_at: new Date(Date.now() + 60000).toISOString(),
-    settlement_router: "0x", salt: "0x", facilitator_fee: "0", hook: "0x"
+    settlement_router: "0x",
+    salt: "0x",
+    facilitator_fee: "0",
+    hook: "0x"
   }
 };
 
@@ -101,6 +110,54 @@ function resolveQuote(wsClient: ReturnType<typeof createMockWsClient>) {
 }
 
 describe("MessageRouter: Autosummon", () => {
+  it("should tag request_task with the configured request source", async () => {
+    const { router, wsClient } = createRouter({ requestSource: "cli" });
+
+    const promise = (router as any)._requestQuoteInternal(
+      "@news-agent latest",
+      "room-1",
+      undefined,
+      false
+    );
+
+    await vi.waitFor(() => {
+      expect(wsClient.sendMessage).toHaveBeenCalled();
+    });
+
+    const sentMessage = (wsClient.sendMessage as any).mock.calls[0][0];
+    expect(sentMessage.type).toBe("request_task");
+    expect(sentMessage.data.request_source).toBe("cli");
+
+    resolveQuote(wsClient);
+    await promise;
+  });
+
+  it("should tag confirm_task with the configured request source", async () => {
+    const { router, wsClient } = createRouter({ requestSource: "cli" });
+    (router as any).pendingQuotes.set("task-1", {
+      taskId: "task-1",
+      agentId: "news-agent",
+      agentName: "news-agent",
+      agentWallet: "0x123",
+      command: "latest",
+      pricing: { pricePerUnit: 0, priceType: "task-transaction", taskUnit: "per-query" },
+      expiresAt: new Date(Date.now() + 60_000),
+      settlement: {
+        settlementRouter: "0x",
+        salt: "0x",
+        facilitatorFee: "0",
+        hook: "0x",
+        hookData: "0x"
+      }
+    });
+
+    await router.confirmQuote("task-1");
+
+    const sentMessage = (wsClient.sendMessage as any).mock.calls[0][0];
+    expect(sentMessage.type).toBe("confirm_task");
+    expect(sentMessage.data.request_source).toBe("cli");
+  });
+
   describe("pre-flight autosummon (cache says agent NOT in room)", () => {
     it("should add agent to room before sending command", async () => {
       const { router, wsClient } = createRouter();
@@ -111,7 +168,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       await vi.waitFor(() => {
@@ -132,7 +192,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       await vi.waitFor(() => {
@@ -161,7 +224,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@ghost-agent test", "room-1", undefined, false
+        "@ghost-agent test",
+        "room-1",
+        undefined,
+        false
       );
 
       await vi.waitFor(() => {
@@ -189,7 +255,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       // Wait for sendMessage to be called (no pre-flight delay)
@@ -212,7 +281,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       await vi.waitFor(() => {
@@ -235,7 +307,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       await vi.waitFor(() => {
@@ -260,7 +335,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       // Wait for sendMessage, then fire coordinator reject
@@ -296,7 +374,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, true // isRetry
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        true // isRetry
       );
 
       await vi.waitFor(() => {
@@ -322,7 +403,10 @@ describe("MessageRouter: Autosummon", () => {
       router.setAgentRoomManager(arm);
 
       const promise = (router as any)._requestQuoteInternal(
-        "@news-agent latest", "room-1", undefined, false
+        "@news-agent latest",
+        "room-1",
+        undefined,
+        false
       );
 
       // Pre-flight tried, failed, but sendMessage should still be called

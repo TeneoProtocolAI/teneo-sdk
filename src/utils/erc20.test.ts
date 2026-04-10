@@ -5,9 +5,7 @@ describe("parseApproveCalldata", () => {
   // Valid approve calldata: approve(0x1234...5678, max_uint256)
   const spender = "1234567890abcdef1234567890abcdef12345678";
   const maxUint256Hex = "f".repeat(64);
-  const validCalldata = ERC20_APPROVE_SELECTOR +
-    spender.padStart(64, "0") +
-    maxUint256Hex;
+  const validCalldata = ERC20_APPROVE_SELECTOR + spender.padStart(64, "0") + maxUint256Hex;
 
   it("should parse valid approve calldata", () => {
     const result = parseApproveCalldata(validCalldata);
@@ -83,7 +81,7 @@ describe("checkERC20Allowance", () => {
     const allowanceHex = "0x00000000000000000000000000000000000000000000000000000000000f4240"; // 1000000
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ result: allowanceHex }),
+      json: () => Promise.resolve({ result: allowanceHex })
     });
 
     const result = await checkERC20Allowance(rpcUrl, tokenAddress, owner, spender);
@@ -93,7 +91,7 @@ describe("checkERC20Allowance", () => {
   it("should return 0n for zero allowance", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ result: "0x" }),
+      json: () => Promise.resolve({ result: "0x" })
     });
 
     const result = await checkERC20Allowance(rpcUrl, tokenAddress, owner, spender);
@@ -103,42 +101,48 @@ describe("checkERC20Allowance", () => {
   it("should throw on RPC error response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ error: { message: "execution reverted" } }),
+      json: () => Promise.resolve({ error: { message: "execution reverted" } })
     });
 
-    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender))
-      .rejects.toThrow("RPC error: execution reverted");
+    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender)).rejects.toThrow(
+      "RPC error: execution reverted"
+    );
   });
 
   it("should throw on HTTP error", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      status: 503,
+      status: 503
     });
 
-    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender))
-      .rejects.toThrow("RPC request failed with status 503");
+    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender)).rejects.toThrow(
+      "RPC request failed with status 503"
+    );
   });
 
   it("should throw on network failure", async () => {
     mockFetch.mockRejectedValueOnce(new Error("fetch failed"));
 
-    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender))
-      .rejects.toThrow("fetch failed");
+    await expect(checkERC20Allowance(rpcUrl, tokenAddress, owner, spender)).rejects.toThrow(
+      "fetch failed"
+    );
   });
 
   it("should send correct eth_call params", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ result: "0x0" }),
+      json: () => Promise.resolve({ result: "0x0" })
     });
 
     await checkERC20Allowance(rpcUrl, tokenAddress, owner, spender);
 
-    expect(mockFetch).toHaveBeenCalledWith(rpcUrl, expect.objectContaining({
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    }));
+    expect(mockFetch).toHaveBeenCalledWith(
+      rpcUrl,
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+    );
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.method).toBe("eth_call");
@@ -152,7 +156,7 @@ describe("checkERC20Allowance", () => {
     const maxAllowance = "0x" + "f".repeat(64);
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ result: maxAllowance }),
+      json: () => Promise.resolve({ result: maxAllowance })
     });
 
     const result = await checkERC20Allowance(rpcUrl, tokenAddress, owner, spender);

@@ -47,7 +47,13 @@ export class ChallengeHandler extends BaseMessageHandler<ChallengeMessage> {
 
       // Send authentication
       await context.sendMessage(
-        createAuth(context.account.address, signature, messageToSign, this.clientType)
+        createAuth(
+          context.account.address,
+          signature,
+          messageToSign,
+          this.clientType,
+          context.requestSource || "sdk"
+        )
       );
     } catch (error) {
       context.logger.error("Failed to sign challenge", error);

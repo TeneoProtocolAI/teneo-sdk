@@ -215,7 +215,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
           paymentNetwork: this.config.paymentNetwork,
           paymentAsset: this.config.paymentAsset,
           network: this.config.network, // Network name from withNetwork()
-          autoSummon: this.config.autoSummon // Auto-summon (v2.4.0)
+          autoSummon: this.config.autoSummon, // Auto-summon (v2.4.0)
+          requestSource: this.config.requestSource
         }
       );
       this.messages.setAgentRoomManager(this.agentRoom); // Enable auto-summon (v2.4.0)
@@ -399,7 +400,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * The quote includes agent selection, pricing, and expiration.
    * Does NOT auto-approve - use confirmQuote() to execute.
    */
-  public async requestQuote(content: string, room: string, networkOverride?: string | number): Promise<QuoteResult> {
+  public async requestQuote(
+    content: string,
+    room: string,
+    networkOverride?: string | number
+  ): Promise<QuoteResult> {
     return this.messages.requestQuote(content, room, networkOverride);
   }
 
@@ -1344,12 +1349,17 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
    * The txHash is automatically formatted with the network name (e.g., `0xabc...|base`)
    * when a chainId is provided, matching the format the UI uses.
    *
+   * For terminal statuses ("confirmed", "failed", "rejected"), this method
+   * automatically emits a "wallet:tx_completed" event so consumers can track
+   * transaction lifecycle without manually emitting it.
+   *
    * @param taskId - The task ID from the wallet:tx_requested event
    * @param status - Transaction result: "broadcasted" (tx sent, hash available), "confirmed" (on-chain receipt), "rejected" (user declined), or "failed" (error)
    * @param txHash - The on-chain transaction hash (required for "broadcasted" and "confirmed" status)
    * @param error - Error message (optional, for "failed" status)
    * @param room - The room ID from the wallet:tx_requested event (required for routing)
    * @param chainId - The chain ID from data.tx.chainId (used to format txHash with network name)
+   * @fires wallet:tx_completed When status is "confirmed", "failed", or "rejected"
    * @throws {SDKError} If the SDK has been destroyed or not connected
    *
    * @example
@@ -1406,6 +1416,19 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     };
 
     await this.wsClient.sendMessage(message);
+
+    // Emit wallet:tx_completed for terminal statuses so consumers can
+    // track completion without manually emitting this event themselves
+    if (status === "confirmed" || status === "failed" || status === "rejected") {
+      this.emit("wallet:tx_completed", {
+        taskId,
+        status,
+        ...(formattedTxHash && { txHash: formattedTxHash }),
+        ...(error && { error }),
+        ...(room && { room }),
+        ...(chainId && { chainId })
+      });
+    }
   }
 
   /**

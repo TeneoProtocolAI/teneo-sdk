@@ -4,7 +4,14 @@
  */
 
 import { z } from "zod";
-import { ClientTypeSchema, RoomInfoSchema, MessageTypeSchema, MessageType } from "./messages";
+import {
+  ClientTypeSchema,
+  RoomInfoSchema,
+  MessageTypeSchema,
+  MessageType,
+  RequestSourceSchema,
+  RequestSource
+} from "./messages";
 import { RetryStrategySchema, type RetryStrategy } from "../utils/retry-policy";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
@@ -91,6 +98,7 @@ const SDKConfigBaseSchema = z.object({
   // Client identification
   clientType: ClientTypeSchema.optional(),
   clientName: z.string().optional(),
+  requestSource: RequestSourceSchema.optional(),
 
   // Room configuration
   autoJoinPublicRooms: z.array(z.string()).optional(),
@@ -113,7 +121,11 @@ const SDKConfigBaseSchema = z.object({
 
   // Message settings
   messageTimeout: z.number().min(1000).max(300000).optional(),
-  maxMessageSize: z.number().min(1024).max(10 * 1024 * 1024).optional(), // 1KB to 10MB
+  maxMessageSize: z
+    .number()
+    .min(1024)
+    .max(10 * 1024 * 1024)
+    .optional(), // 1KB to 10MB
   maxMessagesPerSecond: z.number().min(1).max(1000).optional(), // Rate limiting
 
   // Response formatting
@@ -258,6 +270,7 @@ export type { RetryStrategy };
 export const DEFAULT_CONFIG: PartialSDKConfig = SDKConfigBaseSchema.partial().parse({
   wsUrl: "ws://localhost:8080/ws",
   clientType: "user",
+  requestSource: "sdk",
   reconnect: true,
   reconnectDelay: 5000,
   maxReconnectAttempts: 10,
@@ -430,6 +443,19 @@ export class SDKConfigBuilder {
     if (walletAddress) {
       this.config.walletAddress = z.string().parse(walletAddress);
     }
+    return this;
+  }
+
+  /**
+   * Sets the request source label used for auth and metrics attribution.
+   * Defaults to "sdk" for programmatic SDK consumers. Override to "cli"
+   * for the Teneo CLI or other first-party surfaces that should be tracked separately.
+   *
+   * @param requestSource - Source label to attach to authentication messages
+   * @returns this builder for method chaining
+   */
+  withRequestSource(requestSource: RequestSource): this {
+    this.config.requestSource = RequestSourceSchema.parse(requestSource);
     return this;
   }
 

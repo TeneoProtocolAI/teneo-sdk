@@ -456,9 +456,15 @@ export class ResponseFormatter {
       if (agent.commands && agent.commands.length > 0) {
         result += "\n   Commands:";
         for (const cmd of agent.commands) {
-          const paramUsage = cmd.parameters?.length && !cmd.argument
-            ? " " + cmd.parameters.map((p: any) => p.required !== false ? `<${p.name}>` : `[${p.name}]`).join(" ")
-            : cmd.argument ? ` ${cmd.argument}` : "";
+          const paramUsage =
+            cmd.parameters?.length && !cmd.argument
+              ? " " +
+                cmd.parameters
+                  .map((p: any) => (p.required !== false ? `<${p.name}>` : `[${p.name}]`))
+                  .join(" ")
+              : cmd.argument
+                ? ` ${cmd.argument}`
+                : "";
           result += `\n      - ${cmd.trigger}${paramUsage}`;
           if (cmd.parameters?.length) {
             for (const p of cmd.parameters) {

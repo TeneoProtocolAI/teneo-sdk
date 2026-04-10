@@ -48,14 +48,16 @@ export async function fetchNetworkConfigs(): Promise<Record<string, NetworkConfi
   }
 
   if (!backendUrl) {
-    throw new Error("Backend URL not set. Call setNetworkConfigUrl() before initializing networks.");
+    throw new Error(
+      "Backend URL not set. Call setNetworkConfigUrl() before initializing networks."
+    );
   }
 
   networksFetchPromise = (async () => {
     try {
       const response = await fetch(`${backendUrl}/api/networks`, {
         method: "GET",
-        headers: { "Accept": "application/json" }
+        headers: { Accept: "application/json" }
       });
 
       if (!response.ok) {
@@ -63,7 +65,11 @@ export async function fetchNetworkConfigs(): Promise<Record<string, NetworkConfi
       }
 
       const data = await response.json();
-      if (!data.networks || typeof data.networks !== "object" || Object.keys(data.networks).length === 0) {
+      if (
+        !data.networks ||
+        typeof data.networks !== "object" ||
+        Object.keys(data.networks).length === 0
+      ) {
         throw new Error("Invalid or empty network config response");
       }
 
@@ -77,7 +83,10 @@ export async function fetchNetworkConfigs(): Promise<Record<string, NetworkConfi
           validatedNetworks[name] = result.data;
         } else {
           invalidNetworks.push(name);
-          console.warn(`[Networks] Skipping invalid network "${name}":`, result.error.issues.map(i => i.message).join(", "));
+          console.warn(
+            `[Networks] Skipping invalid network "${name}":`,
+            result.error.issues.map((i) => i.message).join(", ")
+          );
         }
       }
 
@@ -87,12 +96,16 @@ export async function fetchNetworkConfigs(): Promise<Record<string, NetworkConfi
           console.warn("[Networks] All networks invalid, using cached config");
           return cachedNetworks;
         }
-        throw new Error(`All network configs failed validation. Invalid: ${invalidNetworks.join(", ")}`);
+        throw new Error(
+          `All network configs failed validation. Invalid: ${invalidNetworks.join(", ")}`
+        );
       }
 
       // Log warnings if some networks were invalid
       if (invalidNetworks.length > 0) {
-        console.warn(`[Networks] ${invalidNetworks.length} network(s) failed validation and were skipped: ${invalidNetworks.join(", ")}`);
+        console.warn(
+          `[Networks] ${invalidNetworks.length} network(s) failed validation and were skipped: ${invalidNetworks.join(", ")}`
+        );
       }
 
       cachedNetworks = validatedNetworks;
@@ -135,7 +148,9 @@ export function getNetwork(nameOrChainId: string | number): NetworkConfig {
   if (typeof nameOrChainId === "number") {
     const name = CHAIN_ID_TO_NETWORK[nameOrChainId];
     if (!name) {
-      throw new Error(`Unknown chain ID: ${nameOrChainId}. Supported: ${Object.keys(CHAIN_ID_TO_NETWORK).join(", ")}`);
+      throw new Error(
+        `Unknown chain ID: ${nameOrChainId}. Supported: ${Object.keys(CHAIN_ID_TO_NETWORK).join(", ")}`
+      );
     }
     return NETWORKS[name];
   }
@@ -143,14 +158,18 @@ export function getNetwork(nameOrChainId: string | number): NetworkConfig {
   if (nameOrChainId.startsWith("eip155:")) {
     const name = CAIP2_TO_NETWORK[nameOrChainId];
     if (!name) {
-      throw new Error(`Unknown CAIP-2 network: ${nameOrChainId}. Supported: ${Object.keys(CAIP2_TO_NETWORK).join(", ")}`);
+      throw new Error(
+        `Unknown CAIP-2 network: ${nameOrChainId}. Supported: ${Object.keys(CAIP2_TO_NETWORK).join(", ")}`
+      );
     }
     return NETWORKS[name];
   }
 
   const network = NETWORKS[nameOrChainId.toLowerCase()];
   if (!network) {
-    throw new Error(`Unknown network: ${nameOrChainId}. Supported: ${Object.keys(NETWORKS).join(", ")}`);
+    throw new Error(
+      `Unknown network: ${nameOrChainId}. Supported: ${Object.keys(NETWORKS).join(", ")}`
+    );
   }
   return network;
 }
@@ -185,7 +204,14 @@ export function createChainDefinition(network: NetworkConfig): Chain {
     nativeCurrency: {
       decimals: 18,
       name: network.name.split(" ")[0],
-      symbol: network.name === "PEAQ Mainnet" ? "PEAQ" : network.name === "Avalanche Mainnet" ? "AVAX" : network.name === "X Layer Mainnet" ? "OKB" : "ETH"
+      symbol:
+        network.name === "PEAQ Mainnet"
+          ? "PEAQ"
+          : network.name === "Avalanche Mainnet"
+            ? "AVAX"
+            : network.name === "X Layer Mainnet"
+              ? "OKB"
+              : "ETH"
     },
     rpcUrls: {
       default: { http: [network.rpcUrl] },

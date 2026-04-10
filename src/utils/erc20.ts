@@ -89,7 +89,7 @@ export async function checkERC20Allowance(
   rpcUrl: string,
   tokenAddress: string,
   owner: string,
-  spender: string,
+  spender: string
 ): Promise<bigint> {
   const calldata = buildAllowanceCalldata(owner, spender);
 
@@ -100,18 +100,15 @@ export async function checkERC20Allowance(
       jsonrpc: "2.0",
       id: 1,
       method: "eth_call",
-      params: [
-        { to: tokenAddress, data: calldata },
-        "latest",
-      ],
-    }),
+      params: [{ to: tokenAddress, data: calldata }, "latest"]
+    })
   });
 
   if (!response.ok) {
     throw new Error(`RPC request failed with status ${response.status}`);
   }
 
-  const result = await response.json() as { result?: string; error?: { message: string } };
+  const result = (await response.json()) as { result?: string; error?: { message: string } };
 
   if (result.error) {
     throw new Error(`RPC error: ${result.error.message}`);

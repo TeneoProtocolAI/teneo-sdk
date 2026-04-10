@@ -624,7 +624,13 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
 
         this.logger.debug("Authenticating with API key");
         await this.sendMessage(
-          createApiKeyAuth(address, this.config.apiKey, this.config.clientType || "user")
+          createApiKeyAuth(
+            address,
+            this.config.apiKey,
+            this.config.clientType || "user",
+            "community",
+            this.config.requestSource || "sdk"
+          )
         );
 
         await this.waitForAuthCompletion();
@@ -637,7 +643,13 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
         this.logger.debug("Checking cached authentication", {
           hasSessionToken: !!sessionToken
         });
-        await this.sendMessage(createCheckCachedAuth(this.config.walletAddress, sessionToken));
+        await this.sendMessage(
+          createCheckCachedAuth(
+            this.config.walletAddress,
+            sessionToken,
+            this.config.requestSource || "sdk"
+          )
+        );
 
         // Wait briefly for cached auth response
         await new Promise((resolve) => setTimeout(resolve, TIMEOUTS.CACHED_AUTH_WAIT));
@@ -653,7 +665,8 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       await this.sendMessage(
         createRequestChallenge(
           this.config.clientType || "user",
-          this.account?.address || this.config.walletAddress
+          this.account?.address || this.config.walletAddress,
+          this.config.requestSource || "sdk"
         )
       );
 
@@ -730,6 +743,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       adminManager: this.adminManager,
       agentRegistry: this.agentRegistry,
       account: this.account,
+      requestSource: this.config.requestSource,
       sendMessage: (message: BaseMessage) => this.sendMessage(message)
     };
   }

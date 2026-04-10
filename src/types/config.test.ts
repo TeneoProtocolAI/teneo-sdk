@@ -23,6 +23,7 @@ describe("SDK Configuration", () => {
       const config = {
         wsUrl: "wss://example.com/ws",
         privateKey: "0x1234567890123456789012345678901234567890123456789012345678901234",
+        requestSource: "cli" as const,
         webhookUrl: "https://webhook.example.com/events",
         webhookHeaders: { "X-API-Key": "secret" },
         reconnect: true,
@@ -46,6 +47,15 @@ describe("SDK Configuration", () => {
       };
       const result = SDKConfigSchema.safeParse(config);
       expect(result.success).toBe(true);
+    });
+
+    it("should reject unsupported request sources", () => {
+      const result = SDKConfigSchema.safeParse({
+        wsUrl: "wss://example.com/ws",
+        privateKey: "0x1234567890123456789012345678901234567890123456789012345678901234",
+        requestSource: "mobile"
+      });
+      expect(result.success).toBe(false);
     });
 
     it("should reject invalid websocket URLs", () => {
@@ -164,6 +174,7 @@ describe("SDK Configuration", () => {
       const config = new SDKConfigBuilder()
         .withWebSocketUrl("wss://example.com/ws")
         .withAuthentication("0x1234567890123456789012345678901234567890123456789012345678901234")
+        .withRequestSource("cli")
         .withWebhook("https://webhook.example.com/events", {
           "X-API-Key": "secret"
         })
@@ -178,6 +189,7 @@ describe("SDK Configuration", () => {
       expect(config.privateKey).toBe(
         "0x1234567890123456789012345678901234567890123456789012345678901234"
       );
+      expect(config.requestSource).toBe("cli");
       expect(config.webhookUrl).toBe("https://webhook.example.com/events");
       expect(config.webhookHeaders).toEqual({ "X-API-Key": "secret" });
       expect(config.reconnect).toBe(true);
@@ -324,6 +336,7 @@ describe("SDK Configuration", () => {
 
   describe("DEFAULT_CONFIG", () => {
     it("should have sensible defaults", () => {
+      expect(DEFAULT_CONFIG.requestSource).toBe("sdk");
       expect(DEFAULT_CONFIG.reconnect).toBe(true);
       expect(DEFAULT_CONFIG.reconnectDelay).toBe(5000);
       expect(DEFAULT_CONFIG.maxReconnectAttempts).toBe(10);

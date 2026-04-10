@@ -7,7 +7,12 @@
 
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { PaymentClient } from "../src/payments/payment-client";
-import { getNetwork, NETWORKS, setNetworkConfigUrl, fetchNetworkConfigs } from "../src/payments/networks";
+import {
+  getNetwork,
+  NETWORKS,
+  setNetworkConfigUrl,
+  fetchNetworkConfigs
+} from "../src/payments/networks";
 import { SecurePrivateKey } from "../src/utils/secure-private-key";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -186,7 +191,11 @@ describe("Multi-Network Payment Tests", () => {
     });
 
     it("should use correct EIP-712 domain for Base USDC", async () => {
-      const header = await client.createPaymentHeader(100000, TEST_RECIPIENT, "https://example.com/x402");
+      const header = await client.createPaymentHeader(
+        100000,
+        TEST_RECIPIENT,
+        "https://example.com/x402"
+      );
       const decoded = JSON.parse(Buffer.from(header, "base64").toString());
 
       // Base USDC uses "USD Coin" as the EIP-712 name

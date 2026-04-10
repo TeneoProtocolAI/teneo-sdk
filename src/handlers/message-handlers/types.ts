@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { BaseMessage, MessageType, Logger, WebhookEventType } from "../../types";
+import { BaseMessage, MessageType, Logger, WebhookEventType, RequestSource } from "../../types";
 import { FormattedResponse } from "../../formatters/response-formatter";
 import { PrivateKeyAccount } from "viem/accounts";
 import type { RoomManager } from "../../managers/room-manager";
@@ -70,6 +70,9 @@ export interface HandlerContext {
 
   // Account for signing (optional, for auth handlers)
   account?: PrivateKeyAccount;
+
+  // Request source tag used for auth attribution
+  requestSource?: RequestSource;
 
   // Send message back to server
   sendMessage: (message: BaseMessage) => Promise<void>;

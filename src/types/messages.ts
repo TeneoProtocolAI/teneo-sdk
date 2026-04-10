@@ -31,7 +31,12 @@ const stringToBoolean = z
       }
 
       // Accept falsy values
-      if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "skipped") {
+      if (
+        normalized === "false" ||
+        normalized === "0" ||
+        normalized === "no" ||
+        normalized === "skipped"
+      ) {
         return false;
       }
 
@@ -159,6 +164,8 @@ export const AgentTypeSchema = z.enum(["command", "nlp", "mcp"]);
 
 export const AgentStatusSchema = z.enum(["online", "offline"]);
 
+export const RequestSourceSchema = z.enum(["console", "cli", "sdk", "unknown"]);
+
 // Supporting schemas
 export const CapabilitySchema = z.object({
   name: z.string(),
@@ -240,12 +247,19 @@ export const AgentSchema = z
     nlpFallback: stringToBoolean.optional(), // SDK alias
     webhookUrl: z.string().url().optional(),
     categories: z.array(AgentCategorySchema).max(MAX_CATEGORIES).optional(),
-    review_status: z.enum(["private", "in_review", "public", "declined"]).optional()
+    review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
+    // Featured/popular metadata from backend
+    is_featured: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+    is_popular: z.boolean().optional(),
+    isPopular: z.boolean().optional()
   })
   .transform((data) => ({
     ...data,
     agentType: data.agentType ?? data.type,
-    nlpFallback: data.nlpFallback ?? data.nlp_fallback
+    nlpFallback: data.nlpFallback ?? data.nlp_fallback,
+    isFeatured: data.isFeatured ?? data.is_featured,
+    isPopular: data.isPopular ?? data.is_popular
   }));
 
 // Base message schema
@@ -274,7 +288,8 @@ export const RequestChallengeMessageSchema = BaseMessageSchema.extend({
   type: z.literal("request_challenge"),
   data: z.object({
     userType: ClientTypeSchema,
-    address: z.string().optional()
+    address: z.string().optional(),
+    request_source: RequestSourceSchema.optional()
   })
 });
 
@@ -290,7 +305,8 @@ export const CheckCachedAuthMessageSchema = BaseMessageSchema.extend({
   type: z.literal("check_cached_auth"),
   data: z.object({
     address: z.string(),
-    session_token: z.string().optional() // 64-char hex token for fast re-auth (24h validity)
+    session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
+    request_source: RequestSourceSchema.optional()
   })
 });
 
@@ -333,7 +349,8 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       user_count: z.number().optional(), // Total user count (admin only)
       // API-key auth fields
       api_key: z.string().optional(), // API key for session-key auth (no challenge-response needed)
-      platform: z.string().optional() // Platform identifier (e.g., "community")
+      platform: z.string().optional(), // Platform identifier (e.g., "community")
+      request_source: RequestSourceSchema.optional()
     })
     .optional()
 });
@@ -476,7 +493,8 @@ export const RequestTaskMessageSchema = BaseMessageSchema.extend({
   room: z.string(),
   data: z
     .object({
-      network: z.string().optional() // Payment network (peaq, base, avalanche)
+      network: z.string().optional(), // Payment network (peaq, base, avalanche)
+      request_source: RequestSourceSchema.optional()
     })
     .optional()
 });
@@ -512,7 +530,8 @@ export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   data: z.object({
     task_id: z.string(),
     api_key: z.string().optional(), // API key for session-key payment flow
-    network: z.string().optional() // Payment network: "peaq", "base", "avalanche", "x-layer"
+    network: z.string().optional(), // Payment network: "peaq", "base", "avalanche", "x-layer"
+    request_source: RequestSourceSchema.optional()
   }),
   payment: z.string().optional() // x402 payment at top level (backend checks msg.Payment)
 });
@@ -765,7 +784,9 @@ export const AgentRoomInfoSchema = z
     reviewed_by: z.string().optional().nullable(),
     created_at: z.string().optional(),
     creator: z.string().optional(),
-    is_banned: z.boolean().optional()
+    is_banned: z.boolean().optional(),
+    is_featured: z.boolean().optional(),
+    is_popular: z.boolean().optional()
   })
   .passthrough();
 
@@ -878,6 +899,8 @@ export const AdminAgentInfoSchema = z
     is_online: z.boolean().optional(),
     is_active: z.boolean().optional(),
     is_banned: z.boolean().optional(),
+    is_featured: z.boolean().optional(),
+    is_popular: z.boolean().optional(),
     created_at: z.string().optional().nullable(),
     review_status: z.enum(["private", "in_review", "public", "declined"]).optional(),
     decline_reason: z.string().optional().nullable(),
@@ -978,7 +1001,9 @@ export type RateLimitNotificationMessage = z.infer<typeof RateLimitNotificationM
 export const GetAgentDetailsMessageSchema = z
   .object({
     type: z.literal("get_agent_details"),
-    agent_id: z.string(),
+    data: z.object({
+      agent_id: z.string()
+    }),
     request_id: z.string().optional()
   })
   .passthrough();
@@ -1145,6 +1170,7 @@ export type ContentType = z.infer<typeof ContentTypeSchema>;
 export type ClientType = z.infer<typeof ClientTypeSchema>;
 export type AgentType = z.infer<typeof AgentTypeSchema>;
 export type AgentStatus = z.infer<typeof AgentStatusSchema>;
+export type RequestSource = z.infer<typeof RequestSourceSchema>;
 
 export type Capability = z.infer<typeof CapabilitySchema>;
 export type Command = z.infer<typeof CommandSchema>;
@@ -1250,26 +1276,30 @@ export function isAgentsList(msg: unknown): msg is AgentsListMessage {
 // Message factory functions with validation
 export function createRequestChallenge(
   userType: ClientType = "user",
-  address?: string
+  address?: string,
+  requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
 ): RequestChallengeMessage {
   return RequestChallengeMessageSchema.parse({
     type: "request_challenge",
     data: {
       userType,
-      ...(address && { address })
+      ...(address && { address }),
+      request_source: requestSource
     }
   });
 }
 
 export function createCheckCachedAuth(
   address: string,
-  sessionToken?: string
+  sessionToken?: string,
+  requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
 ): CheckCachedAuthMessage {
   return CheckCachedAuthMessageSchema.parse({
     type: "check_cached_auth",
     data: {
       address,
-      ...(sessionToken && { session_token: sessionToken })
+      ...(sessionToken && { session_token: sessionToken }),
+      request_source: requestSource
     }
   });
 }
@@ -1278,7 +1308,8 @@ export function createAuth(
   address: string,
   signature: string,
   message: string,
-  userType: ClientType = "user"
+  userType: ClientType = "user",
+  requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
 ): AuthMessage {
   return AuthMessageSchema.parse({
     type: "auth",
@@ -1286,7 +1317,8 @@ export function createAuth(
       address,
       signature,
       message,
-      userType
+      userType,
+      request_source: requestSource
     }
   });
 }
@@ -1295,7 +1327,8 @@ export function createApiKeyAuth(
   address: string,
   apiKey: string,
   userType: ClientType = "user",
-  platform: string = "community"
+  platform: string = "community",
+  requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
 ): AuthMessage {
   return AuthMessageSchema.parse({
     type: "auth",
@@ -1303,7 +1336,8 @@ export function createApiKeyAuth(
       address,
       userType,
       api_key: apiKey,
-      platform
+      platform,
+      request_source: requestSource
     }
   });
 }
@@ -1347,26 +1381,36 @@ export function createListRooms(): ListRoomsMessage {
 export function createRequestTask(
   content: string,
   room: string,
-  network?: string
+  network?: string,
+  requestSource: RequestSource = "sdk"
 ): RequestTaskMessage {
   return RequestTaskMessageSchema.parse({
     type: "request_task",
     content,
     room,
-    ...(network && { data: { network } })
+    data: {
+      ...(network && { network }),
+      request_source: requestSource
+    }
   });
 }
 
 export function createConfirmTask(
   taskId: string,
-  options?: { x402Payment?: string; apiKey?: string; network?: string }
+  options?: {
+    x402Payment?: string;
+    apiKey?: string;
+    network?: string;
+    requestSource?: RequestSource;
+  }
 ): ConfirmTaskMessage {
   return ConfirmTaskMessageSchema.parse({
     type: "confirm_task",
     data: {
       task_id: taskId,
       ...(options?.apiKey && { api_key: options.apiKey }),
-      ...(options?.network && { network: options.network })
+      ...(options?.network && { network: options.network }),
+      request_source: options?.requestSource ?? "sdk"
     },
     ...(options?.x402Payment && { payment: options.x402Payment })
   });

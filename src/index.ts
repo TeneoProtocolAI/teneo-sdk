@@ -67,6 +67,7 @@ export {
   ClientTypeSchema,
   AgentTypeSchema,
   AgentStatusSchema,
+  RequestSourceSchema,
 
   // Supporting schemas
   CapabilitySchema,
@@ -107,6 +108,7 @@ export {
   ClientType,
   AgentType,
   AgentStatus,
+  RequestSource,
   BaseMessage,
   RequestChallengeMessage,
   ChallengeMessage,
