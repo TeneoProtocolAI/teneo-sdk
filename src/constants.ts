@@ -17,7 +17,9 @@ export const TIMEOUTS = {
   /** Auth state polling interval */
   AUTH_POLL_INTERVAL: 100,
   /** Time window for matching responses without client_request_id (fallback) */
-  RESPONSE_MATCH_WINDOW: 60_000
+  RESPONSE_MATCH_WINDOW: 60_000,
+  /** Max time to wait for initial agent list after auth (server sends it right after auth_success) */
+  AGENT_LIST_WAIT: 10_000
 } as const;
 
 /**
