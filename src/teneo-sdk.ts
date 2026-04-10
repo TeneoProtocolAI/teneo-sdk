@@ -51,6 +51,7 @@ import { createConsoleLogger } from "./utils/logger";
 import { RoomIdSchema, AgentIdSchema, AgentCommandContentSchema } from "./types/validation";
 import { SecurePrivateKey } from "./utils/secure-private-key";
 import { setNetworkConfigUrl, initializeNetworks } from "./payments";
+import { TIMEOUTS } from "./constants";
 
 // Re-export types for external use
 export type {
@@ -288,6 +289,11 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
 
       await this.connection.connect();
 
+      // Wait for the initial agent list the server sends right after auth_success.
+      // Without this, getAgents() returns empty immediately after connect() because
+      // the "agents" message hasn't been processed yet by the event loop.
+      await this.waitForInitialAgentList();
+
       // Auto-join public rooms if configured
       if (this.config.autoJoinPublicRooms && this.config.autoJoinPublicRooms.length > 0) {
         for (const room of this.config.autoJoinPublicRooms) {
@@ -300,6 +306,38 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
       this.logger.error("Failed to connect to Teneo Protocol", error);
       throw error;
     }
+  }
+
+  /**
+   * Waits for the initial agent list from the server after authentication.
+   * The server sends an "agents" message right after auth_success, but it arrives
+   * asynchronously. Without waiting, getAgents() returns empty right after connect().
+   * Resolves immediately if agents are already loaded, or on timeout if the server
+   * never sends the list (e.g. no agents exist).
+   */
+  private async waitForInitialAgentList(): Promise<void> {
+    // Skip if not authenticated — unauthenticated connections don't get agent lists
+    if (!this.connection.isAuthenticated) return;
+
+    // Already have agents (e.g. reconnect where registry was preserved)
+    if (this.agents.getAgents().length > 0) return;
+
+    return new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        this.off("agent:list", onAgentList);
+        this.logger.debug("Agent list wait timed out — continuing without initial list");
+        resolve();
+      }, TIMEOUTS.AGENT_LIST_WAIT);
+
+      const onAgentList = () => {
+        clearTimeout(timeout);
+        this.off("agent:list", onAgentList);
+        this.logger.debug("Initial agent list received");
+        resolve();
+      };
+
+      this.once("agent:list", onAgentList);
+    });
   }
 
   /**
