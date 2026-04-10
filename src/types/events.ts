@@ -320,6 +320,7 @@ export interface SDKEvents {
   }) => void;
   "agent:chunk": (data: {
     taskId: string;
+    clientRequestId?: string;
     agentId: string;
     agentName?: string;
     content: string;
@@ -327,6 +328,7 @@ export interface SDKEvents {
   }) => void;
   "agent:stream_end": (data: {
     taskId: string;
+    clientRequestId?: string;
     agentId: string;
     agentName?: string;
     assembledContent: string;

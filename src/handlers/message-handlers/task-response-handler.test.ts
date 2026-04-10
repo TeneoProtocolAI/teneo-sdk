@@ -165,6 +165,7 @@ describe("TaskResponseHandler", () => {
       // Should emit agent:chunk
       expect(emitSpy).toHaveBeenCalledWith("agent:chunk", {
         taskId: "stream-task-1",
+        clientRequestId: undefined,
         agentId: "agent-stream",
         agentName: "Streaming Agent",
         content: "Hello ",
@@ -239,6 +240,7 @@ describe("TaskResponseHandler", () => {
       // Verify agent:chunk has correct seq
       expect(emitSpy).toHaveBeenCalledWith("agent:chunk", {
         taskId: "stream-task-3",
+        clientRequestId: undefined,
         agentId: "agent-stream",
         agentName: "Streaming Agent",
         content: "world!",
@@ -248,6 +250,7 @@ describe("TaskResponseHandler", () => {
       // Verify agent:stream_end has assembled content
       expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
         taskId: "stream-task-3",
+        clientRequestId: undefined,
         agentId: "agent-stream",
         agentName: "Streaming Agent",
         assembledContent: "Hello world!",
@@ -364,6 +367,7 @@ describe("TaskResponseHandler", () => {
       // Stream A should have assembled "A1A2"
       expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
         taskId: "task-A",
+        clientRequestId: undefined,
         agentId: "agent-a",
         agentName: "Agent A",
         assembledContent: "A1A2",
@@ -389,6 +393,7 @@ describe("TaskResponseHandler", () => {
       // Stream B should have assembled "B1B2"
       expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
         taskId: "task-B",
+        clientRequestId: undefined,
         agentId: "agent-b",
         agentName: "Agent B",
         assembledContent: "B1B2",
@@ -431,6 +436,7 @@ describe("TaskResponseHandler", () => {
       // Should assemble only "fresh", not "onlyfresh"
       expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
         taskId: "task-cleanup",
+        clientRequestId: undefined,
         agentId: "agent-x",
         agentName: "Agent X",
         assembledContent: "fresh",
@@ -468,9 +474,152 @@ describe("TaskResponseHandler", () => {
 
       expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
         taskId: "task-empty",
+        clientRequestId: undefined,
         agentId: "agent-empty",
         agentName: "Empty Agent",
         assembledContent: "data",
+      });
+    });
+
+    it("should emit clientRequestId in chunk and stream_end events when present in message data", async () => {
+      // Send first chunk with client_request_id
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "Hello ",
+          content_type: "text/plain",
+          from: "agent-stream",
+          data: {
+            task_id: "backend-task-id",
+            agent_name: "Streaming Agent",
+            client_request_id: "client-req-42",
+            stream: { seq: 0, final: false },
+          },
+        } as any,
+        mockContext
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith("agent:chunk", {
+        taskId: "backend-task-id",
+        clientRequestId: "client-req-42",
+        agentId: "agent-stream",
+        agentName: "Streaming Agent",
+        content: "Hello ",
+        seq: 0,
+      });
+
+      emitSpy.mockClear();
+
+      // Send final chunk
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "world",
+          content_type: "text/plain",
+          from: "agent-stream",
+          data: {
+            task_id: "backend-task-id",
+            agent_name: "Streaming Agent",
+            client_request_id: "client-req-42",
+            stream: { seq: 1, final: true },
+          },
+        } as any,
+        mockContext
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
+        taskId: "backend-task-id",
+        clientRequestId: "client-req-42",
+        agentId: "agent-stream",
+        agentName: "Streaming Agent",
+        assembledContent: "Hello world",
+      });
+    });
+
+    it("should key stream buffer by clientRequestId when present (concurrent streams with same task_id)", async () => {
+      // Two concurrent streams that share the same backend task_id but have
+      // different client_request_ids. This simulates a bug where task_id collides
+      // across requests - the buffer must key by clientRequestId to stay isolated.
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "A1",
+          from: "agent-a",
+          data: {
+            task_id: "shared-task-id",
+            agent_name: "Agent A",
+            client_request_id: "req-A",
+            stream: { seq: 0, final: false },
+          },
+        } as any,
+        mockContext
+      );
+
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "B1",
+          from: "agent-b",
+          data: {
+            task_id: "shared-task-id",
+            agent_name: "Agent B",
+            client_request_id: "req-B",
+            stream: { seq: 0, final: false },
+          },
+        } as any,
+        mockContext
+      );
+
+      emitSpy.mockClear();
+
+      // Final chunk for req-A
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "A2",
+          from: "agent-a",
+          data: {
+            task_id: "shared-task-id",
+            agent_name: "Agent A",
+            client_request_id: "req-A",
+            stream: { seq: 1, final: true },
+          },
+        } as any,
+        mockContext
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
+        taskId: "shared-task-id",
+        clientRequestId: "req-A",
+        agentId: "agent-a",
+        agentName: "Agent A",
+        assembledContent: "A1A2",
+      });
+
+      emitSpy.mockClear();
+
+      // Final chunk for req-B (separate buffer)
+      await handler.handle(
+        {
+          type: "task_response" as const,
+          content: "B2",
+          from: "agent-b",
+          data: {
+            task_id: "shared-task-id",
+            agent_name: "Agent B",
+            client_request_id: "req-B",
+            stream: { seq: 1, final: true },
+          },
+        } as any,
+        mockContext
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith("agent:stream_end", {
+        taskId: "shared-task-id",
+        clientRequestId: "req-B",
+        agentId: "agent-b",
+        agentName: "Agent B",
+        assembledContent: "B1B2",
       });
     });
   });

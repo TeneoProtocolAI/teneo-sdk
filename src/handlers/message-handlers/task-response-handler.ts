@@ -15,12 +15,15 @@ export class TaskResponseHandler extends BaseMessageHandler<TaskResponseMessage>
 
   private streamBuffers = new Map<
     string,
-    { chunks: string[]; agentId: string; agentName?: string }
+    { chunks: string[]; agentId: string; agentName?: string; taskId: string; clientRequestId?: string }
   >();
 
   protected handleValidated(message: TaskResponseMessage, context: HandlerContext): void {
     const taskId = message.data.task_id;
     const stream = message.data.stream;
+    // Extract client_request_id if present - used for streaming correlation
+    // because the client cannot know the backend-assigned task_id at send time
+    const clientRequestId = (message.data as { client_request_id?: string }).client_request_id;
 
     context.logger.debug("Handling task_response message", {
       taskId,
@@ -30,19 +33,24 @@ export class TaskResponseHandler extends BaseMessageHandler<TaskResponseMessage>
 
     if (stream) {
       // Streaming path: accumulate chunks
-      if (!this.streamBuffers.has(taskId)) {
-        this.streamBuffers.set(taskId, {
+      // Key by clientRequestId if present (preferred) or fall back to taskId
+      const bufferKey = clientRequestId ?? taskId;
+      if (!this.streamBuffers.has(bufferKey)) {
+        this.streamBuffers.set(bufferKey, {
           chunks: [],
           agentId: message.from || "",
           agentName: message.data.agent_name,
+          taskId,
+          clientRequestId,
         });
       }
 
-      const buffer = this.streamBuffers.get(taskId)!;
+      const buffer = this.streamBuffers.get(bufferKey)!;
       buffer.chunks.push(message.content || "");
 
       this.emit(context, "agent:chunk", {
         taskId,
+        clientRequestId,
         agentId: buffer.agentId,
         agentName: buffer.agentName,
         content: message.content || "",
@@ -54,6 +62,7 @@ export class TaskResponseHandler extends BaseMessageHandler<TaskResponseMessage>
 
         this.emit(context, "agent:stream_end", {
           taskId,
+          clientRequestId,
           agentId: buffer.agentId,
           agentName: buffer.agentName,
           assembledContent,
@@ -81,7 +90,7 @@ export class TaskResponseHandler extends BaseMessageHandler<TaskResponseMessage>
           taskId,
         });
 
-        this.streamBuffers.delete(taskId);
+        this.streamBuffers.delete(bufferKey);
       }
 
       return;

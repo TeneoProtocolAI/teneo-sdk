@@ -443,8 +443,10 @@ export const TaskResponseMessageSchema = BaseMessageSchema.extend({
     stream: z.object({
       seq: z.number(),
       final: z.boolean()
-    }).optional()
-  })
+    }).optional(),
+    // Request correlation - echoed back by server for streaming correlation
+    client_request_id: z.string().optional()
+  }).passthrough()
 });
 
 export const AgentSelectedMessageSchema = BaseMessageSchema.extend({
@@ -498,8 +500,10 @@ export const RequestTaskMessageSchema = BaseMessageSchema.extend({
   data: z
     .object({
       network: z.string().optional(), // Payment network (peaq, base, avalanche)
-      request_source: RequestSourceSchema.optional()
+      request_source: RequestSourceSchema.optional(),
+      client_request_id: z.string().optional() // Request correlation
     })
+    .passthrough()
     .optional()
 });
 
@@ -1386,16 +1390,18 @@ export function createRequestTask(
   content: string,
   room: string,
   network?: string,
-  requestSource: RequestSource = "sdk"
+  requestSource: RequestSource = "sdk",
+  clientRequestId?: string
 ): RequestTaskMessage {
+  const data: Record<string, unknown> = {};
+  if (network) data.network = network;
+  if (clientRequestId) data.client_request_id = clientRequestId;
+  data.request_source = requestSource;
   return RequestTaskMessageSchema.parse({
     type: "request_task",
     content,
     room,
-    data: {
-      ...(network && { network }),
-      request_source: requestSource
-    }
+    ...(Object.keys(data).length > 0 && { data })
   });
 }
 
