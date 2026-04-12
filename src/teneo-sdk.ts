@@ -41,6 +41,8 @@ import {
   SendMessageOptions,
   AgentCommand,
   QuoteResult,
+  StreamingChunk,
+  StreamingResponse,
   AdminManager,
   ListAllAgentsOptions,
   AllAgentsResult,
@@ -58,6 +60,8 @@ export type {
   SendMessageOptions,
   AgentCommand,
   QuoteResult,
+  StreamingChunk,
+  StreamingResponse,
   ListAllAgentsOptions,
   AllAgentsResult,
   ListAvailableAgentsOptions,
@@ -431,6 +435,18 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     return this.messages.sendDirectCommand(command, waitForResponse);
+  }
+
+  /**
+   * Sends a message and returns a streaming response with an async iterator.
+   * Yields chunks as they arrive and provides assembled content when complete.
+   *
+   * @param content - The message content to send
+   * @param options - Configuration for message sending (room is required)
+   * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
+   */
+  public sendMessageStreaming(content: string, options: SendMessageOptions): StreamingResponse {
+    return this.messages.sendMessageStreaming(content, options);
   }
 
   /**
@@ -1136,12 +1152,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(roomId: string, useCache?: boolean): Promise<any[]>;
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     options: ListAvailableAgentsOptions
   ): Promise<PaginatedAgentsResult>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     useCacheOrOptions?: boolean | ListAvailableAgentsOptions
   ): Promise<any[] | PaginatedAgentsResult> {
     return this.agentRoom.listAvailableAgents(roomId, useCacheOrOptions as any);
@@ -2006,6 +2022,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward agent events from MessageRouter
     this.messages.on("agent:selected", (data) => this.emit("agent:selected", data));
     this.messages.on("agent:response", (response) => this.emit("agent:response", response));
+    this.messages.on("agent:chunk", (data) => this.emit("agent:chunk", data));
+    this.messages.on("agent:stream_end", (data) => this.emit("agent:stream_end", data));
 
     // Forward quote and payment events from MessageRouter (v2.2.0)
     this.messages.on("quote:received", (quote) => this.emit("quote:received", quote));

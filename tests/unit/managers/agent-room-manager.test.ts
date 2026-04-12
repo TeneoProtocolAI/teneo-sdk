@@ -365,7 +365,7 @@ describe("AgentRoomManager", () => {
     });
 
     it("should validate room ID", async () => {
-      await expect(manager.listAvailableAgents("")).rejects.toThrow("Room ID cannot be empty");
+      await expect(manager.listAvailableAgents("")).rejects.toThrow("Room ID is required for non-paginated listAvailableAgents");
     });
   });
 

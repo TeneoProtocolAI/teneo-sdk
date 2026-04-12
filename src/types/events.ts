@@ -318,6 +318,21 @@ export interface SDKEvents {
     clientRequestId?: string;
     room?: string;
   }) => void;
+  "agent:chunk": (data: {
+    taskId: string;
+    clientRequestId?: string;
+    agentId: string;
+    agentName?: string;
+    content: string;
+    seq: number;
+  }) => void;
+  "agent:stream_end": (data: {
+    taskId: string;
+    clientRequestId?: string;
+    agentId: string;
+    agentName?: string;
+    assembledContent: string;
+  }) => void;
 
   // Room events
   "room:list": (rooms: z.infer<typeof RoomInfoSchema>[]) => void;

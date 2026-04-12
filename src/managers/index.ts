@@ -18,7 +18,9 @@ export {
   type SendMessageOptions,
   type AgentCommand,
   type QuoteResult,
-  type MessageRouterConfig
+  type MessageRouterConfig,
+  type StreamingChunk,
+  type StreamingResponse
 } from "./message-router";
 export {
   AdminManager,

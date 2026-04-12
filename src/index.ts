@@ -280,7 +280,7 @@ export const VERSION = "3.3.0";
  * @see {@link TeneoSDK.sendMessage}
  * @see {@link TeneoSDK.sendDirectCommand}
  */
-export type { SendMessageOptions, AgentCommand } from "./teneo-sdk";
+export type { SendMessageOptions, AgentCommand, StreamingChunk, StreamingResponse } from "./teneo-sdk";
 
 /**
  * Quick start function to create and connect SDK

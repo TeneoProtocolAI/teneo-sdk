@@ -42,6 +42,27 @@ import { PaymentClient, buildX402ResourceUrl, usdcToUnits } from "../payments/pa
 import { getDefaultNetwork, getNetwork } from "../payments/networks";
 import type { SecurePrivateKey } from "../utils/secure-private-key";
 
+export interface StreamingChunk {
+  content: string;
+  seq: number;
+}
+
+export interface StreamingResponse {
+  [Symbol.asyncIterator](): AsyncIterator<StreamingChunk>;
+  assembledContent: Promise<string>;
+  /**
+   * Resolves with the backend-assigned taskId when the first chunk arrives.
+   * The client cannot know this value at send time - the backend assigns it
+   * during the quote/confirm flow.
+   */
+  taskId: Promise<string>;
+  /**
+   * The client-generated request correlation id. Used by the SDK to filter
+   * incoming chunks from the backend (which echoes it back in every task_response).
+   */
+  clientRequestId: string;
+}
+
 export interface SendMessageOptions {
   room: string;
   from?: string;
@@ -401,12 +422,14 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   /**
    * Internal quote request with error racing and auto-summon support.
    * @param isRetry - true on auto-summon retry to prevent infinite loops
+   * @param clientRequestId - optional correlation id (used by streaming flow)
    */
   private async _requestQuoteInternal(
     content: string,
     room: string,
     networkOverride: string | number | undefined,
-    isRetry: boolean
+    isRetry: boolean,
+    clientRequestId?: string
   ): Promise<QuoteResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
@@ -414,7 +437,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
-    const message = createRequestTask(content, room, resolvedNetwork, this.requestSource);
+    const message = createRequestTask(content, room, resolvedNetwork, this.requestSource, clientRequestId);
     this.logger.debug("MessageRouter: Requesting quote", {
       content,
       room,
@@ -485,7 +508,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     } catch (error) {
       if (this.isAgentNotFoundError(error) && !isRetry) {
         if (this.autoSummon) {
-          return this.handleAutoSummon(content, room, networkOverride);
+          return this.handleAutoSummon(content, room, networkOverride, clientRequestId);
         }
         throw new SDKError(
           "Agent not found in room. Enable autoSummon to automatically add agents.",
@@ -559,7 +582,8 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private async handleAutoSummon(
     content: string,
     room: string,
-    networkOverride?: string | number
+    networkOverride?: string | number,
+    clientRequestId?: string
   ): Promise<QuoteResult> {
     if (!this.agentRoomManager) {
       throw new SDKError("Auto-summon requires AgentRoomManager", ErrorCode.AUTOSUMMON_FAILED);
@@ -589,7 +613,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.wsClient.emit("autosummon:success", agentName, agent.agent_id, room);
     this.logger.info("MessageRouter: Agent auto-summoned, retrying", { agentId: agent.agent_id });
 
-    return this._requestQuoteInternal(content, room, networkOverride, true);
+    return this._requestQuoteInternal(content, room, networkOverride, true, clientRequestId);
   }
 
   /**
@@ -902,6 +926,14 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         });
     });
 
+    this.wsClient.on("agent:chunk", (data) => {
+      this.emit("agent:chunk", data);
+    });
+
+    this.wsClient.on("agent:stream_end", (data) => {
+      this.emit("agent:stream_end", data);
+    });
+
     // Forward coordinator events
     this.wsClient.on("coordinator:processing", (request) =>
       this.emit("coordinator:processing", request)
@@ -910,6 +942,143 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       this.emit("coordinator:selected", agentId, reasoning)
     );
     this.wsClient.on("coordinator:error", (error) => this.emit("coordinator:error", error));
+  }
+
+  /**
+   * Sends a message and returns a streaming response with an async iterator.
+   * Listens for `agent:chunk` and `agent:stream_end` events matching the taskId.
+   *
+   * @param content - The message content to send
+   * @param options - Configuration for message sending (room is required)
+   * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
+   */
+  public sendMessageStreaming(
+    content: string,
+    options: SendMessageOptions,
+  ): StreamingResponse {
+    // Use client_request_id for correlation - the backend assigns task_id
+    // during the quote/confirm flow, so the client cannot know it at send time.
+    // The server echoes client_request_id back in every streaming task_response.
+    const clientRequestId = uuidv4();
+    const chunks: StreamingChunk[] = [];
+    let done = false;
+    let resolveAssembled: (s: string) => void;
+    let rejectAssembled: (e: Error) => void;
+    let resolveTaskId: (id: string) => void;
+    let rejectTaskId: (e: Error) => void;
+    let notifyChunk: (() => void) | null = null;
+    let taskIdResolved = false;
+
+    const assembledContent = new Promise<string>((resolve, reject) => {
+      resolveAssembled = resolve;
+      rejectAssembled = reject;
+    });
+
+    const taskIdPromise = new Promise<string>((resolve, reject) => {
+      resolveTaskId = resolve;
+      rejectTaskId = reject;
+    });
+    // Prevent unhandled rejection if consumer never awaits taskId
+    taskIdPromise.catch(() => {});
+
+    const chunkHandler = (data: any) => {
+      if (data.clientRequestId !== clientRequestId) return;
+      if (!taskIdResolved && data.taskId) {
+        taskIdResolved = true;
+        resolveTaskId!(data.taskId);
+      }
+      chunks.push({ content: data.content, seq: data.seq });
+      notifyChunk?.();
+    };
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    const endHandler = (data: any) => {
+      if (data.clientRequestId !== clientRequestId) return;
+      if (!taskIdResolved && data.taskId) {
+        taskIdResolved = true;
+        resolveTaskId!(data.taskId);
+      }
+      done = true;
+      clearTimeout(timer);
+      resolveAssembled!(data.assembledContent);
+      cleanup();
+      notifyChunk?.();
+    };
+
+    const cleanup = () => {
+      this.wsClient.off("agent:chunk" as any, chunkHandler);
+      this.wsClient.off("agent:stream_end" as any, endHandler);
+    };
+
+    this.wsClient.on("agent:chunk" as any, chunkHandler);
+    this.wsClient.on("agent:stream_end" as any, endHandler);
+
+    // Kick off the quote/confirm flow directly so we can inject clientRequestId
+    // into the outgoing request_task message. The server will echo it back in
+    // every task_response (including streaming chunks) for correlation.
+    const networkOverride = options.network || options.networkChainId;
+    (async () => {
+      const quote = await this._requestQuoteInternal(
+        content, options.room, networkOverride, false, clientRequestId
+      );
+      await this.confirmQuote(quote.taskId, {
+        waitForResponse: false,
+        timeout: options.timeout ?? this.messageTimeout,
+      });
+    })().catch((err) => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        rejectAssembled!(err instanceof Error ? err : new Error(String(err)));
+        if (!taskIdResolved) {
+          taskIdResolved = true;
+          rejectTaskId!(err instanceof Error ? err : new Error(String(err)));
+        }
+        cleanup();
+        notifyChunk?.();
+      }
+    });
+
+    // Stream timeout
+    const streamTimeout = (options as any).streamTimeout ?? 300_000;
+    timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        if (chunks.length > 0) {
+          resolveAssembled!(chunks.map((c) => c.content).join(""));
+        } else {
+          rejectAssembled!(new Error("Stream timeout — no chunks received"));
+        }
+        if (!taskIdResolved) {
+          taskIdResolved = true;
+          rejectTaskId!(new Error("Stream timeout — no chunks received"));
+        }
+        cleanup();
+        notifyChunk?.();
+      }
+    }, streamTimeout);
+
+    const self: StreamingResponse = {
+      clientRequestId,
+      taskId: taskIdPromise,
+      assembledContent,
+      async *[Symbol.asyncIterator]() {
+        let yielded = 0;
+        while (true) {
+          while (yielded < chunks.length) {
+            yield chunks[yielded++];
+          }
+          if (done) return;
+          await new Promise<void>((r) => {
+            notifyChunk = r;
+          });
+          notifyChunk = null;
+        }
+      },
+    };
+
+    return self;
   }
 
   /**
