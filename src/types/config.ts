@@ -168,7 +168,10 @@ const SDKConfigBaseSchema = z.object({
   networkChainId: z.number().optional(), // Or chain ID directly
 
   // Auto-summon (v2.4.0)
-  autoSummon: z.boolean().optional() // Auto-add agents to room on "Agent not found"
+  autoSummon: z.boolean().optional(), // Auto-add agents to room on "Agent not found"
+
+  // Additional headers sent during WebSocket connection handshake
+  additionalHeaders: z.record(z.string()).optional()
 });
 
 // SDK Configuration schema with transform for backward compatibility

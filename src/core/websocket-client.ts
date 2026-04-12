@@ -293,8 +293,9 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
       }
 
       // Create WebSocket connection
+      const headers: Record<string, string> = { ...this.config.webhookHeaders, ...this.config.additionalHeaders };
       this.ws = new WebSocket(url, {
-        headers: this.config.webhookHeaders,
+        headers,
         handshakeTimeout: this.config.connectionTimeout || TIMEOUTS.CONNECTION_TIMEOUT,
         maxPayload: this.config.maxMessageSize || LIMITS.MAX_MESSAGE_SIZE
       });
