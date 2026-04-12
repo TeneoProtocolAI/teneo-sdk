@@ -2022,6 +2022,8 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     // Forward agent events from MessageRouter
     this.messages.on("agent:selected", (data) => this.emit("agent:selected", data));
     this.messages.on("agent:response", (response) => this.emit("agent:response", response));
+    this.messages.on("agent:chunk", (data) => this.emit("agent:chunk", data));
+    this.messages.on("agent:stream_end", (data) => this.emit("agent:stream_end", data));
 
     // Forward quote and payment events from MessageRouter (v2.2.0)
     this.messages.on("quote:received", (quote) => this.emit("quote:received", quote));
