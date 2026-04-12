@@ -926,6 +926,14 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         });
     });
 
+    this.wsClient.on("agent:chunk", (data) => {
+      this.emit("agent:chunk", data);
+    });
+
+    this.wsClient.on("agent:stream_end", (data) => {
+      this.emit("agent:stream_end", data);
+    });
+
     // Forward coordinator events
     this.wsClient.on("coordinator:processing", (request) =>
       this.emit("coordinator:processing", request)
