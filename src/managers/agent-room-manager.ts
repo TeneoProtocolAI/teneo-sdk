@@ -426,27 +426,34 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
    * @throws {SDKError} If not connected or operation fails
    */
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     options: ListAvailableAgentsOptions
   ): Promise<PaginatedAgentsResult>;
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     useCacheOrOptions?: boolean | ListAvailableAgentsOptions
   ): Promise<AgentRoomInfo[] | PaginatedAgentsResult> {
     if (!this.wsClient.isConnected) {
       throw new SDKError("Not connected to Teneo Protocol", ErrorCode.NOT_CONNECTED);
     }
 
-    // Validate input
-    this.validateRoomId(roomId);
-
     // Determine if using pagination options or legacy boolean
     const isPaginated = typeof useCacheOrOptions === "object" && useCacheOrOptions !== null;
+
+    // Non-paginated (cache-based) calls still require roomId
+    if (!isPaginated && !roomId) {
+      throw new SDKError("Room ID is required for non-paginated listAvailableAgents", ErrorCode.VALIDATION_ERROR);
+    }
+
+    // Validate roomId when provided
+    if (roomId) {
+      this.validateRoomId(roomId);
+    }
     const useCache = isPaginated ? false : ((useCacheOrOptions as boolean) ?? true);
 
     // Check cache if enabled (only for legacy non-paginated calls)
     if (!isPaginated && useCache) {
-      const cached = this.availableAgentsCache.get(roomId);
+      const cached = this.availableAgentsCache.get(roomId as string);
       if (cached) {
         this.logger.debug("AgentRoomManager: Returning cached available agents", {
           roomId,
@@ -459,7 +466,10 @@ export class AgentRoomManager extends EventEmitter<SDKEvents> {
     this.logger.debug("AgentRoomManager: Listing available agents", { roomId, isPaginated });
 
     // Build message data with optional pagination params
-    const data: Record<string, unknown> = { room_id: roomId };
+    const data: Record<string, unknown> = {};
+    if (roomId) {
+      data.room_id = roomId;
+    }
 
     if (isPaginated) {
       const options = useCacheOrOptions as ListAvailableAgentsOptions;

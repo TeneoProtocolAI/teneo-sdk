@@ -1152,12 +1152,12 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(roomId: string, useCache?: boolean): Promise<any[]>;
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     options: ListAvailableAgentsOptions
   ): Promise<PaginatedAgentsResult>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async listAvailableAgents(
-    roomId: string,
+    roomId: string | undefined,
     useCacheOrOptions?: boolean | ListAvailableAgentsOptions
   ): Promise<any[] | PaginatedAgentsResult> {
     return this.agentRoom.listAvailableAgents(roomId, useCacheOrOptions as any);
