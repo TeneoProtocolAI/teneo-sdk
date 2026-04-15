@@ -347,8 +347,8 @@ export const AuthMessageSchema = BaseMessageSchema.extend({
       session_token: z.string().optional(), // 64-char hex token for fast re-auth (24h validity)
       whitelist_verified: z.union([z.boolean(), z.string()]).optional(), // Whitelist verification status
       user_count: z.number().optional(), // Total user count (admin only)
-      // API-key auth fields
-      api_key: z.string().optional(), // API key for session-key auth (no challenge-response needed)
+      // Access-key auth fields (wire field name kept as api_key for backend compatibility)
+      api_key: z.string().optional(), // Access key for session-key auth (no challenge-response needed)
       platform: z.string().optional(), // Platform identifier (e.g., "community")
       request_source: RequestSourceSchema.optional()
     })
@@ -537,7 +537,7 @@ export const ConfirmTaskMessageSchema = BaseMessageSchema.extend({
   type: z.literal("confirm_task"),
   data: z.object({
     task_id: z.string(),
-    api_key: z.string().optional(), // API key for session-key payment flow
+    api_key: z.string().optional(), // Access key for session-key payment flow (wire field name kept for backend compatibility)
     network: z.string().optional(), // Payment network: "peaq", "base", "avalanche", "x-layer"
     request_source: RequestSourceSchema.optional()
   }),
@@ -1331,9 +1331,9 @@ export function createAuth(
   });
 }
 
-export function createApiKeyAuth(
+export function createAccessKeyAuth(
   address: string,
-  apiKey: string,
+  accessKey: string,
   userType: ClientType = "user",
   platform: string = "community",
   requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
@@ -1343,11 +1343,25 @@ export function createApiKeyAuth(
     data: {
       address,
       userType,
-      api_key: apiKey,
+      api_key: accessKey,
       platform,
       request_source: requestSource
     }
   });
+}
+
+/**
+ * @deprecated Use createAccessKeyAuth() instead. Renamed for clarity — this is a Teneo
+ * session access key, distinct from third-party API keys (OpenAI, etc.).
+ */
+export function createApiKeyAuth(
+  address: string,
+  apiKey: string,
+  userType: ClientType = "user",
+  platform: string = "community",
+  requestSource: z.infer<typeof RequestSourceSchema> = "sdk"
+): AuthMessage {
+  return createAccessKeyAuth(address, apiKey, userType, platform, requestSource);
 }
 
 export function createUserMessage(content: string, room: string, from?: string): UserMessage {
@@ -1409,7 +1423,7 @@ export function createConfirmTask(
   taskId: string,
   options?: {
     x402Payment?: string;
-    apiKey?: string;
+    accessKey?: string;
     network?: string;
     requestSource?: RequestSource;
   }
@@ -1418,7 +1432,7 @@ export function createConfirmTask(
     type: "confirm_task",
     data: {
       task_id: taskId,
-      ...(options?.apiKey && { api_key: options.apiKey }),
+      ...(options?.accessKey && { api_key: options.accessKey }),
       ...(options?.network && { network: options.network }),
       request_source: options?.requestSource ?? "sdk"
     },

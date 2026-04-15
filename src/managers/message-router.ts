@@ -115,7 +115,7 @@ export interface MessageRouterConfig {
   maxPricePerRequest?: number;
   quoteTimeout?: number;
   wsUrl?: string;
-  apiKey?: string; // API key for session-key payment flow
+  accessKey?: string; // Access key for session-key payment flow
   paymentNetwork?: string; // CAIP-2 format (e.g., "eip155:3338")
   paymentAsset?: string;
   network?: string; // Network name (e.g., "peaq", "base", "avalanche")
@@ -138,7 +138,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   private readonly maxPricePerRequest?: number;
   private readonly quoteTimeout: number;
   private readonly wsUrl: string;
-  private readonly apiKey?: string; // API key for session-key payment
+  private readonly accessKey?: string; // Access key for session-key payment
   private readonly paymentNetwork: string; // CAIP-2 format if set
   private readonly paymentAsset: string;
   private readonly networkName: string; // Network name (peaq, base, avalanche)
@@ -168,7 +168,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     this.maxPricePerRequest = config.maxPricePerRequest;
     this.quoteTimeout = config.quoteTimeout ?? 30000;
     this.wsUrl = config.wsUrl ?? "";
-    this.apiKey = config.apiKey;
+    this.accessKey = config.accessKey;
 
     // Store config values - dynamic network resolution happens lazily in getPaymentNetwork/Asset()
     // because networks are only initialized after connect() is called
@@ -683,7 +683,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     let paymentHeader: string | undefined;
 
     // Create payment header if payment client is configured and price > 0
-    if (this.paymentClient && quote.pricing.pricePerUnit > 0 && !this.apiKey) {
+    if (this.paymentClient && quote.pricing.pricePerUnit > 0 && !this.accessKey) {
       try {
         // Pass backend-provided settlement data to payment header creation
         paymentHeader = await this.paymentClient.createPaymentHeader(
@@ -706,11 +706,11 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       }
     }
 
-    // Build confirm message — x402 payment or API-key, whichever is available
+    // Build confirm message — x402 payment or access-key, whichever is available
     const confirmMessage = createConfirmTask(taskId, {
       x402Payment: paymentHeader,
-      apiKey: this.apiKey,
-      network: this.apiKey ? this.networkName || undefined : undefined,
+      accessKey: this.accessKey,
+      network: this.accessKey ? this.networkName || undefined : undefined,
       requestSource: this.requestSource
     });
 

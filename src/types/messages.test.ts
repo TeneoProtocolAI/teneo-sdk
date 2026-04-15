@@ -11,7 +11,7 @@ import {
   MessageTypeSchema,
   RoomSchema,
   TaskResponseMessageSchema,
-  createApiKeyAuth,
+  createAccessKeyAuth,
   createAuth,
   createCheckCachedAuth,
   createConfirmTask,
@@ -439,8 +439,8 @@ describe("Message Type Schemas", () => {
       expect(message.data?.request_source).toBe("sdk");
     });
 
-    it("should tag api key auth as sdk by default", () => {
-      const message = createApiKeyAuth("0x123", "api-key", "user");
+    it("should tag access key auth as sdk by default", () => {
+      const message = createAccessKeyAuth("0x123", "access-key", "user");
       expect(message.data?.request_source).toBe("sdk");
     });
 
@@ -453,7 +453,7 @@ describe("Message Type Schemas", () => {
         "cli"
       );
       expect(
-        createApiKeyAuth("0x123", "api-key", "user", "community", "cli").data?.request_source
+        createAccessKeyAuth("0x123", "access-key", "user", "community", "cli").data?.request_source
       ).toBe("cli");
     });
   });

@@ -1,25 +1,25 @@
 /**
- * API-Key Payment Flow Example
+ * Access-Key Payment Flow Example
  *
- * Demonstrates authentication and payment using API key instead of private key.
+ * Demonstrates authentication and payment using an access key instead of a private key.
  * The backend handles payment signing server-side using the stored session key.
  *
- * No MetaMask or private key needed — just API key + wallet address.
+ * No MetaMask or private key needed — just access key + wallet address.
  *
  * Usage:
- *   API_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/api-key-payment-flow.ts
+ *   ACCESS_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/access-key-payment-flow.ts
  */
 
 import { TeneoSDK, SDKConfigBuilder } from "../src";
 
 const WS_URL = process.env.WS_URL || "wss://dev-rooms-websocket-ai-core-o9fmb.ondigitalocean.app/ws";
-const API_KEY = process.env.API_KEY || "";
+const ACCESS_KEY = process.env.ACCESS_KEY || "";
 const WALLET_ADDRESS = process.env.WALLET_ADDRESS || "";
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "";
 
 async function main() {
-  if (!API_KEY) {
-    console.error("Missing API_KEY. Run with: API_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/api-key-payment-flow.ts");
+  if (!ACCESS_KEY) {
+    console.error("Missing ACCESS_KEY. Run with: ACCESS_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/access-key-payment-flow.ts");
     process.exit(1);
   }
 
@@ -28,10 +28,10 @@ async function main() {
     process.exit(1);
   }
 
-  // Configure SDK with API key — no privateKey needed
+  // Configure SDK with access key — no privateKey needed
   const config = new SDKConfigBuilder()
     .withWebSocketUrl(WS_URL)
-    .withApiKey(API_KEY, WALLET_ADDRESS)
+    .withAccessKey(ACCESS_KEY, WALLET_ADDRESS)
     .withNetwork("peaq")
     .withReconnection({ enabled: false })
     .withLogging("debug")
@@ -67,11 +67,11 @@ async function main() {
   });
 
   try {
-    console.log("Connecting with API key auth...");
+    console.log("Connecting with access key auth...");
     await sdk.connect();
     console.log("Connected!\n");
 
-    // Send a message — the SDK will handle request_task -> task_quote -> confirm_task with api_key
+    // Send a message — the SDK will handle request_task -> task_quote -> confirm_task with access key
     const prompt = process.argv[2] || "give me 5 posts from elonmusk from x.com";
     const room = DEFAULT_ROOM || sdk.getRooms()[0]?.id;
 
