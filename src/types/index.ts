@@ -223,6 +223,7 @@ export {
   createRequestChallenge,
   createCheckCachedAuth,
   createAuth,
+  createAccessKeyAuth,
   createApiKeyAuth,
   createUserMessage,
   createPing,

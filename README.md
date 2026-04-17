@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-3.3.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.6.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -11,7 +11,7 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
-- 🔐 **Flexible authentication** — Ethereum wallet signatures or API key
+- 🔐 **Flexible authentication** — Ethereum wallet signatures or access key
 
 ---
 
@@ -98,10 +98,10 @@ const sdk = new TeneoSDK({
   privateKey: "0x..." // Your private key with 0x prefix
 });
 
-// Option B: Initialize with an API key (no private key needed)
+// Option B: Initialize with an access key (no private key needed)
 // const config = new SDKConfigBuilder()
 //   .withWebSocketUrl("wss://backend.developer.chatroom.teneo-protocol.ai/ws")
-//   .withApiKey("sk_live_...", "0xYourWalletAddress")
+//   .withAccessKey("sk_live_...", "0xYourWalletAddress")
 //   .withNetwork("peaq")
 //   .build();
 // const sdk = new TeneoSDK(config);
@@ -206,23 +206,23 @@ The SDK supports two authentication methods:
 // Your private key never leaves your machine
 ```
 
-#### Option B: API Key
+#### Option B: Access Key
 
 ```typescript
-// API-key authentication — no private key needed:
+// Access-key authentication — no private key needed:
 // 1. SDK connects to Teneo network
-// 2. SDK sends API key + wallet address
+// 2. SDK sends access key + wallet address
 // 3. Server validates the key and authenticates
 // 4. ✅ Authenticated! Payments are handled server-side
 
 const config = new SDKConfigBuilder()
   .withWebSocketUrl(WS_URL)
-  .withApiKey("sk_live_...", "0xYourWalletAddress")
+  .withAccessKey("sk_live_...", "0xYourWalletAddress")
   .withNetwork("peaq")
   .build();
 ```
 
-API key auth is ideal for **server-side integrations** where you don't want to manage private keys directly. The backend handles payment signing using the stored session key.
+Access key auth is ideal for **server-side integrations** where you don't want to manage private keys directly. The backend handles payment signing using the stored session key.
 
 ---
 
@@ -831,6 +831,47 @@ console.log(response.humanized);
 ```
 
 > **Note:** The builder uses `withPayments({ autoApprove: true })` while the plain config object uses `autoApproveQuotes: true`. Both control the same behavior. The builder also accepts `maxPricePerRequest` and `quoteTimeout`.
+
+### Paying with an Access Key (No Private Key)
+
+For server-side integrations you can authenticate and pay using an access key instead of a private key. The SDK skips x402 payment signing and the backend handles payment signing server-side using the stored session key.
+
+```typescript
+import { TeneoSDK, SDKConfigBuilder } from "@teneo-protocol/sdk";
+
+const config = new SDKConfigBuilder()
+  .withWebSocketUrl(process.env.TENEO_WS_URL!)
+  .withAccessKey(process.env.ACCESS_KEY!, process.env.WALLET_ADDRESS!)
+  .withNetwork("peaq")
+  .build();
+
+const sdk = new TeneoSDK(config);
+await sdk.connect();
+
+// Same API as private-key flow — quote approval & confirm_task
+// are handled automatically, with the access key instead of x402 signing.
+const response = await sdk.sendMessage("@X Platform Agent user @elonmusk", {
+  room: sdk.getRooms()[0].id,
+  waitForResponse: true,
+  timeout: 60_000,
+});
+
+console.log(response.humanized);
+```
+
+**How it works:**
+
+1. `withAccessKey(accessKey, walletAddress)` replaces challenge-response auth — the SDK sends the access key + wallet address on connect.
+2. On `request_task` → `task_quote`, the SDK auto-confirms (default) and attaches the access key to `confirm_task` instead of signing an x402 payment header.
+3. No private key is ever loaded into the SDK; all signing happens server-side.
+
+**When to use:** server-side backends, CI jobs, or any context where managing an Ethereum private key on the client is undesirable.
+
+> Full runnable example: [`examples/access-key-payment-flow.ts`](examples/access-key-payment-flow.ts)
+>
+> ```bash
+> ACCESS_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/access-key-payment-flow.ts
+> ```
 
 ### Multi-Network Support (v2.3)
 

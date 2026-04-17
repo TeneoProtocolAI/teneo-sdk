@@ -153,6 +153,7 @@ export {
   createRequestChallenge,
   createCheckCachedAuth,
   createAuth,
+  createAccessKeyAuth,
   createApiKeyAuth,
   createUserMessage,
   createPing,
@@ -273,7 +274,7 @@ export {
 /**
  * SDK version string
  */
-export const VERSION = "3.3.0";
+export const VERSION = "3.6.0";
 
 /**
  * Convenience type re-exports for message operations

@@ -19,7 +19,7 @@ import {
   BaseMessageSchema,
   createRequestChallenge,
   createCheckCachedAuth,
-  createApiKeyAuth,
+  createAccessKeyAuth,
   createPing,
   safeParseMessage,
   Logger
@@ -608,7 +608,7 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
    * Authenticate with the server
    */
   private async authenticate(): Promise<void> {
-    if (!this.account && !this.config.walletAddress && !this.config.apiKey) {
+    if (!this.account && !this.config.walletAddress && !this.config.accessKey) {
       this.logger.info("No authentication configured, continuing without auth");
       this.updateAuthState({ authenticated: false });
       this.emit("ready");
@@ -616,18 +616,18 @@ export class WebSocketClient extends EventEmitter<SDKEvents> {
     }
 
     try {
-      // API-key auth: single message, no challenge-response needed
-      if (this.config.apiKey) {
+      // Access-key auth: single message, no challenge-response needed
+      if (this.config.accessKey) {
         const address = this.account?.address || this.config.walletAddress;
         if (!address) {
-          throw new AuthenticationError("walletAddress is required for API-key authentication");
+          throw new AuthenticationError("walletAddress is required for access-key authentication");
         }
 
-        this.logger.debug("Authenticating with API key");
+        this.logger.debug("Authenticating with access key");
         await this.sendMessage(
-          createApiKeyAuth(
+          createAccessKeyAuth(
             address,
-            this.config.apiKey,
+            this.config.accessKey,
             this.config.clientType || "user",
             "community",
             this.config.requestSource || "sdk"

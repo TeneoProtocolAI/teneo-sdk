@@ -93,7 +93,9 @@ const SDKConfigBaseSchema = z.object({
   // Authentication
   privateKey: PrivateKeySchema.optional(),
   walletAddress: z.string().optional(),
-  apiKey: z.string().optional(), // API key for session-key auth & payment (no privateKey needed)
+  accessKey: z.string().optional(), // Access key for session-key auth & payment (no privateKey needed)
+  /** @deprecated Use accessKey instead */
+  apiKey: z.string().optional(),
 
   // Client identification
   clientType: ClientTypeSchema.optional(),
@@ -180,6 +182,10 @@ export const SDKConfigSchema = SDKConfigBaseSchema.transform((config) => {
   if (config.autoJoinRooms && !config.autoJoinPublicRooms) {
     config.autoJoinPublicRooms = config.autoJoinRooms;
   }
+  // Handle backward compatibility: map apiKey to accessKey
+  if (config.apiKey && !config.accessKey) {
+    config.accessKey = config.apiKey;
+  }
   return config;
 });
 
@@ -190,6 +196,10 @@ export const PartialSDKConfigSchema = SDKConfigBaseSchema.partial()
     // Handle backward compatibility: map autoJoinRooms to autoJoinPublicRooms
     if (config.autoJoinRooms && !config.autoJoinPublicRooms) {
       config.autoJoinPublicRooms = config.autoJoinRooms;
+    }
+    // Handle backward compatibility: map apiKey to accessKey
+    if (config.apiKey && !config.accessKey) {
+      config.accessKey = config.apiKey;
     }
     return config;
   });
@@ -463,25 +473,37 @@ export class SDKConfigBuilder {
   }
 
   /**
-   * Sets the API key for session-key-based authentication and payment.
-   * When set, the SDK authenticates with the API key directly (no challenge-response)
+   * Sets the access key for session-key-based authentication and payment.
+   * When set, the SDK authenticates with the access key directly (no challenge-response)
    * and uses it for task confirmations instead of x402 payment signing.
    *
-   * @param apiKey - API key string (e.g., 'sk_live_...')
-   * @param walletAddress - Wallet address associated with the API key
+   * @param accessKey - Access key string (e.g., 'sk_live_...')
+   * @param walletAddress - Wallet address associated with the access key
    * @returns this builder for method chaining
    *
    * @example
    * ```typescript
-   * builder.withApiKey('sk_live_kQp3x...', '0xYourWalletAddress')
+   * builder.withAccessKey('sk_live_kQp3x...', '0xYourWalletAddress')
    * ```
    */
-  withApiKey(apiKey: string, walletAddress?: string): this {
-    this.config.apiKey = z.string().min(1).parse(apiKey);
+  withAccessKey(accessKey: string, walletAddress?: string): this {
+    this.config.accessKey = z.string().min(1).parse(accessKey);
     if (walletAddress) {
       this.config.walletAddress = z.string().parse(walletAddress);
     }
     return this;
+  }
+
+  /**
+   * @deprecated Use withAccessKey() instead. Renamed for clarity — this is a Teneo session
+   * access key, distinct from third-party API keys (OpenAI, etc.).
+   *
+   * @param apiKey - Access key string (e.g., 'sk_live_...')
+   * @param walletAddress - Wallet address associated with the access key
+   * @returns this builder for method chaining
+   */
+  withApiKey(apiKey: string, walletAddress?: string): this {
+    return this.withAccessKey(apiKey, walletAddress);
   }
 
   /**
