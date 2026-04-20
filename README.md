@@ -300,6 +300,41 @@ console.log("Raw data:", response.raw);
 // Answer:  Timeline for @elonmusk (5 tweets) ...
 ```
 
+### Example 1b: One-Shot Direct Agent Call (`executeCommand`)
+
+When you know exactly which agent you want and you don't need a chat
+thread / history / multi-turn context, use `executeCommand`. It's the
+shortest path to an agent and requires **no room** — no subscription,
+no membership check, no quote-by-room plumbing. The call is ephemeral
+on the server.
+
+```typescript
+await sdk.connect();
+
+// One-shot: no room, no history. Just hit the agent and return.
+const response = await sdk.executeCommand(
+  {
+    agent: "x-agent-enterprise-v2",
+    command: "user @elonmusk",
+    network: "base" // optional per-request payment network override
+  },
+  /* waitForResponse */ true
+);
+
+console.log(response.humanized);
+```
+
+**When to use which:**
+
+| You want…                                                     | Use                     |
+| ------------------------------------------------------------- | ----------------------- |
+| Coordinator to pick the best agent in a room                  | `sendMessage`           |
+| Direct-agent call inside a chat room (history, multi-turn)    | `sendDirectCommand`     |
+| Direct-agent call with no room (CLI, agent-to-agent, scripts) | **`executeCommand`**    |
+
+Payment behaviour is identical across all three — the SDK transparently
+handles the quote → auto-confirm round-trip when payments are enabled.
+
 ### Example 2: Multi-Room System
 
 Organize agents by context using rooms:
