@@ -40,6 +40,7 @@ import {
   MessageRouter,
   SendMessageOptions,
   AgentCommand,
+  ExecuteCommandOptions,
   QuoteResult,
   StreamingChunk,
   StreamingResponse,
@@ -59,6 +60,7 @@ import { TIMEOUTS } from "./constants";
 export type {
   SendMessageOptions,
   AgentCommand,
+  ExecuteCommandOptions,
   QuoteResult,
   StreamingChunk,
   StreamingResponse,
@@ -435,6 +437,61 @@ export class TeneoSDK extends EventEmitter<SDKEvents> {
     waitForResponse: boolean = false
   ): Promise<FormattedResponse | void> {
     return this.messages.sendDirectCommand(command, waitForResponse);
+  }
+
+  /**
+   * Executes a one-shot direct command against a specific agent, with no room.
+   *
+   * Unlike {@link sendDirectCommand}, this call does NOT require (or use) a
+   * room: the server resolves the agent directly by ID, runs the command, and
+   * the interaction is ephemeral — nothing is persisted to chat history,
+   * nothing is broadcast to room subscribers.
+   *
+   * Prefer `executeCommand` for programmatic / agent-to-agent / CLI usage
+   * where room semantics (multi-turn history, multi-agent threads) are not
+   * needed. Prefer {@link sendMessage} / {@link sendDirectCommand} for
+   * chat-style interactions.
+   *
+   * Payment behaviour matches `sendDirectCommand`: when `autoApproveQuotes`
+   * is enabled (the default), the SDK transparently performs the quote →
+   * auto-confirm round-trip using your configured payment client or access
+   * key. When payments are disabled on the server, the response is returned
+   * directly without a quote.
+   *
+   * @param options - Execution options
+   * @param options.agent - Agent ID (e.g. "x-agent-enterprise-v2")
+   * @param options.command - Command text to send to the agent
+   * @param options.network - Optional per-request network override ("base", chain ID, etc.)
+   * @param waitForResponse - Whether to await and return the agent's response (default: false)
+   * @returns {@link FormattedResponse} when `waitForResponse` is true, otherwise void
+   * @throws {SDKError} If not connected to the network
+   * @throws {ValidationError} If `agent` or `command` are empty
+   *
+   * @example
+   * ```typescript
+   * // Fire-and-forget, no room needed
+   * await sdk.executeCommand({
+   *   agent: "weather-agent",
+   *   command: "Get forecast for Tokyo"
+   * });
+   *
+   * // Wait for the agent's response
+   * const response = await sdk.executeCommand(
+   *   {
+   *     agent: "x-agent-enterprise-v2",
+   *     command: "user @elonmusk",
+   *     network: "base"
+   *   },
+   *   true
+   * );
+   * console.log(response.humanized);
+   * ```
+   */
+  public async executeCommand(
+    options: ExecuteCommandOptions,
+    waitForResponse: boolean = false
+  ): Promise<FormattedResponse | void> {
+    return this.messages.executeCommand(options, waitForResponse);
   }
 
   /**
