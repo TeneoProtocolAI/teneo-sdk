@@ -16,6 +16,7 @@ import { EventEmitter } from "eventemitter3";
 import type { WebSocketClient } from "../core/websocket-client";
 import { MessageRouter } from "./message-router";
 import { setNetworkConfigUrl, fetchNetworkConfigs } from "../payments/networks";
+import { ApiExecuteResponseHandler } from "../handlers/message-handlers/api-execute-response-handler";
 
 // Minimal mocked network config so getResolvedPaymentNetwork() can resolve
 // defaults during tests without hitting the real backend.
@@ -346,6 +347,64 @@ describe("MessageRouter.executeCommand", () => {
         .map((c) => c[0])
         .filter((m) => m.type === "confirm_task");
       expect(confirms).toHaveLength(0);
+    });
+  });
+
+  describe("end-to-end: real ApiExecuteResponseHandler produces agent:response", () => {
+    // This test proves the full chain: send api_execute, feed the real handler
+    // an api_execute_response (what the server actually emits for sentinel-room
+    // tasks), executeCommand(..., true) resolves. Guards against regressions
+    // where the handler isn't registered or stops emitting agent:response.
+    it("resolves executeCommand when handler processes an api_execute_response", async () => {
+      const router = makeRouter(wsClient, { autoApproveQuotes: false });
+
+      const handler = new ApiExecuteResponseHandler();
+      const handlerContext = {
+        emit: (event: string, ...args: unknown[]) => wsClient.emit(event, ...args),
+        sendWebhook: vi.fn().mockResolvedValue(undefined),
+        logger: {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn()
+        },
+        getConnectionState: vi.fn(),
+        getAuthState: vi.fn(),
+        updateConnectionState: vi.fn(),
+        updateAuthState: vi.fn(),
+        sendMessage: vi.fn()
+      } as any;
+
+      const execPromise = router.executeCommand(
+        { agent: "weather-agent", command: "forecast" },
+        true
+      );
+      await new Promise((r) => setImmediate(r));
+      const sent = wsClient.sendMessage.mock.calls[0][0];
+      const reqId = sent.request_id as string;
+
+      // Simulate server delivering api_execute_response through the handler
+      // exactly as MessageHandlerRegistry would on message arrival.
+      await handler.handle(
+        {
+          type: "api_execute_response",
+          content: "Sunny 22°C",
+          content_type: "text/plain",
+          from: "weather-agent",
+          request_id: reqId,
+          data: {
+            task_id: "task-real",
+            agent_id: "weather-agent",
+            agent_name: "Weather Agent",
+            client_request_id: reqId
+          }
+        } as any,
+        handlerContext
+      );
+
+      const result = await execPromise;
+      expect((result as any).content).toBe("Sunny 22°C");
+      expect((result as any).taskId).toBe("task-real");
     });
   });
 

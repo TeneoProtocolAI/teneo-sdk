@@ -77,8 +77,11 @@ export const MessageTypeSchema = z.enum([
 
   // Roomless Direct Execution (v3.7.0)
   // One-shot direct agent invocation with no room. Server handler: api_explorer.
-  // Response is delivered via standard task_quote / task_response (with sentinel room).
+  // Quotes arrive as standard task_quote (sentinel room). Successful replies
+  // arrive as api_execute_response — a distinct type emitted only for
+  // sentinel-room tasks (coordinator/agent.go line 2329-2333).
   "api_execute",
+  "api_execute_response",
 
   // System
   "agents",
@@ -598,6 +601,37 @@ export const ApiExecuteMessageSchema = BaseMessageSchema.extend({
 });
 
 export type ApiExecuteMessage = z.infer<typeof ApiExecuteMessageSchema>;
+
+// api_execute_response — server's reply to a successful api_execute call.
+// Shape is essentially task_response but with a distinct type literal because
+// the server emits it specifically for sentinel-room (API explorer) tasks.
+// See teneo-websocket-ai-core pkg/coordinator/agent.go lines 2329-2346.
+//
+// Correlation fields populated by the server:
+//   - top-level request_id (= client_request_id echoed back)
+//   - data.client_request_id (duplicate, same value)
+//   - data.task_id
+export const ApiExecuteResponseMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("api_execute_response"),
+  content: z.string(),
+  content_type: ContentTypeSchema.optional(),
+  from: z.string(),
+  // request_id is the correlation id at the top level (mirrors how the SDK
+  // sends it on api_execute).
+  request_id: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string().optional(),
+      agent_name: z.string().optional(),
+      agent_image: z.string().optional(),
+      task_duration_ms: z.number().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+});
+
+export type ApiExecuteResponseMessage = z.infer<typeof ApiExecuteResponseMessageSchema>;
 
 // System message schemas
 export const AgentsListMessageSchema = BaseMessageSchema.extend({
@@ -1171,6 +1205,9 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   // Quote-Approve Flow (v2.2.0)
   TaskQuoteMessageSchema,
   TaskConfirmedMessageSchema,
+
+  // Roomless Direct Execution (v3.7.0)
+  ApiExecuteResponseMessageSchema,
 
   // System
   ErrorMessageSchema,

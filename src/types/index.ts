@@ -51,6 +51,8 @@ export {
   // Roomless Direct Execution schemas (v3.7.0)
   ApiExecuteMessageSchema,
   type ApiExecuteMessage,
+  ApiExecuteResponseMessageSchema,
+  type ApiExecuteResponseMessage,
 
   // System message schemas
   AgentsListMessageSchema,
