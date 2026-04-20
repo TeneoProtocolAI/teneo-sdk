@@ -573,8 +573,18 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       timeoutMessage: `executeCommand quote timed out after ${this.quoteTimeout}ms`
     });
 
+    // Filter error events to this specific call. The server echoes the
+    // inbound request_id back on the envelope for api_execute error paths
+    // (teneo-websocket-ai-core handler_helpers.go:sendErrorForRequest), and
+    // error-message-handler.ts surfaces that onto details.request_id. Without
+    // this filter, an unrelated concurrent failure would cross-fire into
+    // this Promise.race and reject it before the real quote arrives.
     const errorPromise = waitForEvent<MessageError>(this.wsClient, "error", {
-      timeout: this.quoteTimeout + 1000
+      timeout: this.quoteTimeout + 1000,
+      filter: (err: MessageError) => {
+        const echoed = (err.details as { request_id?: string } | undefined)?.request_id;
+        return echoed === clientRequestId;
+      }
     });
 
     // Swallow rejections on the losing branch of Promise.race. If the quote

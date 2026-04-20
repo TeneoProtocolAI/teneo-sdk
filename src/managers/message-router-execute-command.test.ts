@@ -238,13 +238,11 @@ describe("MessageRouter.executeCommand", () => {
       // Two concurrent roomless calls, A then B.
       const promiseA = router.executeCommand({ agent: "agent-a", command: "do a" }, true);
       await new Promise((r) => setImmediate(r));
-      const reqIdA = (wsClient.sendMessage.mock.calls[0][0] as { request_id: string })
-        .request_id;
+      const reqIdA = (wsClient.sendMessage.mock.calls[0][0] as { request_id: string }).request_id;
 
       const promiseB = router.executeCommand({ agent: "agent-b", command: "do b" }, true);
       await new Promise((r) => setImmediate(r));
-      const reqIdB = (wsClient.sendMessage.mock.calls[1][0] as { request_id: string })
-        .request_id;
+      const reqIdB = (wsClient.sendMessage.mock.calls[1][0] as { request_id: string }).request_id;
 
       expect(reqIdA).toBeTruthy();
       expect(reqIdB).toBeTruthy();
@@ -347,6 +345,79 @@ describe("MessageRouter.executeCommand", () => {
         .map((c) => c[0])
         .filter((m) => m.type === "confirm_task");
       expect(confirms).toHaveLength(0);
+    });
+
+    it("ignores an error whose request_id does not match (no cross-fire on concurrent calls)", async () => {
+      const router = makeRouter(wsClient, { autoApproveQuotes: true, quoteTimeout: 200 });
+
+      // Start call A, capture its request_id, then fire an unrelated error
+      // that carries a different request_id. A must NOT reject — it should
+      // keep waiting for its own quote or error.
+      const promiseA = router.executeCommand({ agent: "agent-a", command: "do a" }, true);
+      await new Promise((r) => setImmediate(r));
+      const reqIdA = (wsClient.sendMessage.mock.calls[0][0] as { request_id: string }).request_id;
+      expect(reqIdA).toBeTruthy();
+
+      // Unrelated error from a concurrent flow. Pre-fix this would reject A.
+      wsClient.emit("error", {
+        name: "MessageError",
+        message: "Agent agent-b failed",
+        code: "MESSAGE_ERROR",
+        details: { code: 500, message: "boom", request_id: "unrelated-req-id" }
+      });
+      await new Promise((r) => setImmediate(r));
+
+      // A should still be pending. Now send A's legitimate quote and
+      // confirm the task resolves normally, proving the stray error was ignored.
+      const expiresAt = new Date(Date.now() + 60_000).toISOString();
+      wsClient.emit("quote:received", {
+        type: "task_quote",
+        from: "coordinator",
+        data: {
+          task_id: "task-a",
+          agent_id: "agent-a",
+          agent_name: "agent-a",
+          agent_wallet: "0xAGENT",
+          command: "@agent-a do a",
+          pricing: { pricePerUnit: 0, currency: "USDC" },
+          expires_at: expiresAt,
+          settlement_router: "0xROUTER",
+          salt: "0xSALT",
+          facilitator_fee: "0",
+          hook: "0xHOOK",
+          hook_data: "0x",
+          client_request_id: reqIdA
+        }
+      });
+      await new Promise((r) => setImmediate(r));
+
+      wsClient.emit("agent:response", {
+        taskId: "task-a",
+        agentId: "agent-a",
+        content: "a done",
+        success: true,
+        timestamp: new Date()
+      });
+
+      const result = await promiseA;
+      expect((result as any).content).toBe("a done");
+    });
+
+    it("rejects when an error carrying the matching request_id arrives", async () => {
+      const router = makeRouter(wsClient, { autoApproveQuotes: true, quoteTimeout: 200 });
+
+      const execPromise = router.executeCommand({ agent: "agent-x", command: "boom" }, true);
+      await new Promise((r) => setImmediate(r));
+      const reqId = (wsClient.sendMessage.mock.calls[0][0] as { request_id: string }).request_id;
+
+      wsClient.emit("error", {
+        name: "MessageError",
+        message: "Agent 'agent-x' not found or offline",
+        code: "MESSAGE_ERROR",
+        details: { code: 404, message: "not found", request_id: reqId }
+      });
+
+      await expect(execPromise).rejects.toThrow(/agent-x/i);
     });
   });
 
