@@ -230,6 +230,123 @@ describe("MessageRouter.executeCommand", () => {
       expect(result).toBeDefined();
       expect((result as any).content).toBe("It will rain.");
     });
+
+    it("ignores a quote whose client_request_id does not match (concurrency isolation)", async () => {
+      const router = makeRouter(wsClient, { autoApproveQuotes: true, quoteTimeout: 200 });
+
+      // Two concurrent roomless calls, A then B.
+      const promiseA = router.executeCommand({ agent: "agent-a", command: "do a" }, true);
+      await new Promise((r) => setImmediate(r));
+      const reqIdA = (wsClient.sendMessage.mock.calls[0][0] as { request_id: string })
+        .request_id;
+
+      const promiseB = router.executeCommand({ agent: "agent-b", command: "do b" }, true);
+      await new Promise((r) => setImmediate(r));
+      const reqIdB = (wsClient.sendMessage.mock.calls[1][0] as { request_id: string })
+        .request_id;
+
+      expect(reqIdA).toBeTruthy();
+      expect(reqIdB).toBeTruthy();
+      expect(reqIdA).not.toBe(reqIdB);
+
+      const expiresAt = new Date(Date.now() + 60_000).toISOString();
+      const buildQuote = (reqId: string, taskId: string, agentId: string) => ({
+        type: "task_quote" as const,
+        from: "coordinator" as const,
+        data: {
+          task_id: taskId,
+          agent_id: agentId,
+          agent_name: agentId,
+          agent_wallet: "0xAGENT",
+          command: `@${agentId} ...`,
+          pricing: { pricePerUnit: 0, currency: "USDC" },
+          expires_at: expiresAt,
+          settlement_router: "0xROUTER",
+          salt: "0xSALT",
+          facilitator_fee: "0",
+          hook: "0xHOOK",
+          hook_data: "0x",
+          client_request_id: reqId
+        }
+      });
+
+      // Emit B's quote FIRST. A must not accept it.
+      wsClient.emit("quote:received", buildQuote(reqIdB, "task-b", "agent-b"));
+      await new Promise((r) => setImmediate(r));
+      // Now emit A's quote. A should pick this up.
+      wsClient.emit("quote:received", buildQuote(reqIdA, "task-a", "agent-a"));
+      await new Promise((r) => setImmediate(r));
+
+      // Two confirm_tasks should have fired, each for its own taskId — not
+      // A confirming task-b or B confirming task-a.
+      const confirms = wsClient.sendMessage.mock.calls
+        .map((c) => c[0])
+        .filter((m) => m.type === "confirm_task");
+      expect(confirms).toHaveLength(2);
+      const confirmedTaskIds = confirms.map((c) => c.data.task_id).sort();
+      expect(confirmedTaskIds).toEqual(["task-a", "task-b"]);
+
+      // Drain both with agent:response so promises resolve cleanly.
+      wsClient.emit("agent:response", {
+        taskId: "task-a",
+        agentId: "agent-a",
+        content: "a done",
+        success: true,
+        timestamp: new Date()
+      });
+      wsClient.emit("agent:response", {
+        taskId: "task-b",
+        agentId: "agent-b",
+        content: "b done",
+        success: true,
+        timestamp: new Date()
+      });
+
+      const [resA, resB] = await Promise.all([promiseA, promiseB]);
+      expect((resA as any).content).toBe("a done");
+      expect((resB as any).content).toBe("b done");
+    });
+
+    it("does NOT accept a quote that omits client_request_id (no permissive fallback)", async () => {
+      const router = makeRouter(wsClient, { autoApproveQuotes: true, quoteTimeout: 150 });
+
+      const execPromise = router.executeCommand(
+        { agent: "weather-agent", command: "forecast" },
+        true
+      );
+      await new Promise((r) => setImmediate(r));
+
+      // Emit a quote with NO client_request_id. This used to be accepted as a
+      // best-effort fallback and is now strictly rejected so concurrent calls
+      // can't cross-fire on a server bug.
+      const expiresAt = new Date(Date.now() + 60_000).toISOString();
+      wsClient.emit("quote:received", {
+        type: "task_quote",
+        from: "coordinator",
+        data: {
+          task_id: "task-stray",
+          agent_id: "weather-agent",
+          agent_name: "Weather Agent",
+          agent_wallet: "0xAGENT",
+          command: "@weather-agent forecast",
+          pricing: { pricePerUnit: 0, currency: "USDC" },
+          expires_at: expiresAt,
+          settlement_router: "0xROUTER",
+          salt: "0xSALT",
+          facilitator_fee: "0",
+          hook: "0xHOOK",
+          hook_data: "0x"
+          // no client_request_id
+        }
+      });
+
+      await expect(execPromise).rejects.toThrow(/timed out/i);
+      // Crucially: no confirm_task was sent for the stray quote.
+      const confirms = wsClient.sendMessage.mock.calls
+        .map((c) => c[0])
+        .filter((m) => m.type === "confirm_task");
+      expect(confirms).toHaveLength(0);
+    });
   });
 
   describe("legacy / no-payment path (autoApproveQuotes: false)", () => {

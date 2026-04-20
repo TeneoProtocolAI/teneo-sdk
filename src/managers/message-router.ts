@@ -554,16 +554,21 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     await this.wsClient.sendMessage(message);
 
-    // Race quote:received against error events. Filter by client_request_id so
-    // concurrent executeCommand calls don't cross-fire.
+    // Race quote:received against error events. Filter strictly on
+    // client_request_id so concurrent executeCommand calls cannot cross-fire.
+    //
+    // The server always echoes ClientRequestID back on the TaskQuoteData when
+    // the request carried a top-level request_id (verified in
+    // teneo-websocket-ai-core pkg/coordinator/agent.go — QuoteDirectCommand
+    // sets ClientRequestID from the handler's msg.RequestID). We always send
+    // request_id via createApiExecute, so a missing echo here is a server bug
+    // and we deliberately refuse to match it rather than accept a stray quote
+    // that belongs to another in-flight call.
     const quotePromise = waitForEvent<TaskQuoteMessage>(this.wsClient, "quote:received", {
       timeout: this.quoteTimeout,
       filter: (q: TaskQuoteMessage) => {
         const echoed = (q.data as { client_request_id?: string }).client_request_id;
-        // If the server didn't echo a client_request_id, accept the first quote
-        // (best-effort — concurrent roomless calls are rare and the taskId
-        // still uniquely identifies the downstream confirm).
-        return !echoed || echoed === clientRequestId;
+        return echoed === clientRequestId;
       },
       timeoutMessage: `executeCommand quote timed out after ${this.quoteTimeout}ms`
     });
