@@ -146,9 +146,7 @@ describe("MessageRouter.executeCommand", () => {
   describe("validation", () => {
     it("throws ValidationError for empty agent", async () => {
       const router = makeRouter(wsClient);
-      await expect(
-        router.executeCommand({ agent: "", command: "do stuff" })
-      ).rejects.toThrow();
+      await expect(router.executeCommand({ agent: "", command: "do stuff" })).rejects.toThrow();
     });
 
     it("throws ValidationError for empty command", async () => {
@@ -161,9 +159,9 @@ describe("MessageRouter.executeCommand", () => {
     it("throws SDKError when not connected", async () => {
       wsClient.isConnected = false;
       const router = makeRouter(wsClient);
-      await expect(
-        router.executeCommand({ agent: "weather-agent", command: "x" })
-      ).rejects.toThrow(/not connected/i);
+      await expect(router.executeCommand({ agent: "weather-agent", command: "x" })).rejects.toThrow(
+        /not connected/i
+      );
     });
   });
 

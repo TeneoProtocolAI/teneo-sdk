@@ -57,10 +57,7 @@ describe.skipIf(!hasCredentials)("executeCommand integration (roomless)", () => 
     sdk = new TeneoSDK(config);
 
     await new Promise<AuthenticationState>((resolve, reject) => {
-      const timeout = setTimeout(
-        () => reject(new Error("Auth timeout after 20s")),
-        20000
-      );
+      const timeout = setTimeout(() => reject(new Error("Auth timeout after 20s")), 20000);
       sdk.once("auth:success", (state) => {
         clearTimeout(timeout);
         resolve(state);
@@ -98,14 +95,8 @@ describe.skipIf(!hasCredentials)("executeCommand integration (roomless)", () => 
   }, 60000);
 
   it("can be invoked multiple times back-to-back on the same connection", async () => {
-    const first = await sdk.executeCommand(
-      { agent: CFG.AGENT_ID, command: CFG.COMMAND },
-      true
-    );
-    const second = await sdk.executeCommand(
-      { agent: CFG.AGENT_ID, command: CFG.COMMAND },
-      true
-    );
+    const first = await sdk.executeCommand({ agent: CFG.AGENT_ID, command: CFG.COMMAND }, true);
+    const second = await sdk.executeCommand({ agent: CFG.AGENT_ID, command: CFG.COMMAND }, true);
     expect(first).toBeDefined();
     expect(second).toBeDefined();
   }, 120000);

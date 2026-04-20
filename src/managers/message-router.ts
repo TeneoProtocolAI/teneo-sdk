@@ -480,11 +480,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
         clientRequestId
       });
 
-      const quote = await this._executeCommandQuote(
-        content,
-        options.network,
-        clientRequestId
-      );
+      const quote = await this._executeCommandQuote(content, options.network, clientRequestId);
       return await this.confirmQuote(quote.taskId, {
         waitForResponse,
         timeout: this.messageTimeout
@@ -641,7 +637,13 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
-    const message = createRequestTask(content, room, resolvedNetwork, this.requestSource, clientRequestId);
+    const message = createRequestTask(
+      content,
+      room,
+      resolvedNetwork,
+      this.requestSource,
+      clientRequestId
+    );
     this.logger.debug("MessageRouter: Requesting quote", {
       content,
       room,
@@ -1156,10 +1158,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * @param options - Configuration for message sending (room is required)
    * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
    */
-  public sendMessageStreaming(
-    content: string,
-    options: SendMessageOptions,
-  ): StreamingResponse {
+  public sendMessageStreaming(content: string, options: SendMessageOptions): StreamingResponse {
     // Use client_request_id for correlation - the backend assigns task_id
     // during the quote/confirm flow, so the client cannot know it at send time.
     // The server echoes client_request_id back in every streaming task_response.
@@ -1224,11 +1223,15 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     const networkOverride = options.network || options.networkChainId;
     (async () => {
       const quote = await this._requestQuoteInternal(
-        content, options.room, networkOverride, false, clientRequestId
+        content,
+        options.room,
+        networkOverride,
+        false,
+        clientRequestId
       );
       await this.confirmQuote(quote.taskId, {
         waitForResponse: false,
-        timeout: options.timeout ?? this.messageTimeout,
+        timeout: options.timeout ?? this.messageTimeout
       });
     })().catch((err) => {
       if (!done) {
@@ -1279,7 +1282,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
           });
           notifyChunk = null;
         }
-      },
+      }
     };
 
     return self;
