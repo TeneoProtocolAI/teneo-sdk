@@ -577,12 +577,19 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
       timeout: this.quoteTimeout + 1000
     });
 
-    const quote = await Promise.race([
-      quotePromise,
-      errorPromise.then((err) => {
-        throw err;
-      })
-    ]);
+    // Swallow rejections on the losing branch of Promise.race. If the quote
+    // resolves first, the errorPromise is still pending and will eventually
+    // either (a) resolve with a late error event or (b) reject with its own
+    // timeout — in both cases, without this .catch the `.then(throw)` chain
+    // becomes an unhandled rejection.
+    const errorBranch = errorPromise.then((err) => {
+      throw err;
+    });
+    errorBranch.catch(() => {
+      /* race lost — surfacing the error here would duplicate-reject */
+    });
+
+    const quote = await Promise.race([quotePromise, errorBranch]);
 
     const result: QuoteResult = {
       taskId: quote.data.task_id,
