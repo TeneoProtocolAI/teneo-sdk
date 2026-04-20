@@ -17,6 +17,7 @@ export {
   MessageRouter,
   type SendMessageOptions,
   type AgentCommand,
+  type ExecuteCommandOptions,
   type QuoteResult,
   type MessageRouterConfig,
   type StreamingChunk,

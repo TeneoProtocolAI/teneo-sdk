@@ -42,3 +42,6 @@ coverage/
 *.bak
 *.tmp
 .claude
+
+# Working planning docs — not part of project docs
+docs/plans/
