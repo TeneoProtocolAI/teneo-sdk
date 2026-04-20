@@ -46,6 +46,9 @@ export { AgentErrorHandler } from "./agent-error-handler";
 // Task Confirmed handler
 export { TaskConfirmedHandler } from "./task-confirmed-handler";
 
+// API Execute Response handler (v3.7.0 — roomless direct execution)
+export { ApiExecuteResponseHandler } from "./api-execute-response-handler";
+
 // Wallet Transaction handler
 export { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
 
@@ -80,6 +83,7 @@ import { AllAgentsResponseHandler } from "./all-agents-response-handler";
 import { UserCountHandler } from "./user-count-handler";
 import { AgentErrorHandler } from "./agent-error-handler";
 import { TaskConfirmedHandler } from "./task-confirmed-handler";
+import { ApiExecuteResponseHandler } from "./api-execute-response-handler";
 import { TriggerWalletTxHandler } from "./trigger-wallet-tx-handler";
 import { UserAuthenticatedHandler } from "./user-authenticated-handler";
 import { MessageHandler } from "./types";
@@ -140,6 +144,9 @@ export function getDefaultHandlers(
 
     // Task Confirmed handler
     new TaskConfirmedHandler(),
+
+    // API Execute Response handler (v3.7.0 — roomless executeCommand replies)
+    new ApiExecuteResponseHandler(),
 
     // Wallet Transaction handler
     new TriggerWalletTxHandler(),

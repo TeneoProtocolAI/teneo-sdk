@@ -75,6 +75,14 @@ export const MessageTypeSchema = z.enum([
   "confirm_task",
   "task_confirmed",
 
+  // Roomless Direct Execution (v3.7.0)
+  // One-shot direct agent invocation with no room. Server handler: api_explorer.
+  // Quotes arrive as standard task_quote (sentinel room). Successful replies
+  // arrive as api_execute_response — a distinct type emitted only for
+  // sentinel-room tasks (coordinator/agent.go line 2329-2333).
+  "api_execute",
+  "api_execute_response",
+
   // System
   "agents",
   "error",
@@ -559,6 +567,71 @@ export const TaskConfirmedMessageSchema = BaseMessageSchema.extend({
 });
 
 export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
+
+// ============================================================================
+// ROOMLESS DIRECT EXECUTION (v3.7.0)
+// ============================================================================
+
+// api_execute — one-shot direct agent invocation with no room.
+// content is pre-assembled as "@<agentId> <command>" by the SDK.
+// Server handler: internal/websocket/handler_api_explorer.go
+//
+// Wire-protocol note: unlike request_task (which carries the correlation id
+// as data.client_request_id), the api_execute handler reads the top-level
+// `request_id` field off the message (msg.RequestID in Go). The server then
+// echoes it into task_response.data.client_request_id on the way back, so
+// the SDK's response filter remains symmetric with the request_task path.
+//
+// Response path reuses standard types:
+//   - With payments: task_quote (with sentinel room) → confirm_task → task_response
+//   - Without payments: task_response directly (with sentinel room)
+export const ApiExecuteMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("api_execute"),
+  content: z.string(),
+  // Top-level request_id — this is what the server reads for api_execute.
+  request_id: z.string().optional(),
+  data: z
+    .object({
+      // Payment network override (peaq, base, avalanche)
+      network: z.string().optional(),
+      request_source: RequestSourceSchema.optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type ApiExecuteMessage = z.infer<typeof ApiExecuteMessageSchema>;
+
+// api_execute_response — server's reply to a successful api_execute call.
+// Shape is essentially task_response but with a distinct type literal because
+// the server emits it specifically for sentinel-room (API explorer) tasks.
+// See teneo-websocket-ai-core pkg/coordinator/agent.go lines 2329-2346.
+//
+// Correlation fields populated by the server:
+//   - top-level request_id (= client_request_id echoed back)
+//   - data.client_request_id (duplicate, same value)
+//   - data.task_id
+export const ApiExecuteResponseMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("api_execute_response"),
+  content: z.string(),
+  content_type: ContentTypeSchema.optional(),
+  from: z.string(),
+  // request_id is the correlation id at the top level (mirrors how the SDK
+  // sends it on api_execute).
+  request_id: z.string().optional(),
+  data: z
+    .object({
+      task_id: z.string(),
+      agent_id: z.string().optional(),
+      agent_name: z.string().optional(),
+      agent_image: z.string().optional(),
+      task_duration_ms: z.number().optional(),
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+});
+
+export type ApiExecuteResponseMessage = z.infer<typeof ApiExecuteResponseMessageSchema>;
 
 // System message schemas
 export const AgentsListMessageSchema = BaseMessageSchema.extend({
@@ -1133,6 +1206,9 @@ export const AnyMessageSchema = z.discriminatedUnion("type", [
   TaskQuoteMessageSchema,
   TaskConfirmedMessageSchema,
 
+  // Roomless Direct Execution (v3.7.0)
+  ApiExecuteResponseMessageSchema,
+
   // System
   ErrorMessageSchema,
   SuccessMessageSchema,
@@ -1437,6 +1513,36 @@ export function createConfirmTask(
       request_source: options?.requestSource ?? "sdk"
     },
     ...(options?.x402Payment && { payment: options.x402Payment })
+  });
+}
+
+/**
+ * Builds an api_execute message for roomless one-shot direct agent invocation.
+ * content must be pre-assembled as "@<agentId> <command>".
+ *
+ * The correlation id goes on the top-level `request_id` field (not in data) —
+ * that's what the server's API explorer handler reads. The server echoes it
+ * back into task_response.data.client_request_id on the response side.
+ */
+export function createApiExecute(
+  content: string,
+  options?: {
+    from?: string;
+    network?: string;
+    clientRequestId?: string;
+    requestSource?: RequestSource;
+  }
+): ApiExecuteMessage {
+  const data: Record<string, unknown> = {};
+  if (options?.network) data.network = options.network;
+  data.request_source = options?.requestSource ?? "sdk";
+  return ApiExecuteMessageSchema.parse({
+    type: "api_execute",
+    content,
+    ...(options?.from && { from: options.from }),
+    ...(options?.clientRequestId && { request_id: options.clientRequestId }),
+    timestamp: new Date().toISOString(),
+    data
   });
 }
 

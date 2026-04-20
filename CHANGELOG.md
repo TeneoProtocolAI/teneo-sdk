@@ -5,6 +5,39 @@ All notable changes to the Teneo Protocol SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-04-20
+
+### ✨ `executeCommand` — Roomless One-Shot Direct Agent Invocation
+
+New `TeneoSDK.executeCommand(options, waitForResponse?)` for one-shot
+direct agent calls with **no room**. Mirrors `sendDirectCommand` but the
+server resolves the agent directly by ID — no room creation, no
+subscription, no membership check, no persisted history.
+
+```typescript
+const response = await sdk.executeCommand(
+  {
+    agent: "x-agent-enterprise-v2",
+    command: "user @elonmusk",
+    network: "base" // optional per-request override
+  },
+  true
+);
+```
+
+**Why:** programmatic consumers (CLIs, agent-to-agent pipelines, scripts)
+don't need room semantics. `sendMessage` and `sendDirectCommand` remain
+unchanged for chat-style flows.
+
+**Wire protocol:** adds a new outgoing `api_execute` message. Responses
+flow through the existing `task_quote` / `task_response` handlers — no
+new handler required on the SDK side. Payment behaviour (quote →
+auto-confirm) is identical to `sendDirectCommand`.
+
+See `examples/execute-command.ts` for a minimal runnable example.
+
+Tracking: [websocket-core#407](https://github.com/Teneo-Protocol/teneo-websocket-ai-core/issues/407).
+
 ## [3.1.1] - 2026-02-19
 
 ### ✨ Pre-Flight Auto-Summon

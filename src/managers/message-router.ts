@@ -14,6 +14,7 @@ import {
   createUserMessage,
   createRequestTask,
   createConfirmTask,
+  createApiExecute,
   Logger,
   ResponseFormat,
   TaskResponseMessage,
@@ -78,6 +79,18 @@ export interface AgentCommand {
   command: string;
   room: string;
   network?: string | number; // Per-request network override (v2.3.0)
+}
+
+/**
+ * Options for executeCommand — roomless one-shot direct agent invocation.
+ * Unlike AgentCommand, there is no room field: the server resolves the agent
+ * directly via hub.FindAgentByID and the interaction is ephemeral (not
+ * persisted to any chat history).
+ */
+export interface ExecuteCommandOptions {
+  agent: string;
+  command: string;
+  network?: string | number; // Per-request network override (name or chain ID)
 }
 
 /**
@@ -408,6 +421,215 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
   }
 
   /**
+   * Executes a one-shot direct command against a specific agent, with no room.
+   *
+   * Unlike sendDirectCommand, this path does NOT require (or use) a room: the
+   * server resolves the agent directly by ID, executes the command, and the
+   * interaction is ephemeral — not saved to any chat history, not broadcast.
+   *
+   * Best for programmatic / agent-to-agent / CLI usage where room semantics
+   * (history, multi-turn, multi-agent threads) are not needed.
+   *
+   * Payment behaviour matches sendDirectCommand: when autoApproveQuotes is
+   * enabled (default), the SDK auto-confirms the server quote using the
+   * configured payment client / access key. When payments are disabled on
+   * the server, the response is returned directly without a quote round-trip.
+   *
+   * @param options.agent - Agent ID (e.g. "x-agent-enterprise-v2")
+   * @param options.command - Command text to send to the agent
+   * @param options.network - Optional per-request network override (name or chain ID)
+   * @param waitForResponse - Whether to await and return the agent's response (default: false)
+   * @throws {SDKError} If not connected
+   * @throws {ValidationError} If agent or command are empty
+   *
+   * @example
+   * ```typescript
+   * // Fire-and-forget
+   * await router.executeCommand({ agent: "weather-agent", command: "forecast Tokyo" });
+   *
+   * // Wait for response (paid or free — SDK handles the quote round-trip)
+   * const response = await router.executeCommand(
+   *   { agent: "x-agent-enterprise-v2", command: "user @elonmusk", network: "base" },
+   *   true
+   * );
+   * console.log(response.humanized);
+   * ```
+   */
+  public async executeCommand(
+    options: ExecuteCommandOptions,
+    waitForResponse: boolean = false
+  ): Promise<FormattedResponse | void> {
+    if (!this.wsClient.isConnected) {
+      throw new SDKError("Not connected to Teneo network", ErrorCode.NOT_CONNECTED);
+    }
+
+    const validatedAgent = AgentIdSchema.parse(options.agent);
+    const validatedCommand = AgentCommandContentSchema.parse(options.command);
+    const content = `@${validatedAgent} ${validatedCommand}`;
+
+    const clientRequestId = uuidv4();
+
+    // Quote-approve path (default): send api_execute, await task_quote,
+    // auto-confirm. The server emits a standard task_quote with the sentinel
+    // room stamped on it, so the existing confirmQuote path works unchanged.
+    if (this.autoApproveQuotes) {
+      this.logger.debug("MessageRouter: executeCommand via quote-approve", {
+        agent: validatedAgent,
+        command: validatedCommand,
+        network: options.network,
+        clientRequestId
+      });
+
+      const quote = await this._executeCommandQuote(content, options.network, clientRequestId);
+      return await this.confirmQuote(quote.taskId, {
+        waitForResponse,
+        timeout: this.messageTimeout
+      });
+    }
+
+    // Legacy / no-payment path: send api_execute and (optionally) wait for the
+    // first task_response matching our client_request_id. No quote round-trip.
+    const authState = this.wsClient.getAuthState();
+    const fromAddress = authState.walletAddress;
+    const resolvedNetwork = options.network
+      ? this.getResolvedPaymentNetwork(options.network)
+      : undefined;
+
+    const message = createApiExecute(content, {
+      from: fromAddress,
+      network: resolvedNetwork,
+      clientRequestId,
+      requestSource: this.requestSource
+    });
+
+    this.logger.debug("MessageRouter: executeCommand (legacy/no-payment)", {
+      agent: validatedAgent,
+      command: validatedCommand,
+      network: resolvedNetwork,
+      from: fromAddress,
+      clientRequestId
+    });
+
+    await this.wsClient.sendMessage(message);
+
+    if (!waitForResponse) return;
+
+    const timeout = this.messageTimeout;
+    const response = await waitForEvent<AgentResponse>(this.wsClient, "agent:response", {
+      timeout,
+      filter: (r) => {
+        const echoed =
+          r.raw?.data && "client_request_id" in r.raw.data
+            ? (r.raw.data as { client_request_id?: string }).client_request_id
+            : undefined;
+        return echoed === clientRequestId;
+      },
+      timeoutMessage: `executeCommand timed out after ${timeout}ms (clientRequestId: ${clientRequestId})`
+    });
+
+    return response as FormattedResponse;
+  }
+
+  /**
+   * Internal: request a quote via api_execute (roomless).
+   *
+   * Mirrors _requestQuoteInternal but sends api_execute instead of
+   * request_task, and skips auto-summon (roomless calls don't have room
+   * membership to summon into).
+   */
+  private async _executeCommandQuote(
+    content: string,
+    networkOverride: string | number | undefined,
+    clientRequestId: string
+  ): Promise<QuoteResult> {
+    const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
+    const authState = this.wsClient.getAuthState();
+
+    const message = createApiExecute(content, {
+      from: authState.walletAddress,
+      network: resolvedNetwork,
+      clientRequestId,
+      requestSource: this.requestSource
+    });
+
+    await this.wsClient.sendMessage(message);
+
+    // Race quote:received against error events. Filter strictly on
+    // client_request_id so concurrent executeCommand calls cannot cross-fire.
+    //
+    // The server always echoes ClientRequestID back on the TaskQuoteData when
+    // the request carried a top-level request_id (verified in
+    // teneo-websocket-ai-core pkg/coordinator/agent.go — QuoteDirectCommand
+    // sets ClientRequestID from the handler's msg.RequestID). We always send
+    // request_id via createApiExecute, so a missing echo here is a server bug
+    // and we deliberately refuse to match it rather than accept a stray quote
+    // that belongs to another in-flight call.
+    const quotePromise = waitForEvent<TaskQuoteMessage>(this.wsClient, "quote:received", {
+      timeout: this.quoteTimeout,
+      filter: (q: TaskQuoteMessage) => {
+        const echoed = (q.data as { client_request_id?: string }).client_request_id;
+        return echoed === clientRequestId;
+      },
+      timeoutMessage: `executeCommand quote timed out after ${this.quoteTimeout}ms`
+    });
+
+    // Filter error events to this specific call. The server echoes the
+    // inbound request_id back on the envelope for api_execute error paths
+    // (teneo-websocket-ai-core handler_helpers.go:sendErrorForRequest), and
+    // error-message-handler.ts surfaces that onto details.request_id. Without
+    // this filter, an unrelated concurrent failure would cross-fire into
+    // this Promise.race and reject it before the real quote arrives.
+    const errorPromise = waitForEvent<MessageError>(this.wsClient, "error", {
+      timeout: this.quoteTimeout + 1000,
+      filter: (err: MessageError) => {
+        const echoed = (err.details as { request_id?: string } | undefined)?.request_id;
+        return echoed === clientRequestId;
+      }
+    });
+
+    // Swallow rejections on the losing branch of Promise.race. If the quote
+    // resolves first, the errorPromise is still pending and will eventually
+    // either (a) resolve with a late error event or (b) reject with its own
+    // timeout — in both cases, without this .catch the `.then(throw)` chain
+    // becomes an unhandled rejection.
+    const errorBranch = errorPromise.then((err) => {
+      throw err;
+    });
+    errorBranch.catch(() => {
+      /* race lost — surfacing the error here would duplicate-reject */
+    });
+
+    const quote = await Promise.race([quotePromise, errorBranch]);
+
+    const result: QuoteResult = {
+      taskId: quote.data.task_id,
+      agentId: quote.data.agent_id,
+      agentName: quote.data.agent_name,
+      agentWallet: quote.data.agent_wallet,
+      command: quote.data.command,
+      pricing: quote.data.pricing,
+      expiresAt: new Date(quote.data.expires_at),
+      settlement: {
+        settlementRouter: quote.data.settlement_router,
+        salt: quote.data.salt,
+        facilitatorFee: quote.data.facilitator_fee,
+        hook: quote.data.hook,
+        hookData: quote.data.hook_data ?? "0x"
+      },
+      networkOverride
+    };
+
+    this.logger.debug("MessageRouter: executeCommand quote received", {
+      taskId: result.taskId,
+      agentId: result.agentId,
+      clientRequestId
+    });
+
+    this.pendingQuotes.set(result.taskId, result);
+    return result;
+  }
+
+  /**
    * Requests a quote for a task without auto-approval.
    * Returns the quote data for manual confirmation.
    */
@@ -437,7 +659,13 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
 
     // Include payment network in request so backend returns correct contract addresses
     const resolvedNetwork = this.getResolvedPaymentNetwork(networkOverride);
-    const message = createRequestTask(content, room, resolvedNetwork, this.requestSource, clientRequestId);
+    const message = createRequestTask(
+      content,
+      room,
+      resolvedNetwork,
+      this.requestSource,
+      clientRequestId
+    );
     this.logger.debug("MessageRouter: Requesting quote", {
       content,
       room,
@@ -952,10 +1180,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
    * @param options - Configuration for message sending (room is required)
    * @returns StreamingResponse with async iterator, assembledContent promise, and taskId
    */
-  public sendMessageStreaming(
-    content: string,
-    options: SendMessageOptions,
-  ): StreamingResponse {
+  public sendMessageStreaming(content: string, options: SendMessageOptions): StreamingResponse {
     // Use client_request_id for correlation - the backend assigns task_id
     // during the quote/confirm flow, so the client cannot know it at send time.
     // The server echoes client_request_id back in every streaming task_response.
@@ -1020,11 +1245,15 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
     const networkOverride = options.network || options.networkChainId;
     (async () => {
       const quote = await this._requestQuoteInternal(
-        content, options.room, networkOverride, false, clientRequestId
+        content,
+        options.room,
+        networkOverride,
+        false,
+        clientRequestId
       );
       await this.confirmQuote(quote.taskId, {
         waitForResponse: false,
-        timeout: options.timeout ?? this.messageTimeout,
+        timeout: options.timeout ?? this.messageTimeout
       });
     })().catch((err) => {
       if (!done) {
@@ -1075,7 +1304,7 @@ export class MessageRouter extends EventEmitter<SDKEvents> {
           });
           notifyChunk = null;
         }
-      },
+      }
     };
 
     return self;
