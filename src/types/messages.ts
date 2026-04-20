@@ -573,19 +573,25 @@ export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
 // content is pre-assembled as "@<agentId> <command>" by the SDK.
 // Server handler: internal/websocket/handler_api_explorer.go
 //
+// Wire-protocol note: unlike request_task (which carries the correlation id
+// as data.client_request_id), the api_execute handler reads the top-level
+// `request_id` field off the message (msg.RequestID in Go). The server then
+// echoes it into task_response.data.client_request_id on the way back, so
+// the SDK's response filter remains symmetric with the request_task path.
+//
 // Response path reuses standard types:
 //   - With payments: task_quote (with sentinel room) → confirm_task → task_response
 //   - Without payments: task_response directly (with sentinel room)
 export const ApiExecuteMessageSchema = BaseMessageSchema.extend({
   type: z.literal("api_execute"),
   content: z.string(),
+  // Top-level request_id — this is what the server reads for api_execute.
+  request_id: z.string().optional(),
   data: z
     .object({
       // Payment network override (peaq, base, avalanche)
       network: z.string().optional(),
-      request_source: RequestSourceSchema.optional(),
-      // Request correlation id echoed back by server
-      client_request_id: z.string().optional()
+      request_source: RequestSourceSchema.optional()
     })
     .passthrough()
     .optional()
@@ -1476,7 +1482,10 @@ export function createConfirmTask(
 /**
  * Builds an api_execute message for roomless one-shot direct agent invocation.
  * content must be pre-assembled as "@<agentId> <command>".
- * The from field is set by the caller (usually the authenticated wallet).
+ *
+ * The correlation id goes on the top-level `request_id` field (not in data) —
+ * that's what the server's API explorer handler reads. The server echoes it
+ * back into task_response.data.client_request_id on the response side.
  */
 export function createApiExecute(
   content: string,
@@ -1489,12 +1498,12 @@ export function createApiExecute(
 ): ApiExecuteMessage {
   const data: Record<string, unknown> = {};
   if (options?.network) data.network = options.network;
-  if (options?.clientRequestId) data.client_request_id = options.clientRequestId;
   data.request_source = options?.requestSource ?? "sdk";
   return ApiExecuteMessageSchema.parse({
     type: "api_execute",
     content,
     ...(options?.from && { from: options.from }),
+    ...(options?.clientRequestId && { request_id: options.clientRequestId }),
     timestamp: new Date().toISOString(),
     data
   });

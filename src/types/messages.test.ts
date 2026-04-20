@@ -497,7 +497,8 @@ describe("Message Type Schemas", () => {
       expect(msg.room).toBeUndefined();
       expect(msg.data?.request_source).toBe("sdk");
       expect(msg.data?.network).toBeUndefined();
-      expect(msg.data?.client_request_id).toBeUndefined();
+      // Correlation id lives on top-level request_id, not in data.
+      expect(msg.request_id).toBeUndefined();
     });
 
     it("should build api_execute with network override and correlation id", () => {
@@ -509,7 +510,8 @@ describe("Message Type Schemas", () => {
       });
       expect(msg.from).toBe("0xUSERWALLET");
       expect(msg.data?.network).toBe("base");
-      expect(msg.data?.client_request_id).toBe("corr-123");
+      // Correlation id is set at the top level where the server reads it.
+      expect(msg.request_id).toBe("corr-123");
       expect(msg.data?.request_source).toBe("cli");
       // timestamp is auto-stamped on every call
       expect(typeof msg.timestamp).toBe("string");
@@ -521,12 +523,14 @@ describe("Message Type Schemas", () => {
         content: "@x-agent-enterprise-v2 user @elonmusk",
         from: "0xUSERWALLET",
         timestamp: "2026-04-20T12:34:56.789Z",
-        data: { network: "base", client_request_id: "req-1" }
+        request_id: "req-1",
+        data: { network: "base" }
       };
       const result = ApiExecuteMessageSchema.safeParse(wire);
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.content).toBe("@x-agent-enterprise-v2 user @elonmusk");
+        expect(result.data.request_id).toBe("req-1");
         expect(result.data.data?.network).toBe("base");
       }
     });

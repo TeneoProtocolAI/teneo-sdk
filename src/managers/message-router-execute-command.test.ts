@@ -122,8 +122,10 @@ describe("MessageRouter.executeCommand", () => {
       expect(sent.room).toBeUndefined();
       // from is populated from authState.walletAddress
       expect(sent.from).toBe("0xUSERWALLET");
-      // client_request_id is populated for correlation (UUID)
-      expect(sent.data?.client_request_id).toMatch(/^[0-9a-f-]{36}$/);
+      // Correlation id goes on the top-level request_id field — that's what
+      // the server's api_execute handler reads (msg.RequestID). NOT in data.
+      expect(sent.request_id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(sent.data?.client_request_id).toBeUndefined();
     });
 
     it("passes the network override through to data.network", async () => {
@@ -178,10 +180,10 @@ describe("MessageRouter.executeCommand", () => {
       // the quote:received listener before we emit.
       await new Promise((r) => setImmediate(r));
 
-      // Grab the client_request_id the router generated
+      // Grab the correlation id the router generated (top-level request_id)
       const sent = wsClient.sendMessage.mock.calls[0][0];
       expect(sent.type).toBe("api_execute");
-      const clientRequestId = sent.data?.client_request_id as string;
+      const clientRequestId = sent.request_id as string;
       expect(clientRequestId).toBeTruthy();
 
       // Simulate server response: task_quote with settlement fields
@@ -254,7 +256,7 @@ describe("MessageRouter.executeCommand", () => {
 
       await new Promise((r) => setImmediate(r));
       const sent = wsClient.sendMessage.mock.calls[0][0];
-      const clientRequestId = sent.data?.client_request_id as string;
+      const clientRequestId = sent.request_id as string;
       expect(clientRequestId).toBeTruthy();
 
       // Non-matching response should NOT resolve the await
