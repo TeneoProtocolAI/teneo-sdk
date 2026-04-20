@@ -75,6 +75,11 @@ export const MessageTypeSchema = z.enum([
   "confirm_task",
   "task_confirmed",
 
+  // Roomless Direct Execution (v3.7.0)
+  // One-shot direct agent invocation with no room. Server handler: api_explorer.
+  // Response is delivered via standard task_quote / task_response (with sentinel room).
+  "api_execute",
+
   // System
   "agents",
   "error",
@@ -559,6 +564,34 @@ export const TaskConfirmedMessageSchema = BaseMessageSchema.extend({
 });
 
 export type TaskConfirmedMessage = z.infer<typeof TaskConfirmedMessageSchema>;
+
+// ============================================================================
+// ROOMLESS DIRECT EXECUTION (v3.7.0)
+// ============================================================================
+
+// api_execute — one-shot direct agent invocation with no room.
+// content is pre-assembled as "@<agentId> <command>" by the SDK.
+// Server handler: internal/websocket/handler_api_explorer.go
+//
+// Response path reuses standard types:
+//   - With payments: task_quote (with sentinel room) → confirm_task → task_response
+//   - Without payments: task_response directly (with sentinel room)
+export const ApiExecuteMessageSchema = BaseMessageSchema.extend({
+  type: z.literal("api_execute"),
+  content: z.string(),
+  data: z
+    .object({
+      // Payment network override (peaq, base, avalanche)
+      network: z.string().optional(),
+      request_source: RequestSourceSchema.optional(),
+      // Request correlation id echoed back by server
+      client_request_id: z.string().optional()
+    })
+    .passthrough()
+    .optional()
+});
+
+export type ApiExecuteMessage = z.infer<typeof ApiExecuteMessageSchema>;
 
 // System message schemas
 export const AgentsListMessageSchema = BaseMessageSchema.extend({
@@ -1437,6 +1470,33 @@ export function createConfirmTask(
       request_source: options?.requestSource ?? "sdk"
     },
     ...(options?.x402Payment && { payment: options.x402Payment })
+  });
+}
+
+/**
+ * Builds an api_execute message for roomless one-shot direct agent invocation.
+ * content must be pre-assembled as "@<agentId> <command>".
+ * The from field is set by the caller (usually the authenticated wallet).
+ */
+export function createApiExecute(
+  content: string,
+  options?: {
+    from?: string;
+    network?: string;
+    clientRequestId?: string;
+    requestSource?: RequestSource;
+  }
+): ApiExecuteMessage {
+  const data: Record<string, unknown> = {};
+  if (options?.network) data.network = options.network;
+  if (options?.clientRequestId) data.client_request_id = options.clientRequestId;
+  data.request_source = options?.requestSource ?? "sdk";
+  return ApiExecuteMessageSchema.parse({
+    type: "api_execute",
+    content,
+    ...(options?.from && { from: options.from }),
+    timestamp: new Date().toISOString(),
+    data
   });
 }
 

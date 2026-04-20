@@ -14,9 +14,11 @@ import {
   createAccessKeyAuth,
   createAuth,
   createCheckCachedAuth,
+  createApiExecute,
   createConfirmTask,
   createRequestChallenge,
   createRequestTask,
+  ApiExecuteMessageSchema,
   isAgentSelected,
   isAuthError,
   isAuthSuccess,
@@ -478,6 +480,61 @@ describe("Message Type Schemas", () => {
       expect(
         createConfirmTask("task-1", { network: "peaq", requestSource: "cli" }).data.request_source
       ).toBe("cli");
+    });
+  });
+
+  describe("api_execute (roomless direct execution)", () => {
+    it("should accept api_execute as a valid message type", () => {
+      const result = MessageTypeSchema.safeParse("api_execute");
+      expect(result.success).toBe(true);
+    });
+
+    it("should build a minimal api_execute message with defaults", () => {
+      const msg = createApiExecute("@weather-agent forecast Tokyo");
+      expect(msg.type).toBe("api_execute");
+      expect(msg.content).toBe("@weather-agent forecast Tokyo");
+      // No room field — that's the whole point
+      expect(msg.room).toBeUndefined();
+      expect(msg.data?.request_source).toBe("sdk");
+      expect(msg.data?.network).toBeUndefined();
+      expect(msg.data?.client_request_id).toBeUndefined();
+    });
+
+    it("should build api_execute with network override and correlation id", () => {
+      const msg = createApiExecute("@x-agent user @elonmusk", {
+        from: "0xUSERWALLET",
+        network: "base",
+        clientRequestId: "corr-123",
+        requestSource: "cli"
+      });
+      expect(msg.from).toBe("0xUSERWALLET");
+      expect(msg.data?.network).toBe("base");
+      expect(msg.data?.client_request_id).toBe("corr-123");
+      expect(msg.data?.request_source).toBe("cli");
+      // timestamp is auto-stamped on every call
+      expect(typeof msg.timestamp).toBe("string");
+    });
+
+    it("should validate a server-style api_execute payload through the schema", () => {
+      const wire = {
+        type: "api_execute",
+        content: "@x-agent-enterprise-v2 user @elonmusk",
+        from: "0xUSERWALLET",
+        timestamp: "2026-04-20T12:34:56.789Z",
+        data: { network: "base", client_request_id: "req-1" }
+      };
+      const result = ApiExecuteMessageSchema.safeParse(wire);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.content).toBe("@x-agent-enterprise-v2 user @elonmusk");
+        expect(result.data.data?.network).toBe("base");
+      }
+    });
+
+    it("should reject api_execute without content", () => {
+      const wire = { type: "api_execute" };
+      const result = ApiExecuteMessageSchema.safeParse(wire);
+      expect(result.success).toBe(false);
     });
   });
 
