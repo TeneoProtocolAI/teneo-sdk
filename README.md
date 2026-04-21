@@ -900,11 +900,24 @@ console.log(response.humanized);
 2. On `request_task` → `task_quote`, the SDK auto-confirms (default) and attaches the access key to `confirm_task` instead of signing an x402 payment header.
 3. No private key is ever loaded into the SDK; all signing happens server-side.
 
+**Which wallet goes where?**
+
+Two distinct wallets are involved in the access-key flow — don't mix them up:
+
+| Concept | What it is | Where it's used |
+| --- | --- | --- |
+| **User wallet** | The wallet that owns your Teneo account | Set as `WALLET_ADDRESS` in a **private-key** flow (`PRIVATE_KEY` signs for this wallet) |
+| **Access key** | A credential bound to a session-key wallet on the backend | Passed as the first argument to `withAccessKey(...)` |
+| **Session-key wallet** | The wallet the access key is bound to — the backend signs **payments** with it | Passed as the second argument to `withAccessKey(accessKey, sessionKeyWalletAddress)` |
+
+> ⚠️ In the access-key flow, the `WALLET_ADDRESS` env var must be set to your **session-key wallet** (the wallet paired with `ACCESS_KEY`), **not** your user wallet. Payments are signed server-side against the session-key wallet.
+
 **When to use:** server-side backends, CI jobs, or any context where managing an Ethereum private key on the client is undesirable.
 
 > Full runnable example: [`examples/access-key-payment-flow.ts`](examples/access-key-payment-flow.ts)
 >
 > ```bash
+> # WALLET_ADDRESS here = your session-key wallet (paired with ACCESS_KEY)
 > ACCESS_KEY=sk_live_... WALLET_ADDRESS=0x... pnpm tsx examples/access-key-payment-flow.ts
 > ```
 
@@ -1604,7 +1617,18 @@ Create `.env`:
 ```bash
 # Required
 TENEO_WS_URL=wss://backend.developer.chatroom.teneo-protocol.ai/ws
-PRIVATE_KEY=0xYourPrivateKey
+
+# ── Auth: pick ONE flow ──
+
+# Flow A — Private-key auth (challenge-response)
+PRIVATE_KEY=0xYourPrivateKey      # Signs auth challenge AND x402 payments (your user wallet)
+WALLET_ADDRESS=0xYourUserWallet   # Optional — auto-derived from PRIVATE_KEY. Your USER WALLET.
+
+# Flow B — Access-key auth (server-side session key)
+ACCESS_KEY=sk_live_...            # Bound to a session-key wallet on the backend
+WALLET_ADDRESS=0xYourSessionKey   # IMPORTANT: your SESSION-KEY WALLET (paired with ACCESS_KEY),
+                                  # NOT your user wallet. Payments are signed server-side
+                                  # against this wallet.
 
 # Optional
 LOG_LEVEL=info
