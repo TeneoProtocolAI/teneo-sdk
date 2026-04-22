@@ -1059,6 +1059,14 @@ These networks are currently supported (fetched dynamically from backend):
 - High-throughput blockchain
 - Sub-second finality
 
+**X Layer Mainnet (chainId: 196)**
+- OKX-backed zkEVM Layer 2
+- Low fees with Ethereum-grade security
+
+**BNB Smart Chain (chainId: 56)**
+- Broad EVM ecosystem & liquidity
+- Fast block times, low transaction costs
+
 > **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
 
 #### Settlement Router Integration (x402 v2.5)
