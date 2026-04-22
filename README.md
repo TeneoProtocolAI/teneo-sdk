@@ -2,7 +2,7 @@
 
 **Connect your app to the Teneo AI Agent Network**
 
-[![npm version](https://img.shields.io/badge/version-3.7.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
+[![npm version](https://img.shields.io/badge/version-3.8.0-blue)](https://www.npmjs.com/package/@teneo-protocol/sdk)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-671%20passing-success)](/)
@@ -12,6 +12,44 @@ The Teneo Protocol SDK lets you connect your application to a **decentralized ne
 - 🤖 **Multiple AI agents** with different specializations handle your requests
 - 🧠 **Intelligent routing** automatically selects the best agent for each query
 - 🔐 **Flexible authentication** — Ethereum wallet signatures or access key
+
+---
+
+## 🎉 What's New in v3.8.0
+
+### 🔑 Access Key Authentication & Payments Without a Private Key
+
+The SDK now supports **access-key authentication** as a first-class alternative to wallet signatures — ideal for server-side integrations, CI jobs, and any environment where loading an Ethereum private key on the client is undesirable:
+
+```typescript
+import { TeneoSDK, SDKConfigBuilder } from "@teneo-protocol/sdk";
+
+const config = new SDKConfigBuilder()
+  .withWebSocketUrl(process.env.TENEO_WS_URL!)
+  .withAccessKey(process.env.ACCESS_KEY!, process.env.WALLET_ADDRESS!)
+  .withNetwork("peaq")
+  .build();
+
+const sdk = new TeneoSDK(config);
+await sdk.connect();
+
+// Same API as the private-key flow — quotes auto-confirm and
+// payments are signed server-side using the session-key wallet.
+const response = await sdk.sendMessage("@X Platform Agent user @elonmusk", {
+  room: sdk.getRooms()[0].id,
+  waitForResponse: true
+});
+```
+
+**What changes under the hood:**
+
+- `withAccessKey(accessKey, walletAddress)` replaces challenge-response auth — the SDK sends the access key + session-key wallet address on connect.
+- On `request_task` → `task_quote`, the SDK auto-confirms and attaches the access key to `confirm_task` instead of signing an x402 payment header.
+- No private key is ever loaded into the SDK; **all payment signing happens server-side** against the session-key wallet bound to the access key.
+
+**When to use:** server-side backends, CI jobs, hosted integrations, or any context where client-side private-key management is off the table.
+
+[Jump to Access Key Payment Flow](#paying-with-an-access-key-no-private-key) | [See Full CHANGELOG](CHANGELOG.md#380)
 
 ---
 
@@ -1020,6 +1058,14 @@ These networks are currently supported (fetched dynamically from backend):
 **Avalanche Mainnet (chainId: 43114)**
 - High-throughput blockchain
 - Sub-second finality
+
+**X Layer Mainnet (chainId: 196)**
+- OKX-backed zkEVM Layer 2
+- Low fees with Ethereum-grade security
+
+**BNB Smart Chain (chainId: 56)**
+- Broad EVM ecosystem & liquidity
+- Fast block times, low transaction costs
 
 > **Note:** Network configurations are fetched from the backend and may change. Use `getSupportedNetworks()` to get the current list. The SDK automatically handles network selection based on agent requirements.
 
